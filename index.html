@@ -17,6 +17,7 @@
     --void: #000000;     /* the background */
     --ice: #46b8e6;      /* cyan-blue streams */
     --leaf: #3fe08f;     /* green streams */
+    --ember: #ff3b46;    /* red streams: darker than the green, so the two differ in brightness too */
     --frost: #dff4ff;    /* pale streams and the bright leading glyph */
     --hint: #8fa9b8;     /* the fading tap hint */
     --mono: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Osaka", ui-monospace, monospace;
@@ -36,7 +37,7 @@
 </style>
 </head>
 <body>
-<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white"></canvas>
+<canvas id="rain" aria-label="Rising columns of glowing code in red, green, blue and white"></canvas>
 <div id="hint">TAP FOR FULL SCREEN</div>
 
 <script>
@@ -49,6 +50,7 @@
     void: css.getPropertyValue('--void').trim(),
     ice: css.getPropertyValue('--ice').trim(),
     leaf: css.getPropertyValue('--leaf').trim(),
+    ember: css.getPropertyValue('--ember').trim(),
     frost: css.getPropertyValue('--frost').trim(),
     mono: css.getPropertyValue('--mono').trim(),
   };
@@ -64,10 +66,10 @@
   let W, H, size, cols, rows, streams = [];
 
   function colorFor(x) {
-    // Blue and green mixed all the way across, with a little white.
+    // Red, green and blue mixed all the way across, with a little white.
     const r = Math.random();
     if (r < 0.1) return C.frost;
-    return r < 0.55 ? C.ice : C.leaf;
+    return r < 0.4 ? C.ice : r < 0.7 ? C.leaf : C.ember;
   }
 
   function makeStream(col, scatter) {
@@ -87,9 +89,9 @@
   // 2 to 9 seconds at 30 fps, different for every column, so the pattern never repeats.
   function swapTimer() { return 60 + ((Math.random() * 210) | 0); }
 
-  // A different color from the one it has now: blue or green mostly, white now and then.
+  // A different color from the one it has now: red, green or blue mostly, white now and then.
   function nextColor(current) {
-    const options = [C.ice, C.ice, C.leaf, C.leaf, C.frost].filter(c => c !== current);
+    const options = [C.ice, C.ice, C.leaf, C.leaf, C.ember, C.ember, C.frost].filter(c => c !== current);
     return options[(Math.random() * options.length) | 0];
   }
 
