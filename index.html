@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rising Code">
+<meta name="theme-color" content="#000000">
+<title>Rising Code</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  /* One full-screen canvas; nothing else on the page but a hint that fades. Deliberately single dark look. */
+  :root {
+    --void: #000000;     /* the background */
+    --ice: #46b8e6;      /* cyan-blue streams */
+    --leaf: #3fe08f;     /* green streams */
+    --frost: #dff4ff;    /* pale streams and the bright leading glyph */
+    --hint: #8fa9b8;     /* the fading tap hint */
+    --mono: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Osaka", ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--void); color: var(--frost); overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--void); }
+  #hint {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    text-align: center; font: 500 13px/1.4 var(--mono); letter-spacing: 0.12em;
+    color: var(--hint); opacity: 0.9; transition: opacity 2s ease; pointer-events: none;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  #hint.gone { opacity: 0; }
+</style>
+</head>
+<body>
+<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white"></canvas>
+<div id="hint">TAP FOR FULL SCREEN</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('rain');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+  const css = getComputedStyle(document.documentElement);
+  const C = {
+    void: css.getPropertyValue('--void').trim(),
+    ice: css.getPropertyValue('--ice').trim(),
+    leaf: css.getPropertyValue('--leaf').trim(),
+    frost: css.getPropertyValue('--frost').trim(),
+    mono: css.getPropertyValue('--mono').trim(),
+  };
+
+  // Half-width katakana, digits and a few symbols: the look of the reference image.
+  const KANA = Array.from({ length: 0xFF9D - 0xFF66 + 1 }, (_, i) => String.fromCharCode(0xFF66 + i));
+  const GLYPHS = KANA.concat('0123456789'.split(''), ':.=*+-<>¦|"'.split(''));
+  const pick = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPEED = reduce ? 0.35 : 1;          // slower still if the device asks for less motion
+
+  let W, H, size, cols, rows, streams = [];
+
+  function colorFor(x) {
+    // Blue and green mixed all the way across, with a little white.
+    const r = Math.random();
+    if (r < 0.1) return C.frost;
+    return r < 0.55 ? C.ice : C.leaf;
+  }
+
+  function makeStream(col, scatter) {
+    return {
+      col,
+      color: colorFor(col),
+      // Heads start below the screen and climb; on first load they're scattered so the screen is already full.
+      head: scatter ? Math.random() * (rows + 40) : rows + Math.random() * rows * 0.6,
+      speed: (0.07 + Math.random() * 0.12) * SPEED,  // rows per frame at 30 fps: unhurried
+      len: 18 + ((Math.random() * 40) | 0),
+      cells: Array.from({ length: 60 }, pick),
+    };
+  }
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    size = Math.max(10, Math.round(Math.min(W, H) / 62));
+    cols = Math.ceil(W / size); rows = Math.ceil(H / size);
+    streams = [];
+    for (let c = 0; c < cols; c++) {
+      // Two to four streams per column, so the screen stays full.
+      streams.push(makeStream(c, true));
+      streams.push(makeStream(c, true));
+      if (Math.random() < 0.7) streams.push(makeStream(c, true));
+      if (Math.random() < 0.35) streams.push(makeStream(c, true));
+    }
+    ctx.font = `${size}px ${C.mono}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  }
+
+  function draw() {
+    ctx.fillStyle = C.void;
+    ctx.fillRect(0, 0, W, H);
+    for (const s of streams) {
+      const x = s.col * size + size / 2;
+      const headRow = Math.floor(s.head);
+      // The trail hangs BELOW the head, because the stream is rising.
+      for (let k = s.len - 1; k >= 0; k--) {
+        const row = headRow + k;
+        if (row < 0 || row > rows) continue;
+        const fade = 1 - k / s.len;
+        ctx.globalAlpha = Math.max(0, 0.12 + fade * fade * 0.85);
+        ctx.fillStyle = s.color;
+        ctx.fillText(s.cells[(row % 60 + 60) % 60], x, row * size);
+      }
+      // The leading glyph: bright and slightly glowing.
+      if (headRow >= 0 && headRow <= rows) {
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = s.color; ctx.shadowBlur = size * 0.8;
+        ctx.fillStyle = C.frost;
+        ctx.fillText(s.cells[(headRow % 60 + 60) % 60], x, headRow * size);
+        ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+      // Move up; now and then a glyph changes.
+      s.head -= s.speed;
+      if (Math.random() < 0.04) s.cells[(Math.random() * 60) | 0] = pick();
+      if (s.head + s.len < -2) Object.assign(s, makeStream(s.col, false));
+    }
+  }
+
+  // 30 frames a second is plenty for something this slow, and easier on the battery.
+  let last = 0;
+  function loop(t) {
+    if (t - last >= 33) { draw(); last = t; }
+    requestAnimationFrame(loop);
+  }
+
+  // Keep the screen awake while it's showing, where the device allows it.
+  let lock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch (e) { lock = null; }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  // Tap toggles full screen where the browser allows it; the hint fades either way.
+  document.addEventListener('click', async () => {
+    hint.classList.add('gone');
+    keepAwake();
+    try {
+      const el = document.documentElement;
+      const full = document.fullscreenElement || document.webkitFullscreenElement;
+      if (full) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else await (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    } catch (e) { /* not available here; it still runs full-window */ }
+  });
+  setTimeout(() => hint.classList.add('gone'), 5000);
+
+  window.addEventListener('resize', resize);
+  resize(); draw(); keepAwake();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
