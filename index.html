@@ -79,7 +79,18 @@
       speed: (0.14 + Math.random() * 0.24) * SPEED,  // rows per frame at 30 fps: a steady rush, like a waterfall
       len: 24 + ((Math.random() * 46) | 0),
       cells: Array.from({ length: 60 }, pick),
+      // Like a string of Christmas lights: each column changes color on its own random timer.
+      swapIn: swapTimer(),
     };
+  }
+
+  // 2 to 9 seconds at 30 fps, different for every column, so the pattern never repeats.
+  function swapTimer() { return 60 + ((Math.random() * 210) | 0); }
+
+  // A different color from the one it has now: blue or green mostly, white now and then.
+  function nextColor(current) {
+    const options = [C.ice, C.ice, C.leaf, C.leaf, C.frost].filter(c => c !== current);
+    return options[(Math.random() * options.length) | 0];
   }
 
   function resize() {
@@ -128,6 +139,7 @@
       // Move up; now and then a glyph changes.
       s.head -= s.speed;
       if (Math.random() < 0.04) s.cells[(Math.random() * 60) | 0] = pick();
+      if (--s.swapIn <= 0) { s.color = nextColor(s.color); s.swapIn = swapTimer(); }
       if (s.head + s.len < -2) Object.assign(s, makeStream(s.col, false));
     }
   }
