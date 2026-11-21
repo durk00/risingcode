@@ -14,7 +14,7 @@ Everything is in `index.html`:
 
 - **Colors:** the `--ice` (blue), `--leaf` (green) and `--frost` (white) values at the top of the style block.
 - **Color mix:** `colorFor()`: 10% white, the rest split between blue and green.
-- **Speed:** the `speed:` line in `makeStream()`. Bigger numbers rise faster; it is set to a steady rush, like a waterfall running upward.
+- **Speed:** the `speed:` line in `makeStream()` sets each column's base speed. `nextPhase()` drifts the whole field between slow and fast at random, with an occasional short rush.
 - **Density:** the `size =` line in `resize()` (smaller characters, more columns) and the number of `makeStream` calls per column.
 
 It honors the device's Reduce Motion setting by running slower.
