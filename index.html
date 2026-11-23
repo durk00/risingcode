@@ -107,28 +107,45 @@
   let treeBase = null;    // a faint red glyph in every tree cell, so the shape is always there
   let star = { x: 0, y: 0, r: 0 };
   function buildTree() {
-    const cx = W / 2, top = H * 0.2, bottom = H * 0.8, h = bottom - top;
-    const half = Math.min(W * 0.34, h * 0.42);
-    const tiers = [[0.06, 0.5], [0.3, 0.78], [0.5, 1]];   // each tier's half-width, top to bottom, as a share of `half`
-    tree = new Uint8Array(cols * (rows + 1));
-    treeBase = new Array(cols * (rows + 1));
+    // Nov 23, second version: taller, a classic stepped tree. The tip narrows to
+    // three columns of code right under the star, which sits near the top of the
+    // screen; five tiers flare out in a sawtooth, each starting narrower than the
+    // one above it ends, the way a Christmas tree is drawn; the trunk is three
+    // columns wide. Edge cells glow brighter so the outline reads clearly.
+    const cc = Math.floor(cols / 2), cx = cc * size + size / 2;
+    const top = H * 0.075, bottom = H * 0.86, h = bottom - top;
+    const half = Math.min(W * 0.42, h * 0.4);
+    const ends = [0.26, 0.45, 0.64, 0.82, 1];          // each tier's widest point, as a share of `half`
+    const minHalf = size * 1.1;                        // never narrower than three columns
+    const mask = new Uint8Array(cols * (rows + 1));
     for (let r = 0; r <= rows; r++) {
       const y = r * size + size / 2;
       for (let c = 0; c < cols; c++) {
         const x = c * size + size / 2;
         let inside = false;
         if (y >= top && y <= bottom) {
-          const t = (y - top) / h * 3, i = Math.min(2, Math.floor(t)), local = t - i;
-          inside = Math.abs(x - cx) <= half * (tiers[i][0] + (tiers[i][1] - tiers[i][0]) * local);
-        } else if (y > bottom && y <= bottom + h * 0.09) {
-          inside = Math.abs(x - cx) <= half * 0.11;            // the trunk
+          const t = (y - top) / h * ends.length, i = Math.min(ends.length - 1, Math.floor(t)), local = t - i;
+          const from = i === 0 ? 0 : ends[i - 1] * 0.6;
+          inside = Math.abs(x - cx) <= Math.max(minHalf, half * (from + (ends[i] - from) * local));
+        } else if (y > bottom && y <= bottom + h * 0.08) {
+          inside = Math.abs(x - cx) <= size * 1.6;     // the trunk
         }
-        if (inside) { tree[r * cols + c] = 1; treeBase[r * cols + c] = pick(); }
+        if (inside) mask[r * cols + c] = 1;
       }
     }
-    star = { x: cx, y: top - size * 0.6, r: size };
+    // 2 marks an edge cell: inside, with a neighbor outside.
+    tree = new Uint8Array(cols * (rows + 1));
+    treeBase = new Array(cols * (rows + 1));
+    const at = (c, r) => c >= 0 && c < cols && r >= 0 && r <= rows && mask[r * cols + c] === 1;
+    for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
+      if (!at(c, r)) continue;
+      const edge = !at(c - 1, r) || !at(c + 1, r) || !at(c, r - 1) || !at(c, r + 1);
+      tree[r * cols + c] = edge ? 2 : 1;
+      treeBase[r * cols + c] = pick();
+    }
+    star = { x: cx, y: top - size * 0.4, r: size };
   }
-  const inTree = (c, r) => r >= 0 && r <= rows && tree[r * cols + c] === 1;
+  const inTree = (c, r) => r >= 0 && r <= rows && tree[r * cols + c] > 0;
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -171,9 +188,12 @@
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, W, H);
     // The tree's faint standing shape, always there under the rain.
-    ctx.fillStyle = C.ember; ctx.globalAlpha = 0.2;
+    ctx.fillStyle = C.ember;
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
-      if (tree[r * cols + c]) ctx.fillText(treeBase[r * cols + c], c * size + size / 2, r * size);
+      const v = tree[r * cols + c];
+      if (!v) continue;
+      ctx.globalAlpha = v === 2 ? 0.5 : 0.18;   // the outline brighter than the inside
+      ctx.fillText(treeBase[r * cols + c], c * size + size / 2, r * size);
     }
     if (Math.random() < 0.3) { const i = (Math.random() * tree.length) | 0; if (tree[i]) treeBase[i] = pick(); }
     ctx.globalAlpha = 1;
