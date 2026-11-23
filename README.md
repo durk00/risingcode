@@ -1,6 +1,6 @@
 # Rising Code
 
-Columns of glowing code rising up the screen in red, green, blue and a little white, changing color at random like Christmas lights. Made as a screensaver for an iPad; works in any modern browser.
+Columns of glowing code rising up the screen in blue, green and a little white, changing color at random like Christmas lights, with a Christmas tree of red code and a pulsing star on top. Made as a screensaver for an iPad; works in any modern browser.
 
 ## Use it on an iPad
 
@@ -12,8 +12,9 @@ Columns of glowing code rising up the screen in red, green, blue and a little wh
 
 Everything is in `index.html`:
 
-- **Colors:** the `--ice` (blue), `--leaf` (green), `--ember` (red) and `--frost` (white) values at the top of the style block.
-- **Color mix:** `colorFor()` and `nextColor()`: mostly red, green and blue, white now and then.
+- **Colors:** the `--ice` (blue), `--leaf` (green), `--ember` (red, used only by the tree), `--frost` (white) and `--halo` (the star's glow) values at the top of the style block.
+- **Tree:** `buildTree()` sets its size and position; the star pulses in `draw()`.
+- **Color mix:** `colorFor()` and `nextColor()`: mostly blue and green, white now and then.
 - **Speed:** the `speed:` line in `makeStream()` sets each column's base speed. `nextPhase()` drifts the whole field between slow and fast at random, with an occasional short rush.
 - **Density:** the `size =` line in `resize()` (smaller characters, more columns) and the number of `makeStream` calls per column.
 
