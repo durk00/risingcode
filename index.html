@@ -17,7 +17,8 @@
     --void: #000000;     /* the background */
     --ice: #46b8e6;      /* cyan-blue streams */
     --leaf: #3fe08f;     /* green streams */
-    --ember: #ff5059;    /* red streams: darker than the green, so the two differ in brightness too */
+    --ember: #ff5059;
+    --halo: #ffe7a3;     /* the star's warm glow */    /* red streams: darker than the green, so the two differ in brightness too */
     --frost: #dff4ff;    /* pale streams and the bright leading glyph */
     --hint: #8fa9b8;     /* the fading tap hint */
     --mono: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Osaka", ui-monospace, monospace;
@@ -40,7 +41,7 @@
 </style>
 </head>
 <body>
-<canvas id="rain" aria-label="Rising columns of glowing code in red, green, blue and white"></canvas>
+<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree and a pulsing star"></canvas>
 <div id="hint">TAP FOR FULL SCREEN</div>
 
 <script>
@@ -54,6 +55,7 @@
     ice: css.getPropertyValue('--ice').trim(),
     leaf: css.getPropertyValue('--leaf').trim(),
     ember: css.getPropertyValue('--ember').trim(),
+    halo: css.getPropertyValue('--halo').trim(),
     frost: css.getPropertyValue('--frost').trim(),
     mono: css.getPropertyValue('--mono').trim(),
   };
@@ -69,10 +71,10 @@
   let W, H, size, cols, rows, streams = [];
 
   function colorFor(x) {
-    // Red, green and blue mixed all the way across, with a little white.
+    // Blue and green mixed all the way across, with a little white. Red belongs to the tree.
     const r = Math.random();
     if (r < 0.1) return C.frost;
-    return r < 0.4 ? C.ice : r < 0.7 ? C.leaf : C.ember;
+    return r < 0.55 ? C.ice : C.leaf;
   }
 
   function makeStream(col, scatter) {
@@ -92,11 +94,41 @@
   // 2 to 9 seconds at 30 fps, different for every column, so the pattern never repeats.
   function swapTimer() { return 60 + ((Math.random() * 210) | 0); }
 
-  // A different color from the one it has now: red, green or blue mostly, white now and then.
+  // A different color from the one it has now: blue or green mostly, white now and then.
   function nextColor(current) {
-    const options = [C.ice, C.ice, C.leaf, C.leaf, C.ember, C.ember, C.frost].filter(c => c !== current);
+    const options = [C.ice, C.ice, C.leaf, C.leaf, C.frost].filter(c => c !== current);
     return options[(Math.random() * options.length) | 0];
   }
+
+  // THE TREE (Nov 23): a Christmas tree made of red code, easy to miss at a glance
+  // but plain after a second, with a bright star pulsing on top. Red belongs to the
+  // tree alone; outside it the columns run blue, green and white.
+  let tree = null;        // 1 where a cell is inside the tree
+  let treeBase = null;    // a faint red glyph in every tree cell, so the shape is always there
+  let star = { x: 0, y: 0, r: 0 };
+  function buildTree() {
+    const cx = W / 2, top = H * 0.2, bottom = H * 0.8, h = bottom - top;
+    const half = Math.min(W * 0.34, h * 0.42);
+    const tiers = [[0.06, 0.5], [0.3, 0.78], [0.5, 1]];   // each tier's half-width, top to bottom, as a share of `half`
+    tree = new Uint8Array(cols * (rows + 1));
+    treeBase = new Array(cols * (rows + 1));
+    for (let r = 0; r <= rows; r++) {
+      const y = r * size + size / 2;
+      for (let c = 0; c < cols; c++) {
+        const x = c * size + size / 2;
+        let inside = false;
+        if (y >= top && y <= bottom) {
+          const t = (y - top) / h * 3, i = Math.min(2, Math.floor(t)), local = t - i;
+          inside = Math.abs(x - cx) <= half * (tiers[i][0] + (tiers[i][1] - tiers[i][0]) * local);
+        } else if (y > bottom && y <= bottom + h * 0.09) {
+          inside = Math.abs(x - cx) <= half * 0.11;            // the trunk
+        }
+        if (inside) { tree[r * cols + c] = 1; treeBase[r * cols + c] = pick(); }
+      }
+    }
+    star = { x: cx, y: top - size * 0.6, r: size };
+  }
+  const inTree = (c, r) => r >= 0 && r <= rows && tree[r * cols + c] === 1;
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -106,6 +138,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     size = Math.max(10, Math.round(Math.min(W, H) / 62));
     cols = Math.ceil(W / size); rows = Math.ceil(H / size);
+    buildTree();
     streams = [];
     for (let c = 0; c < cols; c++) {
       // Two to four streams per column, so the screen stays full.
@@ -137,6 +170,13 @@
     if (--phaseLeft <= 0) nextPhase();
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, W, H);
+    // The tree's faint standing shape, always there under the rain.
+    ctx.fillStyle = C.ember; ctx.globalAlpha = 0.2;
+    for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
+      if (tree[r * cols + c]) ctx.fillText(treeBase[r * cols + c], c * size + size / 2, r * size);
+    }
+    if (Math.random() < 0.3) { const i = (Math.random() * tree.length) | 0; if (tree[i]) treeBase[i] = pick(); }
+    ctx.globalAlpha = 1;
     for (const s of streams) {
       const x = s.col * size + size / 2;
       const headRow = Math.floor(s.head);
@@ -145,14 +185,15 @@
         const row = headRow + k;
         if (row < 0 || row > rows) continue;
         const fade = 1 - k / s.len;
-        ctx.globalAlpha = Math.max(0, 0.12 + fade * fade * 0.85);
-        ctx.fillStyle = s.color;
+        const red = inTree(s.col, row);   // inside the tree, every stream runs red
+        ctx.globalAlpha = Math.min(1, (red ? 0.3 : 0.12) + fade * fade * 0.85);
+        ctx.fillStyle = red ? C.ember : s.color;
         ctx.fillText(s.cells[(row % 60 + 60) % 60], x, row * size);
       }
       // The leading glyph: bright and slightly glowing.
       if (headRow >= 0 && headRow <= rows) {
         ctx.globalAlpha = 1;
-        ctx.shadowColor = s.color; ctx.shadowBlur = size * 0.8;
+        ctx.shadowColor = inTree(s.col, headRow) ? C.ember : s.color; ctx.shadowBlur = size * 0.8;
         ctx.fillStyle = C.frost;
         ctx.fillText(s.cells[(headRow % 60 + 60) % 60], x, headRow * size);
         ctx.shadowBlur = 0;
@@ -164,6 +205,14 @@
       if (--s.swapIn <= 0) { s.color = nextColor(s.color); s.swapIn = swapTimer(); }
       if (s.head + s.len < -2) Object.assign(s, makeStream(s.col, false));
     }
+    // The star: larger and brighter than anything else, pulsing slowly at the top.
+    const p = 0.5 + 0.5 * Math.sin(performance.now() / (reduce ? 1400 : 700));
+    const R = star.r * (3.4 + 1.8 * p);
+    const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, R);
+    glow.addColorStop(0, C.frost); glow.addColorStop(0.18, C.frost); glow.addColorStop(0.4, C.halo); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.75 + 0.25 * p; ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(star.x, star.y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // 30 frames a second is plenty for something this slow, and easier on the battery.
