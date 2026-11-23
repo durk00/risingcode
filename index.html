@@ -25,7 +25,10 @@
   }
   html, body { height: 100%; }
   body { background: var(--void); color: var(--frost); overflow: hidden; }
-  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--void); }
+  /* Home-screen app on an iPhone or iPad (Nov 23): the page starts under the status bar, but
+     iOS reports the screen as shorter by the status bar's height, which left an empty black
+     band at the bottom. The canvas reaches that much further down, and is drawn at its real size. */
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: calc(100vh + env(safe-area-inset-top, 0px)); min-height: 100%; display: block; background: var(--void); }
   #hint {
     position: fixed; left: 0; right: 0;
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -97,7 +100,8 @@
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth; H = window.innerHeight;
+    const box = canvas.getBoundingClientRect();
+    W = Math.max(box.width, window.innerWidth); H = Math.max(box.height, window.innerHeight);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     size = Math.max(10, Math.round(Math.min(W, H) / 62));
