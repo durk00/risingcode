@@ -132,6 +132,19 @@
       ${wild === 'verses' ? versesHtml() : ''}
       <footer>TAP ✕ TO CLOSE, OR AT THE BOTTOM GIVE IT A GOOD SWIPE UP</footer></div>`;
   }
+  // THE HIDDEN g SWITCH (V71): tap the word MENU 5 times quickly to turn the g page on (or off)
+  // on this iPad. An app added to the home screen keeps its own storage, separate from
+  // Safari, so turning g on with ?g=on in Safari doesn't reach the home-screen icon.
+  let gTaps = 0, gTapAt = 0;
+  el.addEventListener('click', (e) => {
+    if (!e.target.closest('h1')) return;
+    const now = Date.now(); gTaps = now - gTapAt < 1500 ? gTaps + 1 : 1; gTapAt = now;
+    if (gTaps < 5) return;
+    gTaps = 0;
+    let on = false; try { on = localStorage.getItem('risingcode_g') === 'on'; if (on) localStorage.removeItem('risingcode_g'); else localStorage.setItem('risingcode_g', 'on'); } catch (e2) {}
+    const h = el.querySelector('h1'); if (h) h.textContent = on ? 'g OFF' : 'g ON';
+    setTimeout(() => location.reload(), 700);
+  });
   el.addEventListener('click', (e) => {
     e.stopPropagation();                         // menu taps never reach the scenes
     const b = e.target.closest('button'); if (!b) return;
