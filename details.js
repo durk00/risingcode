@@ -6,7 +6,8 @@
 //               pressure, and when it was taken
 //   NEXT 3 DAYS hour by hour from the NOAA forecast grid, in four strips that share
 //               one time line:
-//                 temperature (solid) and dew point (dashed), in °F
+//                 temperature (solid) and dew point (dashed), in °F (V31: every
+//                   temperature here is written °F so a dew point can't be misread as a %)
 //                 relative humidity, %, with the drying hours shaded: humidity
 //                   under 50% and under a 20% chance of rain (handy for field drying)
 //                 chance of rain or snow, % (bars)
@@ -93,10 +94,10 @@
     ctx.fillText('RIGHT NOW' + (n ? ` · ${n.station} · ${n.when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).toUpperCase()}` : ''), x, y);
     if (!n) { ctx.fillStyle = C.text; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA unavailable' : status === 'loading' ? 'Loading…' : 'No station reading right now', x, y + fs * 1.6); return; }
     ctx.fillStyle = C.text; ctx.font = font(800, fs * 3.2);
-    const t = fmt(n.temp, '°'); ctx.fillText(t, x, y + fs * 1.3);
+    const t = fmt(n.temp, '°F'); ctx.fillText(t, x, y + fs * 1.3);
     const tw = ctx.measureText(t).width + fs * 1.5;
     ctx.font = font(600, fs * 1.1); ctx.fillText(n.words, x + tw, y + fs * 1.5);
-    const items = [['HUMIDITY', fmt(n.rh, '%')], ['DEW POINT', fmt(n.dew, '°')],
+    const items = [['HUMIDITY', fmt(n.rh, '%')], ['DEW POINT', fmt(n.dew, '°F')],
       ['WIND', n.wind === null ? '—' : `${n.dir} ${fmt(n.wind, '')} MPH`], ['GUSTS', fmt(n.gust, ' MPH')], ['PRESSURE', fmt(n.pressure, ' IN', 2)]];
     // Five readings in a row, or two rows of three on a narrow screen.
     const perRow = (w - tw) / items.length < fs * 7.5 ? 3 : items.length, colW = (w - tw) / perRow;
@@ -171,7 +172,7 @@
     geo = strip(m, chartsTop, sw, sh, fs, 'TEMPERATURE AND DEW POINT', [
       { v: data.temp, color: C.line, label: 'TEMP' },
       { v: data.dew, color: C.line2, dash: [7, 5], label: 'DEW PT', nudge: 0.8 },
-    ], { unit: '°' });
+    ], { unit: '°F' });
     strip(m, chartsTop + (sh + gap), sw, sh, fs, `HUMIDITY · SHADED: DRYING HOURS (UNDER ${DRY_RH}% AND UNDER ${DRY_POP}% CHANCE OF RAIN)`, [
       { v: data.rh, color: C.line, label: 'HUMIDITY' },
     ], { unit: '%', min: 0, max: 100, shade: (i) => data.rh[i] !== null && data.rh[i] < DRY_RH && (data.pop[i] || 0) < DRY_POP });
