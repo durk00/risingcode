@@ -54,7 +54,7 @@ On the Winter scene the sun and the moon move across the sky where they really a
 
 ## g (V69)
 
-William's own AI, g (go-grow-gain.base44.app), as a page of this app, one swipe left past Kitchen (`gpage.js`), so he can chat with g without leaving the screensaver. It only appears on an iPad where it was turned on: open the app once with `?g=on` at the end of the address (`?g=off` removes it). An app added to the home screen keeps its own storage, separate from Safari, so from inside the app: tap the word MENU at the top of the menu 5 times quickly to turn g on or off on that iPad (V71). g's chat stays behind g's own sign-in. A thin bar on top has ← Back and **Open g ↗**, for when g can't be shown inside the page. The page loads the first time it's opened and is then kept, so a conversation stays put while swiping away and back.
+William's own AI, g (go-grow-gain.base44.app), as a page of this app, one swipe left past Kitchen (`gpage.js`), so he can chat with g without leaving the screensaver. It only appears on an iPad where it was turned on: open the app once with `?g=on` at the end of the address (`?g=off` removes it). An app added to the home screen keeps its own storage, separate from Safari, so from inside the app: tap the word MENU at the top of the menu 5 times quickly to turn g on or off on that iPad (V71). g's chat stays behind g's own sign-in. Base44 won't let g be shown inside another page, and iPadOS won't let a link open a web app saved to the home screen, so since V72 the page is a launcher: ← Back, a big **OPEN g** button (opens g in Safari), and a reminder that swiping sideways along the bottom edge of the screen flips between g's home-screen app and Rising Code once both are open.
 
 ## Weather details
 
