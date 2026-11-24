@@ -30,7 +30,7 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 
 - **Day or night** from the forecast period that's on now: sun and blue sky by day, moon and stars by night.
 - **Sky** from the forecast words: clear, partly cloudy, cloudy or fog.
-- **Rain, snow or a mix** falling when the forecast says so; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
+- **Rain, snow or a mix** falling: since V44 from the nearest NOAA station's current conditions when it has a reading from the last 2 hours (so it shows what is really coming down), otherwise from the forecast; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
 - **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
 - **Tap** for a three-day forecast box to the left of the house (day, forecast with a weather icon, high and low, chance of precipitation); tap again to close. Taps on Winter make no sound.
 - **Weather alerts** from NOAA for Centre Hall (checked every 10 minutes) show as a red banner across the top: tap it for the details, swipe it sideways to dismiss it. A dismissed alert stays away; a new one shows. Preview with `?alert`.
@@ -59,3 +59,7 @@ Under the built-in quick ideas, the Kitchen also searches TheMealDB (themealdb.c
 ## Night clock
 
 In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by default, 10 PM–6 AM, or 11 PM–7 AM), any scene is covered by a big, dim clock on black with the date and the moon's phase. Tap it to use the app; after 5 minutes it goes back to the clock until morning. It drifts slightly each minute so nothing burns in. Preview with `?night`.
+
+## First-time guide
+
+In `firstrun.js`. The first time the app opens on a device, a one-time guide shows an arrow pointing down to the settings menu, arrows for swiping between screens, and what a tap does. One tap closes it for good on that device. Preview with `?intro`.
