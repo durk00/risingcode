@@ -2,8 +2,9 @@
 // to go back). "Use my ingredients": one box, one button. Type what's in the house, get a
 // few meal ideas back.
 //
-// How it works, plainly: there is no server or AI behind this page, so the ideas come from
-// a built-in list of about 25 plain recipes below, matched against what you type. Each idea
+// How it works, plainly: there is no server or AI behind this page. Quick ideas come from
+// a built-in list of about 25 plain recipes below (and, since V37, full recipes from the free
+// TheMealDB, see mealdb.js), matched against what you type. Each idea
 // says what of yours it uses, which pantry staples it ASSUMES you have (flagged in a box,
 // since you didn't list them), and anything else it still needs. Add recipes to RECIPES.
 (() => {
@@ -103,17 +104,29 @@
   document.body.appendChild(el);
   const out = el.querySelector('#kitchen-out'), input = el.querySelector('input');
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // V37: two sources. The built-in list answers at once; TheMealDB (mealdb.js) answers a
+  // moment later underneath, with full recipes. A newer search replaces an older one.
+  let searchNo = 0;
   el.querySelector('form').addEventListener('submit', (e) => {
     e.preventDefault();
+    const no = ++searchNo;
     const { items, listed } = suggest(input.value, 3);
     if (!listed.length) { out.innerHTML = '<p class="msg">Type a few ingredients first.</p>'; return; }
-    if (!items.length) { out.innerHTML = '<p class="msg">No match in the built-in list for those. Try adding a main ingredient like eggs, rice, pasta, potatoes, chicken or bread.</p>'; return; }
-    out.innerHTML = items.map((m) => `<div class="card"><h2>${esc(m.name)}</h2>
+    const built = !items.length ? '<p class="msg">No match in the built-in list for those.</p>'
+      : items.map((m) => `<div class="card"><h2>${esc(m.name)}</h2>
       <p class="uses">Uses your: ${esc(m.uses.join(', '))}</p>
       ${m.assumed.length ? `<div class="assume">⚠ ASSUMES you have (you didn’t list these): ${esc(m.assumed.join(', '))}</div>` : ''}
       ${m.missing.length ? `<div class="need">STILL NEEDS: ${esc(m.missing.join(', '))}</div>` : ''}
-      <p class="steps">${esc(m.steps)}</p></div>`).join('') +
-      '<p class="msg">Ideas come from a short built-in recipe list, not from AI or the web, so treat them as starting points.</p>';
+      <p class="steps">${esc(m.steps)}</p></div>`).join('');
+    const web = window.MealDB ? '<h3 class="src">FROM THEMEALDB · FULL RECIPES</h3><div id="kitchen-web"><p class="msg">Searching TheMealDB…</p></div>' : '';
+    out.innerHTML = '<h3 class="src">QUICK IDEAS · BUILT-IN LIST</h3>' + built + web;
+    if (window.MealDB) MealDB.find(input.value).then((res) => {
+      if (no !== searchNo) return;
+      const box = out.querySelector('#kitchen-web'); if (box) box.innerHTML = MealDB.render(res);
+    }, () => {
+      if (no !== searchNo) return;
+      const box = out.querySelector('#kitchen-web'); if (box) box.innerHTML = '<p class="msg">TheMealDB couldn’t be reached right now. The quick ideas above still work.</p>';
+    });
   });
   el.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('.back') && window.Kitchen && Kitchen.onBack) Kitchen.onBack(); });     // Kitchen taps never reach the scenes
   window.Kitchen = { onBack: null, show(on) { el.classList.toggle('show', !!on); el.setAttribute('aria-hidden', on ? 'false' : 'true'); if (!on) input.blur(); }, suggest, RECIPES, STAPLES };
