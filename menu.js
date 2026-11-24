@@ -112,6 +112,7 @@
   window.Menu = {
     connect(s) { sound = s; },
     isOpen: () => open,
+    atBottom: () => el.scrollTop + el.clientHeight >= el.scrollHeight - 2,   // an upward drag can only be a close, not a scroll
     open() { open = true; render(); loadLocal(); el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); },
     close() { open = false; el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); },
     wildcard: () => wild,
