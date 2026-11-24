@@ -100,7 +100,22 @@
       ]);
       const now = Date.now();
       const period = fc.properties.periods.find(p => Date.parse(p.startTime) <= now && now < Date.parse(p.endTime)) || fc.properties.periods[0];
-      const { fall, sky, chance } = readWords(period.shortForecast);
+      let { fall, sky, chance } = readWords(period.shortForecast);
+      // WHAT'S HAPPENING NOW (V44): the forecast says what's expected this period; the nearest
+      // NOAA station says what's actually happening. When a station has a reading from the
+      // last 2 hours, its words decide what falls and what the sky looks like, so rain or
+      // snow shows when it's really coming down and not when it's only "a chance".
+      let observed = '';
+      try {
+        const st = await (await fetch(pt.properties.observationStations)).json();
+        for (const f of (st.features || []).slice(0, 3)) {
+          const o = (await (await fetch(`https://api.weather.gov/stations/${f.properties.stationIdentifier}/observations/latest`)).json()).properties;
+          if (!o || !o.textDescription || Date.now() - Date.parse(o.timestamp) > 2 * 3600e3) continue;
+          observed = o.textDescription; break;
+        }
+      } catch (e) { /* the forecast alone still drives the scene */ }
+      const obsHeavy = /heavy/i.test(observed), obsLight = /light|drizzle|flurr/i.test(observed);
+      if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky; chance = false; }
       const g = grid.properties;
       const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
@@ -119,8 +134,8 @@
         if (start <= now && now < start + hrs * 3600e3) rain = (v.value || 0) / 25.4 / hrs;
       }
       const snowFalling = fall === 'snow' || fall === 'mix';
-      if (snowFalling && rate === 0) rate = chance ? 0.03 : 0.08;
-      if (fall === 'rain' && rain === 0) rain = chance ? 0.03 : 0.1;
+      if (snowFalling && rate === 0) rate = observed ? (obsHeavy ? 0.6 : obsLight ? 0.05 : 0.2) : chance ? 0.03 : 0.08;
+      if (fall === 'rain' && rain === 0) rain = observed ? (obsHeavy ? 0.3 : obsLight ? 0.03 : 0.1) : chance ? 0.03 : 0.1;
       let coming = null;
       if (!snowFalling && first !== null && first > now) {
         const day = new Date(first).toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
@@ -129,7 +144,7 @@
         const when = sameDay ? (new Date(first).getHours() >= 17 ? 'TONIGHT' : 'TODAY') : tomorrow ? 'TOMORROW' : day;
         coming = { when, total: ahead, hoursUntil: (first - now) / 3600e3 };
       }
-      wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: period.shortForecast };
+      wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: observed ? 'Now: ' + observed : period.shortForecast, forecastWords: period.shortForecast };
       // Three days for the forecast box: NOAA's day and night periods grouped by date.
       const byDate = new Map();
       for (const p of fc.properties.periods) {
@@ -599,7 +614,7 @@
       if (detail || !b || !(x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;
       slideDir = dx < 0 ? -1 : 1; return true;
     },
-    start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 3600e3); loadAlerts(); setInterval(loadAlerts, 600e3); } },
+    start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
     debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail }),
