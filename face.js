@@ -18,11 +18,11 @@
   let ctx, W = 0, H = 0, cell = 8, cols = 0, rows = 0, lum = null, kind = null, glyph = [], body = [], eyes = [], bg = [];
   const pace = { face: { now: 1, want: 1, left: 0 }, eyes: { now: 2, want: 2, left: 0 } };
   function nextPace(p, eye) {
-    const speeds = eye ? [1, 2, 3.5, 5] : [0.4, 0.8, 1.2, 1.8];
+    const speeds = eye ? [1.5, 2.5, 4, 6] : [0.8, 1.2, 1.8, 2.6];
     p.want = speeds[(Math.random() * speeds.length) | 0];
     p.left = (60 + Math.random() * 240) * 30;   // 1 to 5 minutes at 30 frames a second
   }
-  // Where the picture sits: as tall as the screen allows, centered.
+  // Where the picture sits: covering the whole screen, centered on the face.
   let box = { x: 0, y: 0, w: 0, h: 0 }, glow = null;
   // The picture itself as a soft amber glow under the code, so the face reads at a glance.
   function makeGlow() {
@@ -36,7 +36,7 @@
   }
   function build() {
     if (!glow) makeGlow();
-    const scale = Math.min(W / MW, H / MH) * 0.98;
+    const scale = Math.max(W / MW, H / MH);        // fill the screen top to bottom; the sides trim off if needed
     box = { w: MW * scale, h: MH * scale }; box.x = (W - box.w) / 2; box.y = (H - box.h) / 2;
     lum = new Float32Array(cols * (rows + 1)); kind = new Uint8Array(cols * (rows + 1));   // kind: 0 outside, 1 picture, 2 eye
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
@@ -47,9 +47,9 @@
       if (L > 0.55 && v > 0.31 && v < 0.4 && ((u > 0.29 && u < 0.42) || (u > 0.58 && u < 0.71))) kind[i] = 2;
     }
   }
-  const stream = () => ({ head: Math.random() * rows * 1.5, speed: 0.15 + Math.random() * 0.25, len: 8 + ((Math.random() * 22) | 0) });
+  const stream = () => ({ head: Math.random() * rows * 1.5, speed: 0.4 + Math.random() * 0.5, len: 10 + ((Math.random() * 26) | 0), spark: 0 });
   function resize(w, h) {
-    W = w; H = h; cell = Math.max(6, Math.round(Math.min(W, H) / 110));
+    W = w; H = h; cell = Math.max(6, Math.round(Math.min(W, H) / 125));
     cols = Math.ceil(W / cell); rows = Math.ceil(H / cell);
     body = Array.from({ length: cols }, stream); eyes = Array.from({ length: cols }, stream); bg = Array.from({ length: cols }, stream);
     build();
@@ -58,6 +58,19 @@
 
   const trail = (s, r) => { const k = r - Math.floor(s.head); return k >= 0 && k < s.len ? 1 - k / s.len : 0; };
   const move = (s, f) => { s.head -= s.speed * f; if (s.head + s.len < 0) Object.assign(s, stream(), { head: rows + Math.random() * rows * 0.4 }); };
+  // Claude's touch: the leading character of each rising stream sparks like a node on the
+  // Christmas tree: a small white-gold flash that flickers as it climbs, brightest where the
+  // picture is bright, and now and then a stronger pop.
+  function spark(s, c, x, eye) {
+    const r = Math.floor(s.head); if (r < 0 || r > rows) return;
+    const i = r * cols + c, k = kind[i]; if (!k || (eye && k !== 2)) return;
+    if (Math.random() < 0.04) s.spark = 1; s.spark *= 0.8;
+    const a = (0.35 + 0.65 * lum[i]) * (0.55 + 0.45 * Math.random()) + 0.5 * s.spark;
+    if (a < 0.2) return;
+    ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = '#fff6dc';
+    ctx.shadowColor = '#ffd27a'; ctx.shadowBlur = cell * (1 + 2 * s.spark);
+    ctx.fillText(glyph[i], x, r * cell + cell / 2); ctx.shadowBlur = 0;
+  }
   function draw() {
     for (const [k, p] of Object.entries(pace)) { p.now += (p.want - p.now) * 0.01; if (--p.left <= 0) nextPace(p, k === 'eyes'); }
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -83,6 +96,7 @@
         ctx.fillText(glyph[i], x, y);
         if (k === 2) ctx.shadowBlur = 0;
       }
+      spark(body[c], c, x, false); spark(eyes[c], c, x, true);
       move(body[c], pace.face.now); move(eyes[c], pace.eyes.now * 1.8); move(bg[c], 0.15);
     }
     // Characters change: quickly in the eyes, steadily on the face, slowly beyond it.
