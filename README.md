@@ -19,3 +19,7 @@ Everything is in `index.html`:
 - **Density:** the `size =` line in `resize()` (smaller characters, more columns) and the number of `makeStream` calls per column.
 
 It honors the device's Reduce Motion setting by running slower.
+
+## Sound credit
+
+The toot when the radar line catches Santa is a short clip from "fart01" by brassoletto on Freesound (freesound.org, sound 454562), trimmed to its last 0.6 seconds.
