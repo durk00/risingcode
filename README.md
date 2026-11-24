@@ -55,3 +55,7 @@ Swipe down on any scene, Kitchen included, for the menu (it opens as soon as the
 ## Kitchen: TheMealDB
 
 Under the built-in quick ideas, the Kitchen also searches TheMealDB (themealdb.com), a free recipe database (`mealdb.js`). The free key searches one ingredient at a time, so it searches each thing you typed (and the last word of phrases like "frozen peas"), ranks dishes by how many of your ingredients they use, and opens the top three: what of yours it uses, what pantry staples it assumes, what you'd still need, and the full steps under HOW TO MAKE IT, plus a video link when there is one. TheMealDB's free key is meant for personal projects.
+
+## Night clock
+
+In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM, 10 PM–6 AM by default, or 11 PM–7 AM), any scene is covered by a big, dim clock on black with the date and the moon's phase. Tap it to use the app; after 5 minutes it goes back to the clock until morning. It drifts slightly each minute so nothing burns in. Preview with `?night`.
