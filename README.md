@@ -52,6 +52,10 @@ V66 also fixed sunrise and sunset west of about Chicago: the sunset had come out
 
 On the Winter scene the sun and the moon move across the sky where they really are, seen from this iPad's place (`skypath.js`). The scene faces south: they come up on the left (east), arc across, and go down on the right (west), behind the hills. The sun turns warmer near the horizon. The moon keeps its real phase, and shows pale in the daytime when it's up. Both fade behind cloud. The sun is accurate to about a hundredth of a degree and the moon to about half a degree, checked against PyEphem. The previews ?time=day and ?time=night keep the old fixed spot.
 
+## g (V69)
+
+William's own AI, g (go-grow-gain.base44.app), as a page of this app, one swipe left past Kitchen (`gpage.js`), so he can chat with g without leaving the screensaver. It only appears on an iPad where it was turned on: open the app once with `?g=on` at the end of the address (`?g=off` removes it). g's chat stays behind g's own sign-in. A thin bar on top has ← Back and **Open g ↗**, for when g can't be shown inside the page. The page loads the first time it's opened and is then kept, so a conversation stays put while swiping away and back.
+
 ## Weather details
 
 One more swipe left, past Winter (swipe right to go back). In `details.js`, laid out like a home weather station's indoor console: outdoor temperature with feels-like and today's high and low, a wind compass (arrowhead on the side the wind comes from) with speed and gusts, humidity and dew point, pressure with a rising/falling/steady arrow, today's rain chance, cloud cover, and sunrise and sunset, from the nearest NOAA station with a recent reading (falling back to this hour's forecast); then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.
