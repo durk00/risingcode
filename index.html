@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree and a pulsing star"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · TREE V4</div>
+<div id="hint">TAP FOR FULL SCREEN · TREE V5</div>
 
 <script>
 (() => {
@@ -150,6 +150,7 @@
     }
     star = { x: cx, y: top - size * 0.4, r: size };
   }
+  let twinkle = 0.5, twinkleTarget = 0.5, twinkleIn = 0;   // the star's random pulse
   const inTree = (c, r) => r >= 0 && r <= rows && tree[r * cols + c] > 0;
   // The tree's color at a cell: green in the trunk, red in the branches.
   const treeColor = (c, r) => (tree[r * cols + c] === 3 ? C.leaf : C.ember);
@@ -234,12 +235,16 @@
       if (--s.swapIn <= 0) { s.color = nextColor(s.color); s.swapIn = swapTimer(); }
       if (s.head + s.len < -2) Object.assign(s, makeStream(s.col, false));
     }
-    // The star: larger and brighter than anything else, pulsing slowly at the top.
-    const p = 0.5 + 0.5 * Math.sin(performance.now() / (reduce ? 1400 : 700));
-    const R = star.r * (3.4 + 1.8 * p);
+    // The star: a small, quick, random twinkle (Nov 23). Its largest size is a little
+    // under what used to be its smallest, and the pulse is gentle. Every 0.3 to 1.2
+    // seconds it picks a new brightness at random and eases toward it.
+    if (--twinkleIn <= 0) { twinkleTarget = Math.random(); twinkleIn = 8 + ((Math.random() * 28) | 0); }
+    twinkle += (twinkleTarget - twinkle) * (reduce ? 0.05 : 0.15);
+    const p = twinkle;
+    const R = star.r * (2.7 + 0.5 * p);
     const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, R);
     glow.addColorStop(0, C.frost); glow.addColorStop(0.18, C.frost); glow.addColorStop(0.4, C.halo); glow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.75 + 0.25 * p; ctx.fillStyle = glow;
+    ctx.globalAlpha = 0.82 + 0.18 * p; ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(star.x, star.y, R, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
