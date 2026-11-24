@@ -28,7 +28,7 @@ The toot when the radar line catches Santa is the last 0.6 seconds of "fart01" b
 
 Swipe left on the Christmas display for the Winter scene; swipe right to go back (arrow keys on a computer). It's in `winter.js`: a landscape with a house, lit windows and a chimney that always smokes, matched to today's NOAA forecast for Centre Hall, PA (api.weather.gov, refreshed hourly):
 
-- **Day or night** from the forecast period that's on now: sun and blue sky by day, moon and stars by night.
+- **Day or night** from the real sunrise and sunset for Centre Hall (since V46), with the sky brightening over the hour around sunrise and dimming over the hour around sunset: sun and blue sky by day, moon and stars by night.
 - **Sky** from the forecast words: clear, partly cloudy, cloudy or fog.
 - **Rain, snow or a mix** falling: since V44 from the nearest NOAA station's current conditions when it has a reading from the last 2 hours (so it shows what is really coming down), otherwise from the forecast; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
 - **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
