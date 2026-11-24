@@ -69,15 +69,27 @@
       const d = { t0,
         temp: hourly(g.temperature, t0, cToF), dew: hourly(g.dewpoint, t0, cToF), rh: hourly(g.relativeHumidity, t0),
         pop: hourly(g.probabilityOfPrecipitation, t0), wind: hourly(g.windSpeed, t0, kmhToMph), gust: hourly(g.windGust, t0, kmhToMph), now: null };
-      const st = (stations.features || [])[0];
-      if (st) {
+      // RIGHT NOW (V38): the nearest station sometimes has no recent reading, or blanks
+      // for some values. Try the nearest few and take the first with a temperature from
+      // the last 3 hours; fill any blanks from this hour of the forecast; and if no
+      // station has anything, show this hour of the forecast so the top is never empty.
+      const hour = { temp: d.temp[0], rh: d.rh[0], dew: d.dew[0], wind: d.wind[0], gust: d.gust[0] };
+      for (const st of (stations.features || []).slice(0, 5)) {
         try {
           const o = (await (await fetch(`https://api.weather.gov/stations/${st.properties.stationIdentifier}/observations/latest`)).json()).properties;
-          d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when: new Date(o.timestamp),
-            temp: cToF(o.temperature.value), words: o.textDescription || '', rh: o.relativeHumidity.value, dew: cToF(o.dewpoint.value),
-            wind: kmhToMph(o.windSpeed.value), gust: kmhToMph(o.windGust.value), dir: compass(o.windDirection.value),
-            pressure: o.barometricPressure.value ? o.barometricPressure.value / 3386.39 : null };
-        } catch (e) { /* forecast still shows */ }
+          const when = new Date(o.timestamp);
+          if (!o || o.temperature.value === null || Date.now() - when > 3 * 3600e3) continue;
+          const val = (x) => (x && x.value !== null && x.value !== undefined ? x.value : null);
+          d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when,
+            temp: cToF(val(o.temperature)), words: o.textDescription || '',
+            rh: val(o.relativeHumidity) ?? hour.rh, dew: val(o.dewpoint) !== null ? cToF(val(o.dewpoint)) : hour.dew,
+            wind: val(o.windSpeed) !== null ? kmhToMph(val(o.windSpeed)) : hour.wind, gust: val(o.windGust) !== null ? kmhToMph(val(o.windGust)) : hour.gust,
+            dir: compass(val(o.windDirection)), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null };
+          break;
+        } catch (e) { /* try the next station */ }
+      }
+      if (!d.now && hour.temp !== null) {
+        d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', pressure: null };
       }
       data = d; status = 'ok';
     } catch (e) { status = data ? 'ok' : 'offline'; }
