@@ -26,10 +26,12 @@ The toot when the radar line catches Santa is the last 0.6 seconds of "fart01" b
 
 ## Winter scene
 
-Swipe left on the Christmas display for the Winter scene; swipe right to go back (arrow keys on a computer). It's in `winter.js`: a night landscape with a house, lit windows and a smoking chimney, with snow driven by the NOAA forecast for Centre Hall, PA (api.weather.gov, refreshed hourly):
+Swipe left on the Christmas display for the Winter scene; swipe right to go back (arrow keys on a computer). It's in `winter.js`: a landscape with a house, lit windows and a chimney that always smokes, matched to today's NOAA forecast for Centre Hall, PA (api.weather.gov, refreshed hourly):
 
-- **Snowing now:** flakes fall light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour) and pile up on the ground and roof toward a depth set by the forecast total.
-- **Snow within 48 hours:** clouds gather across the top, thicker as it gets closer, with stray flurries in the last day.
-- **No snow forecast:** a clear night with stars.
+- **Day or night** from the forecast period that's on now: sun and blue sky by day, moon and stars by night.
+- **Sky** from the forecast words: clear, partly cloudy, cloudy or fog.
+- **Rain, snow or a mix** falling when the forecast says so; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
+- **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
+- **Upcoming snow** is still previewed: if snow is due in the next two days, the top line says when and about how much, and clouds gather in its last 12 hours.
 
-Preview any state with `?snow=light`, `?snow=moderate`, `?snow=heavy`, `?snow=coming` or `?snow=none` on the address. The thresholds are at the top of `winter.js`.
+Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
