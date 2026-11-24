@@ -18,7 +18,8 @@
 // and in its last 12 hours the clouds start gathering.
 // Every threshold below is a first guess, easy to change.
 //
-// A tap opens a three-day forecast box to the left of the house (V27).
+// A tap opens a three-day forecast box to the left of the house (V27). NOAA weather
+// alerts show as a red banner at the top: tap for details, swipe to dismiss (V29).
 //
 // Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
 // rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
@@ -386,6 +387,8 @@
     }
     status();
     panel();
+    banner();
+    detailPage();
   }
   // WEATHER ICONS (V28) in the forecast box, at the right of each day, above the
   // precipitation: sun; sun behind a cloud; cloud; cloud with rain streaks; cloud
@@ -430,6 +433,100 @@
     } else sun(cx, cy, r * 0.95);
     ctx.restore();
   }
+
+  // WEATHER ALERTS (V29): NOAA's active alerts for Centre Hall (api.weather.gov/alerts),
+  // checked every 10 minutes. When there is one, a red banner shows across the top:
+  // the alert's name and when it ends. Tap the banner for the details page; swipe it
+  // sideways to dismiss it. A dismissed alert stays away on this device; a new or
+  // updated one shows again. Several at once: the most severe first, with a count.
+  // Preview with ?alert on the address.
+  const SEV = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1, Unknown: 0 };
+  let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, slide = 0, slideDir = 0;
+  try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]')); } catch (e) {}
+  async function loadAlerts() {
+    if (/[?&]alert\b/.test(q)) {
+      const until = new Date(Date.now() + 30 * 3600e3).toISOString();
+      alerts = [{ id: 'preview-alert', event: 'Winter Storm Warning', severity: 'Severe', ends: until,
+        headline: 'Winter Storm Warning issued for Centre County (preview)',
+        description: 'Heavy snow expected. Total snow accumulations of 8 to 12 inches. Winds gusting as high as 35 mph. (This is a preview, not a real alert.)',
+        instruction: 'If you must travel, keep an extra flashlight, food, and water in your vehicle in case of an emergency.' }];
+      return;
+    }
+    try {
+      const r = await (await fetch(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`)).json();
+      alerts = (r.features || []).map(f => f.properties).map(p => ({
+        id: p.id, event: p.event, severity: p.severity, ends: p.ends || p.expires,
+        headline: p.headline || p.event, description: p.description || '', instruction: p.instruction || '',
+      })).sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0));
+    } catch (e) { /* keep the last list */ }
+  }
+  const showing = () => alerts.filter(a => !dismissed.has(a.id));
+  const endsText = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return 'UNTIL ' + d.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase();
+  };
+  function banner() {
+    const list = showing();
+    if (slideDir) { slide += slideDir * W * 0.08; if (Math.abs(slide) > W) { const a = list[0]; if (a) { dismissed.add(a.id); try { localStorage.setItem('risingcode_dismissed', JSON.stringify([...dismissed].slice(-50))); } catch (e) {} } slide = 0; slideDir = 0; } }
+    const a = showing()[0];
+    if (!a) { bannerBox = null; return; }
+    const fs = Math.max(13, Math.min(22, Math.round(Math.min(W, H) / 34)));
+    const x = 16 + slide, y = 40, w = W - 32, h = fs * 3.1;
+    bannerBox = { x: 16, y, w, h };
+    const pulse = 0.85 + 0.15 * Math.sin(t / 15);
+    ctx.save();
+    ctx.globalAlpha = 1 - Math.min(0.9, Math.abs(slide) / W);
+    ctx.fillStyle = `rgba(200,24,36,${pulse})`; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, fs * 0.5); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke();
+    // A warning triangle with an exclamation mark, so it reads as an alert by shape too.
+    const tx = x + fs * 1.4, ty = y + h / 2, tr = fs * 0.95;
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(tx, ty - tr); ctx.lineTo(tx + tr * 1.05, ty + tr * 0.8); ctx.lineTo(tx - tr * 1.05, ty + tr * 0.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgb(200,24,36)'; ctx.fillRect(tx - tr * 0.09, ty - tr * 0.45, tr * 0.18, tr * 0.7); ctx.fillRect(tx - tr * 0.09, ty + tr * 0.38, tr * 0.18, tr * 0.18);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = '#ffffff';
+    ctx.font = `800 ${fs}px ui-monospace, Menlo, monospace`;
+    const more = showing().length > 1 ? `  +${showing().length - 1} MORE` : '';
+    ctx.fillText((a.event || 'WEATHER ALERT').toUpperCase() + more, x + fs * 3, y + fs * 0.45);
+    ctx.font = `500 ${Math.round(fs * 0.72)}px ui-monospace, Menlo, monospace`;
+    ctx.fillText([endsText(a.ends), 'TAP FOR DETAILS', 'SWIPE TO DISMISS'].filter(Boolean).join(' · '), x + fs * 3, y + fs * 1.75);
+    ctx.restore();
+  }
+  // The details page (a first version; to be designed next): the whole alert, and a
+  // tap anywhere closes it.
+  function wrap(text, maxW) {
+    const out = [];
+    for (const para of String(text).split(/\n\s*\n/)) {
+      let line = '';
+      for (const word of para.replace(/\s+/g, ' ').trim().split(' ')) {
+        const tryLine = line ? line + ' ' + word : word;
+        if (ctx.measureText(tryLine).width > maxW && line) { out.push(line); line = word; } else line = tryLine;
+      }
+      if (line) out.push(line);
+      out.push('');
+    }
+    return out;
+  }
+  function detailPage() {
+    const a = detail; if (!a) return;
+    const fs = Math.max(13, Math.min(20, Math.round(Math.min(W, H) / 40)));
+    ctx.save();
+    ctx.fillStyle = 'rgba(6,9,14,0.985)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgb(200,24,36)'; ctx.fillRect(0, 0, W, fs * 0.5);
+    const x = Math.max(24, W * 0.08), maxW = W - x * 2;
+    let y = fs * 2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#ffffff'; ctx.font = `800 ${Math.round(fs * 1.4)}px ui-monospace, Menlo, monospace`;
+    ctx.fillText((a.event || '').toUpperCase(), x, y); y += fs * 2.2;
+    ctx.fillStyle = '#ffb3b8'; ctx.font = `600 ${fs}px ui-monospace, Menlo, monospace`;
+    ctx.fillText([a.severity ? a.severity.toUpperCase() : '', endsText(a.ends)].filter(Boolean).join(' · '), x, y); y += fs * 2;
+    ctx.fillStyle = '#e6edf3'; ctx.font = `500 ${fs}px ui-monospace, Menlo, monospace`;
+    const lines = wrap(a.headline, maxW).concat(wrap(a.description, maxW), a.instruction ? wrap('WHAT TO DO: ' + a.instruction, maxW) : []);
+    const room = Math.floor((H - y - fs * 3) / (fs * 1.4));
+    lines.slice(0, room).forEach((l, i) => ctx.fillText(l, x, y + i * fs * 1.4));
+    ctx.fillStyle = '#9fb0c0'; ctx.font = `500 ${Math.round(fs * 0.8)}px ui-monospace, Menlo, monospace`;
+    ctx.fillText((lines.length > room ? 'MORE AT WEATHER.GOV · ' : '') + 'NOAA · TAP TO CLOSE', x, H - fs * 2);
+    ctx.restore();
+  }
   function panel() {
     panelA += ((panelOpen ? 1 : 0) - panelA) * 0.15;
     if (panelA < 0.02) return;
@@ -464,10 +561,23 @@
   }
 
   window.WinterScene = {
-    tap() { panelOpen = !panelOpen; },
-    start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 3600e3); } },
+    // A tap: closes the details page if it's open; opens it if the tap is on the alert
+    // banner; otherwise opens or closes the three-day forecast.
+    tap(x, y) {
+      if (detail) { detail = null; return; }
+      const b = bannerBox;
+      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { detail = showing()[0] || null; return; }
+      panelOpen = !panelOpen;
+    },
+    // A sideways swipe that starts on the banner dismisses the alert instead of changing scene.
+    swipeOnBanner(x, y, dx) {
+      const b = bannerBox;
+      if (detail || !b || !(x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;
+      slideDir = dx < 0 ? -1 : 1; return true;
+    },
+    start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 3600e3); loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail }),
   };
 })();
