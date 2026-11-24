@@ -8,6 +8,8 @@ Columns of glowing code rising up the screen in blue, green and a little white, 
 2. Tap **Share → Add to Home Screen**. Opened from the home screen it runs full screen, with no browser bars.
 3. Tap once to go full screen when running in Safari. It asks the iPad to keep the screen awake while it's showing; if the screen still dims, set **Settings → Display & Brightness → Auto-Lock** to Never while it runs.
 
+The home-screen icon is William's amber code face (`apple-touch-icon.png`, V73). The iPad only takes an icon when the app is added, so after a change: delete the old icon, add it again from Safari, and redo the settings (the new icon starts with fresh storage; tap MENU 5 times for the g page).
+
 ## Adjusting it
 
 Everything is in `index.html`:
