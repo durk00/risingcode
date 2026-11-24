@@ -4,7 +4,6 @@
 //   - the code RISES, like the rest of Rising Code, clipped to the sphere
 //   - the real day and night: the sunlit half is bright and the night half dim, with the
 //     terminator where it actually is right now (from the date and time)
-//   - Centre Hall marked with a slow amber pulse when it turns into view
 //   - a starfield behind, and a thin blue atmosphere rim
 (() => {
   const MW = 180, MH = 90;
@@ -84,16 +83,6 @@
       if (st.head + st.len < 0) { st.head = rows + Math.random() * rows * 0.5; st.speed = 0.12 + Math.random() * 0.25; st.len = 12 + ((Math.random() * 28) | 0); }
     }
     for (let i = 0; i < 20; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
-    // Centre Hall: a slow amber pulse when it's on the side facing us.
-    const h = toView(HOME.lat * Math.PI / 180, HOME.lon * Math.PI / 180);
-    if (h[2] > 0.08) {
-      const hx = cx + h[0] * R, hy = cy - h[1] * R, p = 0.5 + 0.5 * Math.sin(t / 20);
-      ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(hx, hy, cell * 0.35, 0, 6.3); ctx.fill();
-      ctx.globalAlpha = 0.7 * (1 - p); ctx.strokeStyle = '#ffcf7a'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(hx, hy, cell * (0.6 + 2.2 * p), 0, 6.3); ctx.stroke();
-      ctx.globalAlpha = 0.8 * Math.min(1, (h[2] - 0.08) * 5); ctx.fillStyle = '#ffe2a8'; ctx.font = `600 ${Math.round(cell * 0.9)}px ui-monospace, monospace`; ctx.textAlign = 'left';
-      ctx.fillText('CENTRE HALL', hx + cell * 1.2, hy);
-    }
     ctx.globalAlpha = 1;
   }
 
@@ -103,5 +92,5 @@
     draw() { if (ctx && W) draw(); },
     face(lonDeg) { spin = lonDeg * Math.PI / 180; },   // for checking: turn a given longitude toward the viewer
   };
-  spin = HOME.lon * Math.PI / 180;               // starts with home in view
+  spin = HOME.lon * Math.PI / 180;               // starts with North America in view (V51: no hometown marker)
 })();
