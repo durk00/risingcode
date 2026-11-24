@@ -204,6 +204,28 @@
   const tone = (night, day) => mix(night, day, light);
 
   // ---- drawing -------------------------------------------------------------
+  // THE MOON'S REAL PHASE (V41), worked out from the date: days since a known new moon
+  // (Jan 6, 2000, 18:14 UTC), over the 29.53-day cycle. Drawn as seen from Pennsylvania:
+  // lit on the right while it grows, on the left while it shrinks. The unlit part shows
+  // as a faint outline so a new moon still reads as the moon.
+  const SYNODIC = 29.530588853;
+  function moonAge(t = Date.now()) { return (((t - Date.UTC(2000, 0, 6, 18, 14)) / 864e5) % SYNODIC + SYNODIC) % SYNODIC; }
+  function moonPhaseName(age = moonAge()) {
+    const k = age / SYNODIC;
+    return k < 0.03 || k > 0.97 ? 'NEW MOON' : k < 0.22 ? 'WAXING CRESCENT' : k < 0.28 ? 'FIRST QUARTER' : k < 0.47 ? 'WAXING GIBBOUS'
+      : k < 0.53 ? 'FULL MOON' : k < 0.72 ? 'WANING GIBBOUS' : k < 0.78 ? 'LAST QUARTER' : 'WANING CRESCENT';
+  }
+  function moon(cx, cy, R, color, age = moonAge()) {
+    const th = age / SYNODIC * Math.PI * 2, waxing = age < SYNODIC / 2, rx = R * Math.abs(Math.cos(th)), gibbous = Math.cos(th) < 0;
+    ctx.save();
+    ctx.globalAlpha *= 0.22; ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, R * 0.08);
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.arc(cx, cy, R, -Math.PI / 2, Math.PI / 2, !waxing);              // the lit edge
+    ctx.ellipse(cx, cy, Math.max(0.01, rx), R, 0, Math.PI / 2, -Math.PI / 2, waxing !== gibbous);   // the terminator
+    ctx.closePath(); ctx.fill();
+  }
   function sky() {
     const grey = Math.min(1, cover * 1.1);
     const g = ctx.createLinearGradient(0, 0, 0, H * 0.8);
@@ -224,9 +246,8 @@
       glow.addColorStop(0, light > 0.5 ? 'rgba(255,240,200,0.9)' : 'rgba(220,230,245,0.35)');
       glow.addColorStop(1, 'rgba(255,240,200,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(bx, by, br * 4, 0, 6.3); ctx.fill();
-      ctx.fillStyle = light > 0.5 ? '#fff6d8' : '#e8eef6';
-      ctx.beginPath(); ctx.arc(bx, by, light > 0.5 ? br : br * 0.7, 0, 6.3); ctx.fill();
-      if (light <= 0.5) { ctx.fillStyle = tone('#03060c', '#3f78b8'); ctx.beginPath(); ctx.arc(bx + br * 0.3, by - br * 0.15, br * 0.6, 0, 6.3); ctx.fill(); }   // crescent
+      if (light > 0.5) { ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.3); ctx.fill(); }
+      else moon(bx, by, br * 0.8, '#e8eef6');                               // tonight's real phase
       ctx.globalAlpha = 1;
     }
     // Clouds: puffy groups of circles drifting right to left; white by day, grey when heavy.
@@ -399,18 +420,7 @@
     ctx.save(); ctx.lineCap = 'round';
     const sun = (x0, y0, rr) => {
       if (night) {
-        // A true crescent (V40): traced from where the two circles cross, so nothing is painted
-        // over the bite and it sits cleanly on any background.
-        const R = rr * 0.75, x1 = x0 + rr * 0.35, y1 = y0 - rr * 0.2, r1 = rr * 0.62;
-        const d = Math.hypot(x1 - x0, y1 - y0), a0 = (R * R - r1 * r1 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, R * R - a0 * a0));
-        const px = x0 + a0 * (x1 - x0) / d, py = y0 + a0 * (y1 - y0) / d;
-        const p1 = [px + h * (y1 - y0) / d, py - h * (x1 - x0) / d], p2 = [px - h * (y1 - y0) / d, py + h * (x1 - x0) / d];
-        const away = Math.atan2(y0 - y1, x0 - x1), T = Math.PI * 2;
-        const through = (cx, cy, r, A, B) => ctx.arc(cx, cy, r, A, B, !(((away - A + T) % T) < ((B - A + T) % T)));
-        ctx.fillStyle = '#e8eef6'; ctx.beginPath();
-        through(x0, y0, R, Math.atan2(p1[1] - y0, p1[0] - x0), Math.atan2(p2[1] - y0, p2[0] - x0));
-        through(x1, y1, r1, Math.atan2(p2[1] - y1, p2[0] - x1), Math.atan2(p1[1] - y1, p1[0] - x1));
-        ctx.closePath(); ctx.fill();
+        moon(x0, y0, rr * 0.75, '#e8eef6');                               // tonight's real phase (V41)
         return;
       }
       ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = Math.max(1.5, rr * 0.14);
@@ -571,6 +581,8 @@
   }
 
   window.WinterScene = {
+    moonPhaseName: () => moonPhaseName(),
+    drawMoon(c, cx, cy, R, age) { const keep = ctx; ctx = c; moon(cx, cy, R, '#e8eef6', age); ctx = keep; },   // for checking the phases
     // The forecast-box weather icon, shared with the weather station page (V40).
     icon(words, night, cx, cy, r, c) { const keep = ctx; ctx = c || ctx; icon(readWords(words), night, cx, cy, r); ctx = keep; },
     // A tap: closes the details page if it's open; opens it if the tap is on the alert
