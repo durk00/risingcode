@@ -67,3 +67,7 @@ In `firstrun.js`. The first time the app opens on a device, a one-time guide sho
 ## Verses for the week
 
 A My Corner choice (`verses.js`). Two or three King James verses picked for where the day falls in the Church year (Advent, Christmas, Lent, Holy Week, Easter season, Ordinary Time), changing each week, with their own passages on Christmas, Epiphany, Ash Wednesday, Palm Sunday, Good Friday, Easter, Pentecost, the Assumption, All Saints, the Immaculate Conception and Thanksgiving week. Easter and Advent are worked out for each year. The words come from bible-api.com (public-domain KJV) and are kept on the device; edit the passage lists at the top of `verses.js`.
+
+## Screensaver choice
+
+Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, or **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds. Remembered on the device.
