@@ -23,3 +23,13 @@ It honors the device's Reduce Motion setting by running slower.
 ## Sound credit
 
 The toot when the radar line catches Santa is the last 0.6 seconds of "fart01" by brassoletto on Freesound (freesound.org, sound 454562).
+
+## Winter scene
+
+Swipe left on the Christmas display for the Winter scene; swipe right to go back (arrow keys on a computer). It's in `winter.js`: a night landscape with a house, lit windows and a smoking chimney, with snow driven by the NOAA forecast for Centre Hall, PA (api.weather.gov, refreshed hourly):
+
+- **Snowing now:** flakes fall light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour) and pile up on the ground and roof toward a depth set by the forecast total.
+- **Snow within 48 hours:** clouds gather across the top, thicker as it gets closer, with stray flurries in the last day.
+- **No snow forecast:** a clear night with stars.
+
+Preview any state with `?snow=light`, `?snow=moderate`, `?snow=heavy`, `?snow=coming` or `?snow=none` on the address. The thresholds are at the top of `winter.js`.
