@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V8</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V9</div>
 
 <script>
 (() => {
@@ -324,16 +324,20 @@
   function drawSanta() {
     if (!santa) {
       if (--santaIn > 0) return;
-      // Far off in a big sky (Nov 23, V8): tiny, high above the tree, a little hazy,
-      // and slower, about 22 seconds to cross. Its height varies a bit from pass to pass.
+      // Far off in a big sky (Nov 23): tiny and a little hazy. V9: each pass picks a
+      // height at random anywhere from just under the star down to the foot of the
+      // tree, and a speed from about 18 to 28 seconds to cross. Never above the star.
       const cell = Math.max(2.5, size * 0.3);
-      const width = SANTA_FRAMES[0][0].length * cell;
-      santa = { cell, width, x: W + cell * 2, y: H * (0.04 + Math.random() * 0.05), t: 0, speed: (W + width) / (22 * 30) * (reduce ? 0.6 : 1) };
+      const width = SANTA_FRAMES[0][0].length * cell, tall = SANTA_FRAMES[0].length * cell;
+      const highest = star.y + star.r * 4, lowest = H * 0.86 - tall;
+      const y = highest + Math.random() * Math.max(0, lowest - highest);
+      const secs = 18 + Math.random() * 10;
+      santa = { cell, width, x: W + cell * 2, y, t: 0, speed: (W + width) / (secs * 30) * (reduce ? 0.6 : 1) };
     }
     const { cell } = santa;
     santa.t++;
     santa.x -= santa.speed;
-    if (santa.x + santa.width < -cell * 2) { santa = null; santaIn = 1200 + ((Math.random() * 1500) | 0); return; }
+    if (santa.x + santa.width < -cell * 2) { santa = null; santaIn = 900 + ((Math.random() * 2700) | 0); return; }   // next pass in 30 seconds to 2 minutes
     const frame = SANTA_FRAMES[(santa.t / 6 | 0) % 2];
     const bob = Math.sin(santa.t / 18) * cell * 1.2;
     ctx.font = `bold ${cell}px ${C.mono}`;
