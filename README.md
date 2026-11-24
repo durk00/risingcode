@@ -41,3 +41,7 @@ Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, 
 ## Weather details
 
 One more swipe left, past Winter (swipe right to go back). In `details.js`: the latest reading from the nearest NOAA weather station (temperature, conditions, humidity, dew point, wind and gusts, pressure), then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.
+
+## Menu
+
+Swipe down on any scene for the menu; swipe up or tap ✕ to close (on a computer, the down and up arrows or Escape). Nothing appears on the scenes themselves. In `menu.js`: **Sound** picks what plays when the radar catches Santa (same four as tapping the Christmas display), and **My corner** picks one personal wildcard for the household (poem of the day, what can I make?), remembered on the device. The wildcard pages are still to be built.
