@@ -6,7 +6,8 @@
 //   - big eyes, where the code runs faster and brighter than anywhere else
 //   - the pace changes at random, like the Christmas display: the face and the eyes each
 //     drift between slow, steady and fast, holding each for anywhere from 1 to 5 minutes
-//   - a faint dark-blue code in the background so the face sits in a field of it
+//   - dim dark-blue code over the whole background, moving very slowly (V53), so the
+//     face sits in a field of it
 (() => {
   const KANA = Array.from({ length: 0xFF9D - 0xFF66 + 1 }, (_, i) => String.fromCharCode(0xFF66 + i));
   const GL = KANA.concat('0123456789'.split(''));
@@ -97,9 +98,9 @@
       for (let r = 0; r <= rows; r++) {
         const v = shape[r * cols + c], y = r * cell + cell / 2;
         let a, col;
-        if (v === 0) {                                   // faint background code
-          const f = trail(bg[c], r); if (f <= 0) continue;
-          a = 0.12 * f * f; col = '#3a5a7a';
+        if (v === 0) {                                   // V53: code fills the whole background, dim and very slow
+          const f = trail(bg[c], r);
+          a = 0.1 + 0.22 * f * f; col = f > 0.9 ? '#6f8fae' : '#3a5a7a';
         } else if (v === 3 || v === 4) {                 // the eyes: fast, bright amber with a hot center
           const f = trail(eyes[c], r);
           a = (v === 4 ? 1 : 0.62) + 0.45 * f; col = v === 4 || f > 0.9 ? '#fff1cc' : '#ffc04a';
@@ -115,10 +116,10 @@
         ctx.fillText(glyph[r * cols + c], x, y);
         if (glow) ctx.shadowBlur = 0;
       }
-      move(body[c], pace.face.now); move(eyes[c], pace.eyes.now * 1.8); move(bg[c], 0.6);
+      move(body[c], pace.face.now); move(eyes[c], pace.eyes.now * 1.8); move(bg[c], 0.15);   // the background barely moves
     }
     // Glyphs change: often in the eyes, now and then elsewhere.
-    for (let i = 0; i < 30; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
+    for (let i = 0; i < 12; i++) glyph[(Math.random() * glyph.length) | 0] = pick();   // glyphs change slowly overall
     for (let i = 0; i < shape.length; i += 7) if ((shape[i] === 3 || shape[i] === 4) && Math.random() < 0.15 * pace.eyes.now) glyph[i] = pick();
     ctx.globalAlpha = 1;
   }
