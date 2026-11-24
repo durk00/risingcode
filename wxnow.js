@@ -10,7 +10,7 @@
 //     falling (presentWeather) and the cloud layers (clear, few, scattered, broken, overcast)
 //   - only a reading from the last 2 hours counts
 (() => {
-  const SKY = { SKC: 'Clear', CLR: 'Clear', FEW: 'Mostly Clear', SCT: 'Partly Cloudy', BKN: 'Mostly Cloudy', OVC: 'Cloudy', VV: 'Cloudy' };
+  const SKY = { SKC: 'Clear', CLR: 'Clear', FEW: 'Clear', SCT: 'Partly Cloudy', BKN: 'Mostly Cloudy', OVC: 'Cloudy', VV: 'Cloudy' };
   const RANK = { SKC: 0, CLR: 0, FEW: 1, SCT: 2, BKN: 3, OVC: 4, VV: 4 };
   // Words for one reading: NOAA's own if it gave any, otherwise built from the measurements.
   function describe(o) {

@@ -163,7 +163,7 @@
     // fallback), it goes by this hour's cloud cover and rain chance.
     if (window.WinterScene && WinterScene.icon) {
       const sky = data.sky ? data.sky[0] : null, pop = data.pop ? data.pop[0] : 0;
-      const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 25 ? 'Partly Cloudy' : 'Clear');
+      const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 50 ? 'Partly Cloudy' : 'Clear');
       const nowT = new Date(), night = nowT < sunTime(true) || nowT > sunTime(false);
       if (words) WinterScene.icon(words, night, x + w1 * 0.8, y + row1 * 0.47, Math.min(row1 * 0.2, w1 * 0.13), ctx);
     }
