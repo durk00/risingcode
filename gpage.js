@@ -3,7 +3,8 @@
 //
 // This app is William's own; a copy without any AI can be made for other people. Even so, the
 // page only appears on an iPad where it was turned on: open the app once with ?g=on at the end
-// of the address (?g=off takes it away again). Nothing private is in this file: g's chat is
+// of the address (?g=off takes it away again), or, inside the app (the home-screen icon keeps
+// its own storage), tap the word MENU at the top of the menu 5 times quickly (V71). Nothing private is in this file: g's chat is
 // behind g's own sign-in, the same as when g is opened by itself.
 //
 // g is shown in a frame filling the page, with a thin bar on top: ← Back, and "Open g ↗" for
