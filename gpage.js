@@ -7,10 +7,10 @@
 // its own storage), tap the word MENU at the top of the menu 5 times quickly (V71). Nothing private is in this file: g's chat is
 // behind g's own sign-in, the same as when g is opened by itself.
 //
-// g is shown in a frame filling the page, with a thin bar on top: ← Back, and "Open g ↗" for
-// when the frame can't show it (some sites refuse to be shown inside another page, and Safari
-// can keep a sign-in from carrying into a frame). The frame is only loaded the first time the
-// page is opened, then kept, so a conversation stays put while swiping to the weather and back.
+// V72: Base44 won't let g be shown inside another page (it came up white), and iPadOS won't let
+// a link open a web app saved to the home screen, so this page is a launcher: one big OPEN g
+// button (it opens g in Safari), and a reminder that the bottom-edge swipe flips between g's
+// home-screen app and Rising Code once both are open.
 (() => {
   const URL_G = 'https://go-grow-gain.base44.app/';
   const KEY = 'risingcode_g';
@@ -30,27 +30,20 @@
   #gpage .bar { display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
     background: #0b1016; border-bottom: 1px solid #243241; font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #ffb84a; }
   #gpage .bar .t { flex: 1; text-align: center; }
-  #gpage .bar button, #gpage .bar a { padding: 8px 14px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
+  #gpage .bar button, #gpage a { padding: 8px 14px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
     font: 700 14px ui-monospace, Menlo, monospace; text-decoration: none; cursor: pointer; }
-  #gpage .frame { position: relative; flex: 1; }
-  #gpage .frame p { position: absolute; inset: auto 0 45% 0; text-align: center; color: #93a4b4; font: 500 14px/1.5 ui-monospace, Menlo, monospace; padding: 0 24px; }
-  #gpage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }`;
+  #gpage .go { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; }
+  #gpage .go .big { padding: 26px 60px; font-size: 30px; letter-spacing: 0.12em; border-width: 3px; border-radius: 16px; }
+  #gpage .go p { max-width: 440px; text-align: center; color: #93a4b4; font: 500 15px/1.6 ui-monospace, Menlo, monospace; margin: 0; }
+`;
   document.head.appendChild(css);
   const el = document.createElement('div');
   el.id = 'gpage'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="bar"><button type="button" class="back" aria-label="Back">← Back</button><span class="t">g</span>
-    <a href="${URL_G}" target="_blank" rel="noopener">Open g ↗</a></div>
-    <div class="frame"><p>Loading g… If it stays blank, tap “Open g ↗”.</p></div>`;
+    <span style="width:90px"></span></div>
+    <div class="go"><a class="big" href="${URL_G}" target="_blank" rel="noopener">OPEN g</a>
+      <p>Once g is open, flip between g and Rising Code by swiping sideways along the very bottom edge of the screen.</p></div>`;
   document.body.appendChild(el);
   el.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('.back') && window.GPage.onBack) window.GPage.onBack(); });
-  const frame = el.querySelector('.frame');
-  let loaded = false;
-  function load() {
-    if (loaded) return; loaded = true;
-    const f = document.createElement('iframe');
-    f.src = URL_G; f.title = 'g';
-    f.allow = 'microphone; clipboard-read; clipboard-write; autoplay';
-    frame.appendChild(f);
-  }
-  window.GPage = { enabled: true, onBack: null, show(v) { el.classList.toggle('show', !!v); el.setAttribute('aria-hidden', v ? 'false' : 'true'); if (v) load(); } };
+  window.GPage = { enabled: true, onBack: null, show(v) { el.classList.toggle('show', !!v); el.setAttribute('aria-hidden', v ? 'false' : 'true'); } };
 })();
