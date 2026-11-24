@@ -81,11 +81,11 @@
   #kitchen.show { display: block; }
   #kitchen .wrap { max-width: 720px; margin: 0 auto; }
   #kitchen .back { margin-bottom: 14px; padding: 10px 16px; font-size: 15px; }
-  #kitchen h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 4px; }
+  #kitchen h1 { color: #ffb84a; font-size: 22px; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 4px; }
   #kitchen p.sub { color: #93a4b4; font-size: 13px; margin: 0 0 18px; }
   #kitchen .row { display: flex; gap: 10px; }
   #kitchen input { flex: 1; min-width: 0; padding: 14px 14px; border-radius: 10px; border: 2px solid #93a4b4; background: #121a23; color: #e8eef4; font: 600 16px ui-monospace, monospace; }
-  #kitchen button { padding: 14px 20px; border-radius: 10px; border: 2px solid #ffffff; background: #1e2a37; color: #ffffff; font: 700 16px ui-monospace, monospace; cursor: pointer; }
+  #kitchen button { padding: 14px 20px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 700 16px ui-monospace, monospace; cursor: pointer; }
   #kitchen .card { margin-top: 14px; padding: 14px 16px; border-radius: 10px; background: #121a23; border: 2px solid #243241; }
   #kitchen .card h2 { font-size: 18px; margin: 0 0 6px; }
   #kitchen .card p { margin: 4px 0; }
