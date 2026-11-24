@@ -34,26 +34,64 @@
     }
     g.putImageData(img, 0, 0);
   }
+  // The silhouette of the head, neck and shoulders in the picture (u, v run 0 to 1 across it).
+  function inside(u, v) {
+    const dx = (u - 0.5) / 0.3, dy = (v - 0.41) / 0.43;
+    if (dx * dx + dy * dy < 1) return true;
+    if (v > 0.7 && Math.abs(u - 0.5) < 0.19) return true;                       // neck
+    return v > 0.84 && Math.abs(u - 0.5) < 0.19 + (v - 0.84) * 3.2;          // shoulders
+  }
+  // Behind the head: a second layer of thick code, bigger and slower, so the screen has depth.
+  let back = null, thick = { cell: 16, cols: 0, rows: 0, glyph: [], streams: [], out: null };
+  function buildBack() {
+    const t = thick; t.cell = Math.round(cell * 2.4); t.cols = Math.ceil(W / t.cell); t.rows = Math.ceil(H / t.cell);
+    t.out = new Uint8Array(t.cols * (t.rows + 1));
+    for (let r = 0; r <= t.rows; r++) for (let c = 0; c < t.cols; c++) {
+      const u = (c * t.cell + t.cell / 2 - box.x) / box.w, v = (r * t.cell + t.cell / 2 - box.y) / box.h;
+      t.out[r * t.cols + c] = inside(u, v) ? 0 : 1;
+    }
+    t.glyph = Array.from({ length: t.cols * (t.rows + 1) }, pickBin);
+    t.streams = Array.from({ length: t.cols }, () => ({ head: Math.random() * t.rows * 1.5, speed: 0.12 + Math.random() * 0.22, len: 6 + ((Math.random() * 12) | 0) }));
+  }
+  function drawBack() {
+    const t = thick;
+    ctx.font = `700 ${t.cell}px ui-monospace, monospace`;
+    for (let c = 0; c < t.cols; c++) {
+      const s = t.streams[c], x = c * t.cell + t.cell / 2;
+      for (let r = 0; r <= t.rows; r++) {
+        const i = r * t.cols + c; if (!t.out[i]) continue;
+        const k = r - Math.floor(s.head), f = k >= 0 && k < s.len ? 1 - k / s.len : 0;
+        const a = 0.1 + 0.5 * f * f; if (a < 0.11) continue;
+        ctx.globalAlpha = a; ctx.fillStyle = k === 0 ? '#ffe7b0' : '#b8701c';
+        ctx.fillText(t.glyph[i], x, r * t.cell + t.cell / 2);
+      }
+      s.head -= s.speed * pace.face.now;
+      if (s.head + s.len < 0) Object.assign(s, { head: t.rows + Math.random() * t.rows * 0.5, speed: 0.12 + Math.random() * 0.22, len: 6 + ((Math.random() * 12) | 0) });
+    }
+    for (let n = 0; n < 6; n++) { const i = (Math.random() * t.glyph.length) | 0; t.glyph[i] = pickBin(); }
+    ctx.globalAlpha = 1;
+  }
   function build() {
     if (!glow) makeGlow();
     const scale = Math.max(W / MW, H / MH);        // fill the screen top to bottom; the sides trim off if needed
     box = { w: MW * scale, h: MH * scale }; box.x = (W - box.w) / 2; box.y = (H - box.h) / 2;
-    lum = new Float32Array(cols * (rows + 1)); kind = new Uint8Array(cols * (rows + 1));   // kind: 0 outside, 1 picture, 2 eye
+    lum = new Float32Array(cols * (rows + 1)); kind = new Uint8Array(cols * (rows + 1)); back = new Uint8Array(cols * (rows + 1));   // kind: 0 outside, 1 picture, 2 eye
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
       const u = (c * cell + cell / 2 - box.x) / box.w, v = (r * cell + cell / 2 - box.y) / box.h;
       if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
       const L = map[Math.floor(v * MH) * MW + Math.floor(u * MW)] / 255, i = r * cols + c;
-      lum[i] = L; kind[i] = 1;
+      lum[i] = L; kind[i] = 1; back[i] = inside(u, v) ? 0 : 1;
       if (L > 0.55 && v > 0.31 && v < 0.4 && ((u > 0.29 && u < 0.42) || (u > 0.58 && u < 0.71))) kind[i] = 2;
     }
   }
-  const stream = () => ({ head: Math.random() * rows * 1.5, speed: 0.4 + Math.random() * 0.5, len: 10 + ((Math.random() * 26) | 0), spark: 0 });
+  const stream = () => ({ head: Math.random() * rows * 1.5, speed: 0.8 + Math.random() * 1.0, len: 10 + ((Math.random() * 26) | 0), spark: 0 });
   function resize(w, h) {
     W = w; H = h; cell = Math.max(6, Math.round(Math.min(W, H) / 125));
     cols = Math.ceil(W / cell); rows = Math.ceil(H / cell);
     body = Array.from({ length: cols }, stream); eyes = Array.from({ length: cols }, stream); bg = Array.from({ length: cols }, stream);
     build();
     glyph = Array.from({ length: cols * (rows + 1) }, (_, i) => kind[i] ? pickBin() : pickBg());
+    buildBack();
   }
 
   const trail = (s, r) => { const k = r - Math.floor(s.head); return k >= 0 && k < s.len ? 1 - k / s.len : 0; };
@@ -75,6 +113,7 @@
     for (const [k, p] of Object.entries(pace)) { p.now += (p.want - p.now) * 0.01; if (--p.left <= 0) nextPace(p, k === 'eyes'); }
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     if (glow) { ctx.globalAlpha = 0.42; ctx.imageSmoothingEnabled = true; ctx.drawImage(glow, box.x, box.y, box.w, box.h); ctx.globalAlpha = 1; }
+    drawBack();
     ctx.font = `600 ${cell}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let c = 0; c < cols; c++) {
       const x = c * cell + cell / 2;
@@ -89,6 +128,7 @@
           const L = lum[i], f = trail(body[c], r);
           a = 0.02 + 1.2 * Math.pow(L, 0.8) * (0.72 + 0.4 * f) + 0.1 * f * f;
           col = L > 0.8 ? '#ffe2a0' : L > 0.45 ? '#ffb347' : '#e08a24';
+          if (back[i]) a *= 0.45;                        // behind the head the fine code steps back for the thick layer
         }
         if (a < 0.03) continue;
         ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = col;
