@@ -399,8 +399,18 @@
     ctx.save(); ctx.lineCap = 'round';
     const sun = (x0, y0, rr) => {
       if (night) {
-        ctx.fillStyle = '#e8eef6'; ctx.beginPath(); ctx.arc(x0, y0, rr * 0.75, 0, 6.3); ctx.fill();
-        ctx.fillStyle = 'rgb(18,24,32)'; ctx.beginPath(); ctx.arc(x0 + rr * 0.35, y0 - rr * 0.2, rr * 0.62, 0, 6.3); ctx.fill();
+        // A true crescent (V40): traced from where the two circles cross, so nothing is painted
+        // over the bite and it sits cleanly on any background.
+        const R = rr * 0.75, x1 = x0 + rr * 0.35, y1 = y0 - rr * 0.2, r1 = rr * 0.62;
+        const d = Math.hypot(x1 - x0, y1 - y0), a0 = (R * R - r1 * r1 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, R * R - a0 * a0));
+        const px = x0 + a0 * (x1 - x0) / d, py = y0 + a0 * (y1 - y0) / d;
+        const p1 = [px + h * (y1 - y0) / d, py - h * (x1 - x0) / d], p2 = [px - h * (y1 - y0) / d, py + h * (x1 - x0) / d];
+        const away = Math.atan2(y0 - y1, x0 - x1), T = Math.PI * 2;
+        const through = (cx, cy, r, A, B) => ctx.arc(cx, cy, r, A, B, !(((away - A + T) % T) < ((B - A + T) % T)));
+        ctx.fillStyle = '#e8eef6'; ctx.beginPath();
+        through(x0, y0, R, Math.atan2(p1[1] - y0, p1[0] - x0), Math.atan2(p2[1] - y0, p2[0] - x0));
+        through(x1, y1, r1, Math.atan2(p2[1] - y1, p2[0] - x1), Math.atan2(p1[1] - y1, p1[0] - x1));
+        ctx.closePath(); ctx.fill();
         return;
       }
       ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = Math.max(1.5, rr * 0.14);
@@ -561,6 +571,8 @@
   }
 
   window.WinterScene = {
+    // The forecast-box weather icon, shared with the weather station page (V40).
+    icon(words, night, cx, cy, r, c) { const keep = ctx; ctx = c || ctx; icon(readWords(words), night, cx, cy, r); ctx = keep; },
     // A tap: closes the details page if it's open; opens it if the tap is on the alert
     // banner; otherwise opens or closes the three-day forecast.
     tap(x, y) {

@@ -158,6 +158,15 @@
     ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.85);
     ctx.fillText(`TODAY HIGH ${fmt(data.hi, '°F')}  LOW ${fmt(data.lo, '°F')}`, x + fs * 0.8, y + row1 * 0.92);
     if (n.words) { ctx.textAlign = 'right'; ctx.fillStyle = C.text; ctx.font = font(600, fs * 0.85); ctx.textBaseline = 'top'; ctx.fillText(n.words.toUpperCase(), x + w1 - fs * 0.7, y + fs * 0.55); }
+    // V40: a weather icon next to the temperature, matching the conditions: sun, sun and
+    // cloud, clouds, rain, snow, fog, or a moon at night. With no station words (forecast
+    // fallback), it goes by this hour's cloud cover and rain chance.
+    if (window.WinterScene && WinterScene.icon) {
+      const sky = data.sky ? data.sky[0] : null, pop = data.pop ? data.pop[0] : 0;
+      const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 25 ? 'Partly Cloudy' : 'Clear');
+      const nowT = new Date(), night = nowT < sunTime(true) || nowT > sunTime(false);
+      if (words) WinterScene.icon(words, night, x + w1 * 0.8, y + row1 * 0.47, Math.min(row1 * 0.2, w1 * 0.13), ctx);
+    }
     // Wind: a compass ring, the arrowhead on the side the wind comes FROM, speed and gust inside.
     const wx = x + w1 + gap; tile(wx, y, w2, row1, fs, 'WIND');
     const cx = wx + w2 / 2, cy = y + row1 * 0.56, r = Math.min(w2 * 0.36, row1 * 0.36);
