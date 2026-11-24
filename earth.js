@@ -8,6 +8,7 @@
 //   - V61: the night side kept readable under a deep blue glow (blue marble, V64), with city lights
 //     glowing where the people are (lights.js, from real city populations)
 //   - V62: Starcloud-1, the first data center in space, on its real orbit (sat.js)
+//   - V65: ordinary random cloud cover, drifting east and changing shape (clouds.js)
 //   - flying through a dust cloud: dust and tumbling rocks in every direction (debris.js)
 (() => {
   const MW = 180, MH = 90;
@@ -138,6 +139,7 @@
     ctx.restore();
     for (let i = 0; i < 20; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
     cityLights(cx, cy, R, sun);
+    if (window.Clouds) Clouds.draw(ctx, cx, cy, R, { spin, tilt: TILT, sun, vec });   // V65: random cloud cover (clouds.js)
     if (window.Orbiter) Orbiter.draw(ctx, cx, cy, R, toView);   // V62: Starcloud-1, the data center in orbit (sat.js)
     if (window.Debris) Debris.front(ctx);
     ctx.globalAlpha = 1;
