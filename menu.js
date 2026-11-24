@@ -3,6 +3,10 @@
 // further:
 //   SOUND     which sound plays when the radar catches Santa (the same four as
 //             tapping the Christmas display: toot, Jingle Bells, icicles, silent)
+//   AROUND PENNS VALLEY (V33) upcoming Penns Valley events, each with its source named
+//             and linked. Only the YMCA of Centre County's Penns Valley calendar
+//             (its public Events API, which a browser may read) works from this page; no
+//             local news feed does (see README). Fetched when the menu opens, kept 15 min.
 //   MY CORNER the personal wildcard: one thing picked for this household's own
 //             interests (a poem of the day, a what-can-I-cook helper, ...). The
 //             pick is remembered on this device; what each one shows is still to
@@ -16,6 +20,9 @@
   ];
   let wild = 'none';
   try { if (WILDCARDS.some(w => w.id === localStorage.getItem('risingcode_wildcard'))) wild = localStorage.getItem('risingcode_wildcard'); } catch (e) {}
+  const EVENTS_URL = 'https://www.ymcaofcentrecounty.org/wp-json/tribe/events/v1/events?per_page=6&categories=penns-valley-events';
+  const EVENTS_SOURCE = { name: 'YMCA of Centre County', url: 'https://www.ymcaofcentrecounty.org/events/category/penns-valley-events/' };
+  let local = { state: 'idle', items: [], at: 0 };   // idle | loading | ok | error
   let sound = null;                              // { names, get(), set(i) } from index.html
 
   const css = `
@@ -37,11 +44,47 @@
   #menu .opt.on { border-color: #ffffff; background: #1e2a37; }
   #menu .opt.on::before { content: "✓ "; }
   #menu .opt small { display: block; color: #93a4b4; font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
+  #menu .ev { display: block; padding: 12px 16px; margin-bottom: 8px; border-radius: 10px; background: #121a23; border: 2px solid #243241; color: #e8eef4; text-decoration: none; }
+  #menu .ev b { display: block; font-weight: 700; }
+  #menu .ev span { color: #93a4b4; font-size: 13px; }
+  #menu .src { color: #93a4b4; font-size: 12px; letter-spacing: 0.08em; }
+  #menu .src a { color: #e8eef4; }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
   const el = document.createElement('div'); el.id = 'menu'; el.setAttribute('aria-hidden', 'true');
   document.body.appendChild(el);
+
+
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const decode = (t) => { const d = document.createElement('textarea'); d.innerHTML = String(t || ''); return d.value; };   // WordPress titles arrive as HTML entities
+  const safeUrl = (u) => /^https:\/\//.test(u || '') ? u : EVENTS_SOURCE.url;
+  function whenText(e) {
+    const d = new Date((e.start_date || '').replace(' ', 'T'));            // the site's local time, shown as written
+    if (isNaN(d)) return '';
+    const day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return e.all_day ? day : day + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  async function loadLocal() {
+    if (local.state === 'loading' || (local.state === 'ok' && Date.now() - local.at < 15 * 60 * 1000)) return;
+    local.state = 'loading'; render();
+    try {
+      const start = new Date().toISOString().slice(0, 10);
+      const r = await fetch(EVENTS_URL + '&start_date=' + start);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      local = { state: 'ok', at: Date.now(), items: (j.events || []).map((e) => ({ title: decode(e.title), when: whenText(e), url: safeUrl(e.url), where: e.venue && e.venue.venue ? decode(e.venue.venue) : '' })) };
+    } catch (err) { local = { state: 'error', items: [], at: 0 }; }
+    if (open) render();
+  }
+  function localHtml() {
+    const head = '<h2>AROUND PENNS VALLEY</h2>';
+    const src = `<p class="src">Source: <a href="${EVENTS_SOURCE.url}" target="_blank" rel="noopener">${EVENTS_SOURCE.name}</a> events calendar. Local news isn't available here yet.</p>`;
+    if (local.state === 'loading' || local.state === 'idle') return head + '<p class="help">Loading events…</p>' + src;
+    if (local.state === 'error') return head + '<p class="help">Couldn’t load events right now. It will try again the next time the menu opens.</p>' + src;
+    if (!local.items.length) return head + '<p class="help">No upcoming Penns Valley events are listed.</p>' + src;
+    return head + local.items.map((e) => `<a class="ev" href="${esc(e.url)}" target="_blank" rel="noopener"><b>${esc(e.title)}</b><span>${esc(e.when)}${e.where ? ' · ' + esc(e.where) : ''}</span></a>`).join('') + src;
+  }
 
   function render() {
     const names = sound ? sound.names : [];
@@ -51,6 +94,7 @@
       <h2>SOUND</h2>
       <p class="help">What plays on the Christmas display when the radar catches Santa.</p>
       <div class="opts">${names.map((n, i) => `<button class="opt${i === cur ? ' on' : ''}" data-sound="${i}">${n}</button>`).join('')}</div>
+      ${localHtml()}
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
@@ -68,8 +112,9 @@
   window.Menu = {
     connect(s) { sound = s; },
     isOpen: () => open,
-    open() { open = true; render(); el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); },
+    open() { open = true; render(); loadLocal(); el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); },
     close() { open = false; el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); },
     wildcard: () => wild,
+    _setLocal(l) { local = l; render(); },          // test hook
   };
 })();
