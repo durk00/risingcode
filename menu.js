@@ -15,7 +15,7 @@
 // index.html opens and closes it and hands it the sound controls (Menu.connect).
 (() => {
   const WILDCARDS = [
-    { id: 'none', name: 'Nothing', note: '' },
+    { id: 'none', name: 'Off', note: 'SHOW NOTHING HERE' },   // V48: was "Nothing"; it's the off switch for My Corner
     { id: 'verses', name: 'Verses for the week', note: 'KING JAMES' },   // V47, verses.js
     { id: 'poem', name: 'Poem of the day', note: 'COMING' },
     { id: 'cook', name: 'What can I make?', note: 'COMING' },
