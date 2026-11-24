@@ -22,4 +22,4 @@ It honors the device's Reduce Motion setting by running slower.
 
 ## Sound credit
 
-The toot when the radar line catches Santa is "fart01" by brassoletto on Freesound (freesound.org, sound 454562), used whole.
+The toot when the radar line catches Santa is the last 0.6 seconds of "fart01" by brassoletto on Freesound (freesound.org, sound 454562).
