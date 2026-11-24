@@ -110,7 +110,10 @@
   }
 
   // ---- drawing -------------------------------------------------------------
-  const C = { bg: '#0b1118', panel: '#121a23', rule: '#243241', text: '#e8eef4', dim: '#93a4b4', line: '#ffffff', line2: '#8fc3ec', fill: 'rgba(200,225,245,0.13)', bar: '#b9c6d3' };
+  // V60: what was white on this page is amber (William's request): the readings, the words,
+  // the graph line, the rain-chance bars, the wind arrow and the weather icon.
+  const AMBER = '#ffb84a';
+  const C = { bg: '#0b1118', panel: '#121a23', rule: '#243241', text: AMBER, dim: '#93a4b4', line: '#ffc870', line2: '#8fc3ec', fill: 'rgba(200,225,245,0.13)', bar: '#d99a40' };
   const font = (w, px) => `${w} ${Math.round(px)}px ui-monospace, Menlo, monospace`;
   const fmt = (v, unit, digits = 0) => v === null || v === undefined || isNaN(v) ? '—' : v.toFixed(digits) + unit;
 
@@ -142,6 +145,24 @@
     ctx.fillStyle = C.dim; ctx.font = font(700, fs * 0.72); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillText(label, x + fs * 0.7, y + fs * 0.55);
   }
+  // The Winter icon, redrawn in amber: drawn on a small side canvas, multiplied by amber (white
+  // becomes amber, grays become darker amber, so the shapes keep their shading), then trimmed
+  // back to the icon's own outline and placed on the page.
+  let iconCanvas = null;
+  function amberIcon(words, night, cx, cy, r) {
+    const size = Math.ceil(r * 3), dpr = 2;
+    iconCanvas = iconCanvas || document.createElement('canvas');
+    iconCanvas.width = size * dpr; iconCanvas.height = size * dpr;
+    const ic = iconCanvas.getContext('2d'); ic.setTransform(dpr, 0, 0, dpr, 0, 0);
+    WinterScene.icon(words, night, size / 2, size / 2, r, ic);
+    const shape = document.createElement('canvas'); shape.width = iconCanvas.width; shape.height = iconCanvas.height;
+    shape.getContext('2d').drawImage(iconCanvas, 0, 0);
+    ic.setTransform(1, 0, 0, 1, 0, 0);
+    ic.globalCompositeOperation = 'multiply'; ic.fillStyle = AMBER; ic.fillRect(0, 0, iconCanvas.width, iconCanvas.height);
+    ic.globalCompositeOperation = 'destination-in'; ic.drawImage(shape, 0, 0);
+    ic.globalCompositeOperation = 'source-over';
+    ctx.drawImage(iconCanvas, cx - size / 2, cy - size / 2, size, size);
+  }
   function big(text, x, y, px, weight = 800, color = C.text, align = 'left') {
     ctx.fillStyle = color; ctx.font = font(weight, px); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, x, y);
   }
@@ -165,7 +186,7 @@
       const sky = data.sky ? data.sky[0] : null, pop = data.pop ? data.pop[0] : 0;
       const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 50 ? 'Partly Cloudy' : 'Clear');
       const nowT = new Date(), night = nowT < sunTime(true) || nowT > sunTime(false);
-      if (words) WinterScene.icon(words, night, x + w1 * 0.8, y + row1 * 0.47, Math.min(row1 * 0.2, w1 * 0.13), ctx);
+      if (words) amberIcon(words, night, x + w1 * 0.8, y + row1 * 0.47, Math.min(row1 * 0.2, w1 * 0.13));
     }
     // Wind: a compass ring, the arrowhead on the side the wind comes FROM, speed and gust inside.
     const wx = x + w1 + gap; tile(wx, y, w2, row1, fs, 'WIND');
@@ -176,7 +197,7 @@
     [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([l, a]) => ctx.fillText(l, cx + Math.sin(a * Math.PI / 180) * (r + fs * 0.75), cy - Math.cos(a * Math.PI / 180) * (r + fs * 0.75)));
     if (n.deg !== null && n.deg !== undefined) {
       const a = n.deg * Math.PI / 180, tipX = cx + Math.sin(a) * r * 0.82, tipY = cy - Math.cos(a) * r * 0.82;
-      ctx.fillStyle = '#ffffff'; ctx.beginPath();
+      ctx.fillStyle = AMBER; ctx.beginPath();
       ctx.moveTo(cx + Math.sin(a) * r * 1.05, cy - Math.cos(a) * r * 1.05);
       ctx.lineTo(tipX + Math.cos(a) * r * 0.12, tipY + Math.sin(a) * r * 0.12);
       ctx.lineTo(tipX - Math.cos(a) * r * 0.12, tipY - Math.sin(a) * r * 0.12); ctx.closePath(); ctx.fill();
