@@ -46,7 +46,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V10</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V11</div>
 
 <script>
 (() => {
@@ -334,29 +334,38 @@
   function drawSanta() {
     if (!santa) {
       if (--santaIn > 0) return;
-      // Far off in a big sky (Nov 23): tiny and a little hazy. V9: each pass picks a
-      // height at random anywhere from just under the star down to the foot of the
-      // tree, and a speed from about 18 to 28 seconds to cross. Never above the star.
+      // Far off in a big sky (Nov 23): tiny and a little hazy, and never above the star.
+      // V11: each pass flies its own straight line, like a route on a map: level, a
+      // gentle climb or descent, or a steep one, up to about 35 degrees, still right
+      // to left. The team tilts to match. Start and finish heights are picked so the
+      // whole line stays between just under the star and the foot of the tree.
       const cell = Math.max(2.5, size * 0.3);
       const width = SANTA_FRAMES[0][0].length * cell, tall = SANTA_FRAMES[0].length * cell;
-      const highest = star.y + star.r * 4, lowest = H * 0.86 - tall;
-      const y = highest + Math.random() * Math.max(0, lowest - highest);
+      const highest = star.y + star.r * 4, lowest = H * 0.86 - tall, band = Math.max(0, lowest - highest);
+      const run = W + width + cell * 4;                      // how far it travels across
+      const maxSlope = Math.min(Math.tan(35 * Math.PI / 180), band / run);
+      const slope = (Math.random() * 2 - 1) * maxSlope;      // + comes down as it goes, - climbs
+      const drop = slope * run;
+      const yStart = highest + Math.max(0, -drop) + Math.random() * (band - Math.abs(drop));
       const secs = 18 + Math.random() * 10;
-      santa = { cell, width, x: W + cell * 2, y, t: 0, speed: (W + width) / (secs * 30) * (reduce ? 0.6 : 1) };
+      const speed = run / (secs * 30) * (reduce ? 0.6 : 1);
+      santa = { cell, width, x: W + cell * 2, y: yStart, t: 0, speed, vy: speed * slope, tilt: -Math.atan(slope) };
     }
     const { cell } = santa;
     santa.t++;
     santa.x -= santa.speed;
+    santa.y += santa.vy;
     if (santa.x + santa.width < -cell * 2) { santa = null; santaIn = 900 + ((Math.random() * 2700) | 0); return; }   // next pass in 30 seconds to 2 minutes
     const frame = SANTA_FRAMES[(santa.t / 6 | 0) % 2];
     const bob = Math.sin(santa.t / 18) * cell * 1.2;
-    ctx.font = `bold ${cell}px ${C.mono}`;
+    ctx.save();
+    ctx.translate(santa.x, santa.y + bob);
+    ctx.rotate(santa.tilt);                                  // nose of the team points along its line
     frame.forEach((line, r) => {
       for (let c = 0; c < line.length; c++) {
         const ch = line[c];
         if (ch === '.') continue;
-        const x = santa.x + c * cell, y = santa.y + r * cell + bob;
-        if (x < -cell || x > W + cell) continue;
+        const x = c * cell, y = r * cell;
         ctx.globalAlpha = 0.85; ctx.fillStyle = C.void;     // cut the rain behind it so the shape reads
         ctx.fillRect(x - cell / 2, y, cell, cell);
         const col = C[SANTA_COLOR[ch]];
@@ -368,10 +377,10 @@
         ctx.shadowBlur = 0;
       }
     });
-    if (Math.random() < 0.3) { const r = (Math.random() * santaGlyphs.length) | 0, c = (Math.random() * santaGlyphs[0].length) | 0; santaGlyphs[r][c] = pick(); }
+    ctx.restore();
     ctx.globalAlpha = 1;
-    ctx.font = `${size}px ${C.mono}`;
   }
+
 
   // 30 frames a second is plenty for something this slow, and easier on the battery.
   let last = 0;
