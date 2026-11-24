@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V6</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V7</div>
 
 <script>
 (() => {
@@ -324,7 +324,7 @@
   function drawSanta() {
     if (!santa) {
       if (--santaIn > 0) return;
-      const cell = size * 1.15;
+      const cell = size * 0.6;
       const width = SANTA_FRAMES[0][0].length * cell;
       santa = { cell, width, x: W + cell * 2, y: H * 0.17, t: 0, speed: (W + width) / (12 * 30) * (reduce ? 0.6 : 1) };
     }
