@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree and a pulsing star"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · TREE V3</div>
+<div id="hint">TAP FOR FULL SCREEN · TREE V4</div>
 
 <script>
 (() => {
@@ -123,24 +123,26 @@
       const y = r * size + size / 2;
       for (let c = 0; c < cols; c++) {
         const x = c * size + size / 2;
-        let inside = false;
+        let inside = 0;   // 1 = branches, 3 = trunk
         if (y >= top && y <= bottom) {
           const t = (y - top) / h * ends.length, i = Math.min(ends.length - 1, Math.floor(t)), local = t - i;
           const from = i === 0 ? 0 : ends[i - 1] * 0.6;
-          inside = Math.abs(x - cx) <= Math.max(minHalf, half * (from + (ends[i] - from) * local));
+          inside = Math.abs(x - cx) <= Math.max(minHalf, half * (from + (ends[i] - from) * local)) ? 1 : 0;
         } else if (y > bottom && y <= bottom + h * 0.08) {
-          inside = Math.abs(x - cx) <= size * 1.6;     // the trunk
+          inside = Math.abs(x - cx) <= size * 1.6 ? 3 : 0;   // the trunk
         }
-        if (inside) mask[r * cols + c] = 1;
+        if (inside) mask[r * cols + c] = inside;
       }
     }
     // 2 marks an outline cell: inside, within two cells of the outside. That makes
     // the outline two characters thick, like a line drawn with a heavier pen (Nov 23).
     tree = new Uint8Array(cols * (rows + 1));
     treeBase = new Array(cols * (rows + 1));
-    const at = (c, r) => c >= 0 && c < cols && r >= 0 && r <= rows && mask[r * cols + c] === 1;
+    const at = (c, r) => c >= 0 && c < cols && r >= 0 && r <= rows && mask[r * cols + c] > 0;
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
       if (!at(c, r)) continue;
+      // The trunk is green and solid (Nov 23): 3, never an outline cell.
+      if (mask[r * cols + c] === 3) { tree[r * cols + c] = 3; treeBase[r * cols + c] = pick(); continue; }
       const edge = !at(c - 1, r) || !at(c + 1, r) || !at(c, r - 1) || !at(c, r + 1)
         || !at(c - 2, r) || !at(c + 2, r) || !at(c, r - 2) || !at(c, r + 2);
       tree[r * cols + c] = edge ? 2 : 1;
@@ -149,6 +151,8 @@
     star = { x: cx, y: top - size * 0.4, r: size };
   }
   const inTree = (c, r) => r >= 0 && r <= rows && tree[r * cols + c] > 0;
+  // The tree's color at a cell: green in the trunk, red in the branches.
+  const treeColor = (c, r) => (tree[r * cols + c] === 3 ? C.leaf : C.ember);
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -191,12 +195,14 @@
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, W, H);
     // The tree's faint standing shape, always there under the rain.
-    ctx.fillStyle = C.ember;
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
       const v = tree[r * cols + c];
       if (!v) continue;
-      ctx.globalAlpha = v === 2 ? 0.5 : 0.18;   // the outline brighter than the inside
+      ctx.fillStyle = v === 3 ? C.leaf : C.ember;
+      ctx.globalAlpha = v === 3 ? 1 : v === 2 ? 0.5 : 0.18;   // trunk solid and glowing, outline brighter than the inside
+      if (v === 3) { ctx.shadowColor = C.leaf; ctx.shadowBlur = size * 0.6; }
       ctx.fillText(treeBase[r * cols + c], c * size + size / 2, r * size);
+      if (v === 3) ctx.shadowBlur = 0;
     }
     if (Math.random() < 0.3) { const i = (Math.random() * tree.length) | 0; if (tree[i]) treeBase[i] = pick(); }
     ctx.globalAlpha = 1;
@@ -210,13 +216,13 @@
         const fade = 1 - k / s.len;
         const red = inTree(s.col, row);   // inside the tree, every stream runs red
         ctx.globalAlpha = Math.min(1, (red ? 0.3 : 0.12) + fade * fade * 0.85);
-        ctx.fillStyle = red ? C.ember : s.color;
+        ctx.fillStyle = red ? treeColor(s.col, row) : s.color;
         ctx.fillText(s.cells[(row % 60 + 60) % 60], x, row * size);
       }
       // The leading glyph: bright and slightly glowing.
       if (headRow >= 0 && headRow <= rows) {
         ctx.globalAlpha = 1;
-        ctx.shadowColor = inTree(s.col, headRow) ? C.ember : s.color; ctx.shadowBlur = size * 0.8;
+        ctx.shadowColor = inTree(s.col, headRow) ? treeColor(s.col, headRow) : s.color; ctx.shadowBlur = size * 0.8;
         ctx.fillStyle = C.frost;
         ctx.fillText(s.cells[(headRow % 60 + 60) % 60], x, headRow * size);
         ctx.shadowBlur = 0;
