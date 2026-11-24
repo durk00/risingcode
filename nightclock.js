@@ -1,4 +1,5 @@
-// NIGHT CLOCK (Nov 24, 2026): during the night hours picked in the menu, whatever scene is
+// NIGHT CLOCK (Nov 24, 2026): during the night hours picked in the menu (9 PM to 6 AM unless
+// changed), whatever scene is
 // up is covered by a big, dim, quiet clock on black: the time, the date, and the moon's
 // phase. Tap it to get the app back; after 5 minutes without a tap it returns to the
 // clock until morning. It drifts a little every minute so nothing sits in one spot all
@@ -12,7 +13,7 @@
   ];
   const AWAKE_MS = 5 * 60 * 1000;
   const preview = /[?&]night\b/.test(location.search);
-  let pick = '22-6';
+  let pick = '21-6';   // V43: starts at 9 PM by default, which suits winter and summer alike
   try { if (OPTIONS.some(o => o.id === localStorage.getItem('risingcode_night'))) pick = localStorage.getItem('risingcode_night'); } catch (e) {}
   let awakeUntil = 0, showing = false;
 
