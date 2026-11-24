@@ -47,10 +47,11 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V32</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V34</div>
 
 <script src="winter.js"></script>
 <script src="details.js"></script>
+<script src="kitchen.js"></script>
 <script src="menu.js"></script>
 <script>
 (() => {
@@ -205,21 +206,24 @@
   // SCENES (V25): the Christmas display, and the Winter scene in winter.js. Swipe
   // left for Winter, right to come back (arrow keys on a computer). The iPad
   // remembers which one was showing.
-  const SCENES = ['christmas', 'winter', 'details'];   // V30: Details, one more swipe left past Winter
+  const SCENES = ['christmas', 'winter', 'details', 'kitchen'];   // V34: Kitchen, one more swipe left past Details   // V30: Details, one more swipe left past Winter
   let scene = 'christmas';
   try { if (SCENES.includes(localStorage.getItem('risingcode_scene'))) scene = localStorage.getItem('risingcode_scene'); } catch (e) {}
   function setScene(next) {
     if (next === scene || !SCENES.includes(next)) return;
     scene = next;
+    if (window.Kitchen) Kitchen.show(scene === 'kitchen');
     try { localStorage.setItem('risingcode_scene', scene); } catch (e) {}
-    showLabel({ christmas: 'CHRISTMAS · SWIPE LEFT FOR WINTER', winter: 'WINTER · SWIPE LEFT FOR DETAILS · RIGHT FOR CHRISTMAS', details: 'WEATHER DETAILS · SWIPE RIGHT FOR WINTER' }[scene]);
+    showLabel({ christmas: 'CHRISTMAS · SWIPE LEFT FOR WINTER', winter: 'WINTER · SWIPE LEFT FOR DETAILS · RIGHT FOR CHRISTMAS', details: 'WEATHER DETAILS · SWIPE LEFT FOR KITCHEN · RIGHT FOR WINTER', kitchen: 'KITCHEN · SWIPE RIGHT FOR WEATHER DETAILS' }[scene]);
   }
   // One scene over to the left (dir 1) or right (dir -1), stopping at the ends.
   function stepScene(dir) {
     setScene(SCENES[Math.max(0, Math.min(SCENES.length - 1, SCENES.indexOf(scene) + dir))]);
   }
 
+  if (window.Kitchen && scene === 'kitchen') Kitchen.show(true);   // the iPad remembered Kitchen
   function draw() {
+    if (scene === 'kitchen') return;               // Kitchen is a page of its own, nothing to draw (V34)
     if (scene === 'winter' && window.WinterScene) { WinterScene.draw(); return; }
     if (scene === 'details' && window.DetailsScene) { DetailsScene.draw(); return; }
     tempo += (target - tempo) * 0.04;
@@ -637,14 +641,20 @@
   }
   // A swipe is a sideways drag of at least 60 pixels; anything less is a tap.
   let downX = null, downY = null, swipedAt = 0;
-  const swipeStart = (x, y) => { downX = x; downY = y; };
+  // The menu swipe has to start below the top strip of the screen, so it never competes with
+  // the iPad's own pull-down from the top edge (Notification Center). Closing works anywhere (V33).
+  const MENU_SWIPE_MIN_Y = () => Math.max(120, window.innerHeight * 0.2);
+  let downFromTop = false;
+  // A drag that starts in Kitchen's text box or results is that page's own (selecting, scrolling): never a swipe.
+  const inKitchenContent = (t) => !!(t && t.closest && t.closest('#kitchen input, #kitchen .card'));
+  const swipeStart = (x, y, t) => { downX = inKitchenContent(t) && scene === 'kitchen' ? null : x; downY = y; downFromTop = y < MENU_SWIPE_MIN_Y(); };
   const swipeEnd = (x, y) => {
     if (downX === null) return;
     const dx = x - downX, dy = y - downY; downX = null;
     // Swipe down on any scene opens the menu; swipe up closes it (V32).
     if (window.Menu && Math.abs(dy) >= 80 && Math.abs(dy) > Math.abs(dx) * 1.5) {
       swipedAt = Date.now();
-      if (dy > 0 && !Menu.isOpen()) Menu.open();
+      if (dy > 0 && !Menu.isOpen()) { if (!downFromTop) Menu.open(); }
       else if (dy < 0 && Menu.isOpen()) Menu.close();
       return;
     }
@@ -656,9 +666,9 @@
       stepScene(dx < 0 ? 1 : -1);
     }
   };
-  document.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; swipeStart(p.clientX, p.clientY); }, { passive: true });
+  document.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; swipeStart(p.clientX, p.clientY, e.target); }, { passive: true });
   document.addEventListener('touchend', (e) => { const p = e.changedTouches[0]; swipeEnd(p.clientX, p.clientY); }, { passive: true });
-  document.addEventListener('mousedown', (e) => swipeStart(e.clientX, e.clientY));
+  document.addEventListener('mousedown', (e) => swipeStart(e.clientX, e.clientY, e.target));
   document.addEventListener('mouseup', (e) => swipeEnd(e.clientX, e.clientY));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' && window.Menu) Menu.open();
