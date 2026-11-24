@@ -70,4 +70,4 @@ A My Corner choice (`verses.js`). Two or three King James verses picked for wher
 
 ## Screensaver choice
 
-Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, or **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds. Remembered on the device.
+Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, Centre Hall marked with an amber pulse, a starfield and a thin atmosphere, turning once about every 7 minutes. Remembered on the device.
