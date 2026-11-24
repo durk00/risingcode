@@ -37,3 +37,7 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 - **Upcoming snow** is still previewed: if snow is due in the next two days, the top line says when and about how much, and clouds gather in its last 12 hours.
 
 Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
+
+## Weather details
+
+One more swipe left, past Winter (swipe right to go back). In `details.js`: the latest reading from the nearest NOAA weather station (temperature, conditions, humidity, dew point, wind and gusts, pressure), then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.
