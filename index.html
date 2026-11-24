@@ -38,6 +38,7 @@
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     text-align: center; font: 500 13px/1.4 var(--mono); letter-spacing: 0.12em;
     color: var(--hint); opacity: 0.9; transition: opacity 2s ease; pointer-events: none;
+    text-shadow: 0 0 6px #000, 0 0 2px #000;   /* readable over the Winter scene's snow too */
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   #hint.gone { opacity: 0; }
@@ -46,8 +47,9 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · TAP AGAIN TO CHANGE IT · SANTA V24</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · V25</div>
 
+<script src="winter.js"></script>
 <script>
 (() => {
   const canvas = document.getElementById('rain');
@@ -170,6 +172,7 @@
     size = Math.max(10, Math.round(Math.min(W, H) / 62));
     cols = Math.ceil(W / size); rows = Math.ceil(H / size);
     buildTree();
+    if (window.WinterScene) { WinterScene.start(ctx); WinterScene.resize(W, H); }
     streams = [];
     for (let c = 0; c < cols; c++) {
       // Two to four streams per column, so the screen stays full.
@@ -196,7 +199,21 @@
     }
   }
 
+  // SCENES (V25): the Christmas display, and the Winter scene in winter.js. Swipe
+  // left for Winter, right to come back (arrow keys on a computer). The iPad
+  // remembers which one was showing.
+  const SCENES = ['christmas', 'winter'];
+  let scene = 'christmas';
+  try { if (SCENES.includes(localStorage.getItem('risingcode_scene'))) scene = localStorage.getItem('risingcode_scene'); } catch (e) {}
+  function setScene(next) {
+    if (next === scene || !SCENES.includes(next)) return;
+    scene = next;
+    try { localStorage.setItem('risingcode_scene', scene); } catch (e) {}
+    showLabel(scene === 'winter' ? 'WINTER · SWIPE RIGHT FOR CHRISTMAS' : 'CHRISTMAS · SWIPE LEFT FOR WINTER');
+  }
+
   function draw() {
+    if (scene === 'winter' && window.WinterScene) { WinterScene.draw(); return; }
     tempo += (target - tempo) * 0.04;
     if (--phaseLeft <= 0) nextPhase();
     ctx.fillStyle = C.void;
@@ -600,7 +617,28 @@
     hint.textContent = text; hint.classList.remove('gone');
     clearTimeout(labelTimer); labelTimer = setTimeout(() => hint.classList.add('gone'), 1800);
   }
+  // A swipe is a sideways drag of at least 60 pixels; anything less is a tap.
+  let downX = null, downY = null, swipedAt = 0;
+  const swipeStart = (x, y) => { downX = x; downY = y; };
+  const swipeEnd = (x, y) => {
+    if (downX === null) return;
+    const dx = x - downX, dy = y - downY; downX = null;
+    if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swipedAt = Date.now();
+      setScene(dx < 0 ? 'winter' : 'christmas');
+    }
+  };
+  document.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; swipeStart(p.clientX, p.clientY); }, { passive: true });
+  document.addEventListener('touchend', (e) => { const p = e.changedTouches[0]; swipeEnd(p.clientX, p.clientY); }, { passive: true });
+  document.addEventListener('mousedown', (e) => swipeStart(e.clientX, e.clientY));
+  document.addEventListener('mouseup', (e) => swipeEnd(e.clientX, e.clientY));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') setScene('winter');
+    if (e.key === 'ArrowRight') setScene('christmas');
+  });
+
   document.addEventListener('click', async () => {
+    if (Date.now() - swipedAt < 500) return;      // the end of a swipe isn't a tap
     keepAwake();
     if (tapped && audio) {
       if (audio.state !== 'running') { try { audio.resume(); } catch (e) {} }
