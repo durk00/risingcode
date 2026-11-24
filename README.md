@@ -32,7 +32,7 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 - **Sky** from the forecast words: clear, partly cloudy, cloudy or fog.
 - **Rain, snow or a mix** falling when the forecast says so; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
 - **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
-- **Tap** for a three-day forecast box to the left of the house (day, forecast, high and low, chance of precipitation); tap again to close. Taps on Winter make no sound.
+- **Tap** for a three-day forecast box to the left of the house (day, forecast with a weather icon, high and low, chance of precipitation); tap again to close. Taps on Winter make no sound.
 - **Upcoming snow** is still previewed: if snow is due in the next two days, the top line says when and about how much, and clouds gather in its last 12 hours.
 
 Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
