@@ -18,6 +18,9 @@
     --ice: #46b8e6;      /* cyan-blue streams */
     --leaf: #3fe08f;     /* green streams */
     --ember: #ff5059;
+    --snow: #ffffff;     /* Santa's fur trim, beard and runners: pure white, not the blue-white of the rain */
+    --tan: #c99a68;      /* reindeer */
+    --antler: #9a6a42;   /* antlers and harness, darker brown */
     --halo: #ffe7a3;     /* the star's warm glow */    /* red streams: darker than the green, so the two differ in brightness too */
     --frost: #dff4ff;    /* pale streams and the bright leading glyph */
     --hint: #8fa9b8;     /* the fading tap hint */
@@ -43,7 +46,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V9</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V10</div>
 
 <script>
 (() => {
@@ -57,6 +60,9 @@
     leaf: css.getPropertyValue('--leaf').trim(),
     ember: css.getPropertyValue('--ember').trim(),
     halo: css.getPropertyValue('--halo').trim(),
+    snow: css.getPropertyValue('--snow').trim(),
+    tan: css.getPropertyValue('--tan').trim(),
+    antler: css.getPropertyValue('--antler').trim(),
     frost: css.getPropertyValue('--frost').trim(),
     mono: css.getPropertyValue('--mono').trim(),
   };
@@ -255,7 +261,7 @@
   // code like everything else, each character on a soft block of its color so the
   // shape reads from across the room. First pass 8 seconds after it opens, then every 40 to 90 seconds.
   // Letters in the pictures: A antlers, G reindeer, N Rudolph's nose, n the other
-  // noses, R red, W white, S Santa's face, B the sack, h the harness.
+  // noses, R red, W white, S Santa's face, B the sack, h the harness, g the gold trim.
   const DEER = [
     [ // legs out
       '.A...A..........',
@@ -285,13 +291,14 @@
     ],
   ];
   const SLEIGH = [
-    '..........WWW..........',
-    '.........RRRRR.........',
-    '........WSSSSW.........',
-    '........WWWWWW....BBB..',
-    '........WWWWW....BBBBB.',
-    '.......RRRRRRR..BBBBBB.',
-    'RR....RRRRRRRRRRRRRRRRR',
+    '.........WRR...........',
+    '..........RRRR.........',
+    '.........WWWWWW........',
+    '.........SSSSS.........',
+    '........WWWWWWW...BBB..',
+    '........WWWWWW...BBBBB.',
+    '.......RRRRRRRR.BBBBBB.',
+    'gg....ggggggggggggggggg',
     '.RRRRRRRRRRRRRRRRRRRRR.',
     '..RRRRRRRRRRRRRRRRRRR..',
     '...W..............W....',
@@ -318,7 +325,10 @@
     return out.map(row => row.join(''));
   }
   const SANTA_FRAMES = [teamFrame(0), teamFrame(1)];
-  const SANTA_COLOR = { A: 'frost', G: 'halo', N: 'ember', n: 'halo', R: 'ember', W: 'frost', S: 'halo', B: 'leaf', h: 'halo' };
+  // Nov 23, V10: reindeer tan with brown antlers and harness; red sleigh with a gold
+  // trim line along the top so Santa's red coat doesn't run into it; red hat with a
+  // white fur brim and a white pom-pom on the tip.
+  const SANTA_COLOR = { A: 'antler', G: 'tan', N: 'ember', n: 'tan', R: 'ember', W: 'snow', S: 'halo', B: 'leaf', h: 'antler', g: 'halo' };
   const santaGlyphs = SANTA_FRAMES[0].map(line => [...line].map(pick));
   let santa = null, santaIn = 240;   // frames until the next pass (30 a second)
   function drawSanta() {
