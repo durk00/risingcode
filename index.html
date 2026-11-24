@@ -46,7 +46,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN AND SOUND · SANTA V16</div>
+<div id="hint">TAP FOR FULL SCREEN AND SOUND · SANTA V17</div>
 
 <script>
 (() => {
@@ -438,23 +438,23 @@
     return bus;
   }
   // V16, by request: a toot instead of bells. A low buzzy tone that sags in pitch,
-  // with a fast flutter, through the same slight echo. About two thirds of a second.
+  // with a fast flutter, through the same slight echo. About a third of a second (V17).
   function toot(t) {
     const out = bellBus();
-    const len = 0.55 + Math.random() * 0.25;
+    const len = (0.55 + Math.random() * 0.25) / 2;      // V17: twice as fast
     const o = audio.createOscillator(), lp = audio.createBiquadFilter(), v = audio.createGain();
     o.type = 'sawtooth';
     const f0 = 95 + Math.random() * 30;
     o.frequency.setValueAtTime(f0 * 1.15, t);
-    o.frequency.exponentialRampToValueAtTime(f0, t + 0.08);
+    o.frequency.exponentialRampToValueAtTime(f0, t + 0.04);
     o.frequency.exponentialRampToValueAtTime(f0 * 0.7, t + len);
     lp.type = 'lowpass'; lp.frequency.value = 650; lp.Q.value = 6;
     // The flutter: a fast wobble on the volume.
     const lfo = audio.createOscillator(), depth = audio.createGain();
-    lfo.type = 'square'; lfo.frequency.setValueAtTime(28 + Math.random() * 10, t); lfo.frequency.linearRampToValueAtTime(18, t + len);
+    lfo.type = 'square'; lfo.frequency.setValueAtTime(56 + Math.random() * 20, t); lfo.frequency.linearRampToValueAtTime(36, t + len);
     depth.gain.value = 0.06;
     v.gain.setValueAtTime(0.0001, t);
-    v.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+    v.gain.exponentialRampToValueAtTime(0.16, t + 0.01);
     v.gain.setValueAtTime(0.14, t + len * 0.7);
     v.gain.exponentialRampToValueAtTime(0.0001, t + len);
     lfo.connect(depth).connect(v.gain);
