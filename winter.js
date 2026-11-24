@@ -69,7 +69,9 @@
   }
   function setPreview() {
     const day = previewTime ? previewTime === 'day' : isDayByClock();
-    const base = { status: 'preview', day, sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: previewWx };
+    // NOAA-style words for each preview, so the status line and the forecast icon read like the real thing.
+    const words = { sunny: 'Sunny', partly: 'Partly Sunny', cloudy: 'Cloudy', fog: 'Patchy Fog', rain: 'Rain Showers', mix: 'Rain And Snow', 'snow-light': 'Chance Snow Showers', snow: 'Snow', 'snow-heavy': 'Heavy Snow', coming: 'Mostly Sunny' }[previewWx] || 'Sunny';
+    const base = { status: 'preview', day, sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words };
     const p = {
       sunny: {}, partly: { sky: 'partly' }, cloudy: { sky: 'cloudy' }, fog: { sky: 'fog' },
       rain: { sky: 'cloudy', fall: 'rain', rain: 0.15 },
@@ -82,8 +84,8 @@
     wx = Object.assign(base, p);
     const name = (n) => new Date(Date.now() + n * 864e5).toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
     days = [
-      { name: name(0), words: (previewWx || 'Sunny').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), hi: 38, lo: 24, pop: 20 },
-      { name: name(1), words: 'Mostly Cloudy', hi: 35, lo: 27, pop: 40 },
+      { name: name(0), words: wx.words, hi: 38, lo: 24, pop: 20 },
+      { name: name(1), words: /\bicons\b/.test(q) ? 'Partly Sunny' : 'Mostly Cloudy', hi: 35, lo: 27, pop: 40 },
       { name: name(2), words: 'Snow Showers Likely', hi: 31, lo: 19, pop: 70 },
     ];
   }
@@ -385,6 +387,49 @@
     status();
     panel();
   }
+  // WEATHER ICONS (V28) in the forecast box, at the right of each day, above the
+  // precipitation: sun; sun behind a cloud; cloud; cloud with rain streaks; cloud
+  // with snowflakes; cloud with both for a mix; fog lines. A moon stands in for
+  // the sun when only tonight's forecast is left. Shapes differ, not just colors.
+  function icon(kind, night, cx, cy, r) {
+    const { fall, sky } = kind;
+    ctx.save(); ctx.lineCap = 'round';
+    const sun = (x0, y0, rr) => {
+      if (night) {
+        ctx.fillStyle = '#e8eef6'; ctx.beginPath(); ctx.arc(x0, y0, rr * 0.75, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgb(18,24,32)'; ctx.beginPath(); ctx.arc(x0 + rr * 0.35, y0 - rr * 0.2, rr * 0.62, 0, 6.3); ctx.fill();
+        return;
+      }
+      ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = Math.max(1.5, rr * 0.14);
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x0 + Math.cos(a) * rr * 0.78, y0 + Math.sin(a) * rr * 0.78); ctx.lineTo(x0 + Math.cos(a) * rr * 1.08, y0 + Math.sin(a) * rr * 1.08); ctx.stroke(); }
+      ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.arc(x0, y0, rr * 0.58, 0, 6.3); ctx.fill();
+    };
+    const cloud = (x0, y0, rr, shade) => {
+      ctx.fillStyle = shade;
+      for (const [dx, dy, q] of [[-0.45, 0.12, 0.42], [0.05, -0.12, 0.55], [0.5, 0.1, 0.4]]) { ctx.beginPath(); ctx.arc(x0 + dx * rr, y0 + dy * rr, q * rr, 0, 6.3); ctx.fill(); }
+      ctx.fillRect(x0 - rr * 0.45, y0 + rr * 0.1, rr * 0.95, rr * 0.42);
+    };
+    if (fall !== 'none') {
+      cloud(cx, cy - r * 0.25, r, '#c4ccd6');
+      const top = cy + r * 0.38;
+      for (let k = 0; k < 3; k++) {
+        const px = cx - r * 0.45 + k * r * 0.45;
+        const snowHere = fall === 'snow' || (fall === 'mix' && k !== 1);
+        if (snowHere) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(px, top + r * 0.32, r * 0.11, 0, 6.3); ctx.fill(); ctx.beginPath(); ctx.arc(px + r * 0.12, top + r * 0.62, r * 0.09, 0, 6.3); ctx.fill(); }
+        else { ctx.strokeStyle = '#9fd0ff'; ctx.lineWidth = Math.max(1.5, r * 0.11); ctx.beginPath(); ctx.moveTo(px + r * 0.1, top + r * 0.15); ctx.lineTo(px - r * 0.06, top + r * 0.7); ctx.stroke(); }
+      }
+    } else if (sky === 'fog') {
+      ctx.strokeStyle = '#c4ccd6'; ctx.lineWidth = Math.max(1.5, r * 0.14);
+      for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(cx - r * (0.9 - (k % 2) * 0.2), cy - r * 0.5 + k * r * 0.36); ctx.lineTo(cx + r * (0.9 - ((k + 1) % 2) * 0.2), cy - r * 0.5 + k * r * 0.36); ctx.stroke(); }
+    } else if (sky === 'cloudy') {
+      cloud(cx + r * 0.25, cy - r * 0.35, r * 0.7, '#8e98a4');
+      cloud(cx - r * 0.1, cy + r * 0.05, r, '#c4ccd6');
+    } else if (sky === 'partly') {
+      sun(cx + r * 0.3, cy - r * 0.3, r * 0.75);
+      cloud(cx - r * 0.15, cy + r * 0.15, r * 0.85, '#dfe5ec');
+    } else sun(cx, cy, r * 0.95);
+    ctx.restore();
+  }
   function panel() {
     panelA += ((panelOpen ? 1 : 0) - panelA) * 0.15;
     if (panelA < 0.02) return;
@@ -409,7 +454,8 @@
       ctx.fillStyle = '#ffffff'; ctx.font = `700 ${fs}px ui-monospace, Menlo, monospace`;
       ctx.fillText(d.name, x + pad, by);
       ctx.fillStyle = '#dfe8f1'; ctx.font = `500 ${Math.round(fs * 0.9)}px ui-monospace, Menlo, monospace`;
-      ctx.fillText(fit(d.words || '', w - pad * 2), x + pad, by + lineH);
+      ctx.fillText(fit(d.words || '', w - pad * 2 - fs * 2.8), x + pad, by + lineH);
+      icon(readWords(d.words), d.hi === null, x + w - pad - fs * 1.2, by + fs * 1.15, fs * 1.15);
       const temps = [d.hi !== null ? `HIGH ${d.hi}°` : '', d.lo !== null ? `LOW ${d.lo}°` : ''].filter(Boolean).join('  ');
       ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.round(fs * 0.9)}px ui-monospace, Menlo, monospace`;
       ctx.fillText(fit(temps + (d.pop ? `  ·  ${d.pop}% PRECIP` : ''), w - pad * 2), x + pad, by + lineH * 2);
