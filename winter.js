@@ -127,17 +127,16 @@
       // NOAA station says what's actually happening. When a station has a reading from the
       // last 2 hours, its words decide what falls and what the sky looks like, so rain or
       // snow shows when it's really coming down and not when it's only "a chance".
+      // V58: read through WxNow, which checks the last several readings of the nearest stations
+      // and builds the words from the measurements when NOAA leaves them blank.
       let observed = '';
-      try {
-        const st = await (await fetch(pt.properties.observationStations)).json();
-        for (const f of (st.features || []).slice(0, 3)) {
-          const o = (await (await fetch(`https://api.weather.gov/stations/${f.properties.stationIdentifier}/observations/latest`)).json()).properties;
-          if (!o || !o.textDescription || Date.now() - Date.parse(o.timestamp) > 2 * 3600e3) continue;
-          observed = o.textDescription; break;
-        }
-      } catch (e) { /* the forecast alone still drives the scene */ }
+      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) observed = now.words; }
+      catch (e) { /* the forecast alone still drives the scene */ }
       const obsHeavy = /heavy/i.test(observed), obsLight = /light|drizzle|flurr/i.test(observed);
       if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky; chance = false; }
+      // No station reading, and the forecast only says a chance: show the clouds, but nothing
+      // falling. A false rain is worse than a missed one (V58).
+      else if (chance && fall !== 'none') fall = 'none';
       const g = grid.properties;
       const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);

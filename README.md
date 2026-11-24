@@ -38,6 +38,10 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 
 Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
 
+## What the weather is doing right now (V58)
+
+`wxnow.js` reads the last several readings from up to 5 nearby NOAA stations and takes the newest from the last 2 hours. When NOAA leaves a reading's words blank, it builds them from what the station measured: what is falling, and the cloud layers (clear, few, scattered, broken, overcast). Winter and Details both use it. When no station reading is available and the forecast only says a chance, Winter shows clouds but nothing falling.
+
 ## Weather details
 
 One more swipe left, past Winter (swipe right to go back). In `details.js`, laid out like a home weather station's indoor console: outdoor temperature with feels-like and today's high and low, a wind compass (arrowhead on the side the wind comes from) with speed and gusts, humidity and dew point, pressure with a rising/falling/steady arrow, today's rain chance, cloud cover, and sunrise and sunset, from the nearest NOAA station with a recent reading (falling back to this hour's forecast); then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.
@@ -70,7 +74,7 @@ A My Corner choice (`verses.js`). Two or three King James verses picked for wher
 
 ## Screensaver choice
 
-Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, a starfield and a thin atmosphere, turning once about every 7 minutes. The Earth is flying through a dust cloud (`debris.js`): a haze of fine dust drifts past, and rocks big and small tumble across the screen in every direction, often in groups of 1 to 5, some coming straight at you and growing as they come. Most pass behind the globe; now and then a big one sweeps past in front. Each rock is lit on the sun's side. Remembered on the device.
+Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, a starfield and a thin atmosphere, turning once about every 7 minutes. The Earth is flying through a dust cloud (`debris.js`): a haze of fine dust drifts past, and rocks big and small tumble across the screen in every direction, often in groups of 1 to 5, some coming straight at you and growing as they come. Most pass behind the globe; now and then a big one sweeps past in front. Each rock is lit on the sun's side. The rocks sit far off, and meteors streak across the sky: very quick, thin to thick, in any direction, sometimes a few at once. Remembered on the device.
 
 ## Portrait screensaver
 

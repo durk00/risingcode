@@ -6,9 +6,11 @@
 //   - they come all the time, and often in groups: 1, 2, 3, 4 or 5 together
 //   - most pass behind the Earth; now and then a big one sweeps past in front, with a streak
 //   - each rock is lit from one side by the sun and dark on the other
+//   - V58: the rocks sit farther off (smaller), and meteors streak across the sky: far away,
+//     very quick, thin to thick, in any direction, sometimes a few at once
 // Earth calls Debris.back() before drawing the globe and Debris.front() after it.
 (() => {
-  let W = 0, H = 0, dust = [], rocks = [], wait = 0;
+  let W = 0, H = 0, dust = [], rocks = [], wait = 0, meteors = [], mWait = 0;
   const rnd = (a, b) => a + Math.random() * (b - a);
 
   function shape() {                               // a lumpy outline, never round
@@ -20,7 +22,7 @@
     const S = Math.min(W, H), toward = !front && Math.random() < 0.3;
     const r = {
       front, toward, pts: shape(), rot: rnd(0, 6.3), spin: rnd(-0.04, 0.04),
-      size: front ? rnd(0.03, 0.08) * S : rnd(0.004, 0.028) * S,
+      size: front ? rnd(0.018, 0.045) * S : rnd(0.003, 0.016) * S,
       tone: rnd(0.75, 1.15), life: 0,
     };
     if (toward) {                                  // straight at us: starts small near the middle and grows
@@ -50,7 +52,7 @@
   }
 
   function resize(w, h) {
-    W = w; H = h; rocks = [];
+    W = w; H = h; rocks = []; meteors = [];
     dust = Array.from({ length: Math.round(W * H / 2200) }, () => {
       const z = Math.random(), a = rnd(0, 6.3);
       return { x: rnd(0, W), y: rnd(0, H), z, vx: Math.cos(a) * (0.1 + z * 0.9), vy: Math.sin(a) * (0.1 + z * 0.9) };
@@ -88,6 +90,31 @@
     r.gone = r.life > 30 && (r.x < -m - 600 || r.x > W + m + 600 || r.y < -m - 600 || r.y > H + m + 600 || (r.toward && r.size > Math.min(W, H) * 0.09));
   }
 
+  // Meteors: a bright head with a fading tail, crossing a good part of the sky in under a second.
+  function meteor() {
+    const a = rnd(0, Math.PI * 2), sp = rnd(18, 45) * Math.max(W, H) / 1000, w = Math.random() < 0.7 ? rnd(0.6, 1.6) : rnd(1.8, 3.6);
+    return { x: rnd(0, W), y: rnd(0, H), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, w, len: rnd(6, 14), life: 0, max: 14 + ((Math.random() * 22) | 0) };
+  }
+  function drawMeteors(ctx) {
+    if (--mWait <= 0) {
+      const n = Math.random() < 0.25 ? 2 + ((Math.random() * 3) | 0) : 1;
+      for (let i = 0; i < n; i++) meteors.push(meteor());
+      mWait = 10 + ((Math.random() * 70) | 0);
+    }
+    ctx.lineCap = 'round';
+    for (const m of meteors) {
+      m.life++; m.x += m.vx; m.y += m.vy;
+      const fade = Math.sin(Math.PI * Math.min(1, m.life / m.max));        // flares up, then burns out
+      const tx = m.x - m.vx * m.len * 0.5, ty = m.y - m.vy * m.len * 0.5;
+      const g = ctx.createLinearGradient(m.x, m.y, tx, ty);
+      g.addColorStop(0, 'rgba(255,250,235,1)'); g.addColorStop(0.25, 'rgba(255,225,170,0.55)'); g.addColorStop(1, 'rgba(255,200,140,0)');
+      ctx.globalAlpha = fade; ctx.strokeStyle = g; ctx.lineWidth = m.w;
+      ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(tx, ty); ctx.stroke();
+      if (m.w > 1.8) { ctx.globalAlpha = fade * 0.9; ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.arc(m.x, m.y, m.w * 0.8, 0, 6.3); ctx.fill(); }
+    }
+    meteors = meteors.filter(m => m.life < m.max);
+  }
+
   const SUN = -0.6;                                 // the sunlight comes from the upper left
   // Behind the globe: the dust and most of the rocks.
   function back(ctx) {
@@ -99,6 +126,7 @@
       ctx.globalAlpha = 0.12 + 0.4 * d.z; ctx.fillStyle = '#b9ab98';
       const s = 0.6 + d.z * 1.6; ctx.fillRect(d.x, d.y, s, s);
     }
+    drawMeteors(ctx);
     if (--wait <= 0) { group(false); wait = 4 + ((Math.random() * 30) | 0); }
     if (Math.random() < 0.002) group(true);
     for (const r of rocks) if (!r.front) { step(r); drawRock(ctx, r, SUN); }
@@ -112,5 +140,5 @@
     ctx.globalAlpha = 1;
   }
 
-  window.Debris = { resize, back, front, count: () => rocks.length };
+  window.Debris = { resize, back, front, count: () => rocks.length, meteors: () => meteors.length };
 })();

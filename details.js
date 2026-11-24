@@ -95,7 +95,7 @@
           if (!o || o.temperature.value === null || Date.now() - when > 3 * 3600e3) continue;
           const val = (x) => (x && x.value !== null && x.value !== undefined ? x.value : null);
           d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when,
-            temp: cToF(val(o.temperature)), words: o.textDescription || '',
+            temp: cToF(val(o.temperature)), words: window.WxNow ? WxNow.describe(o) : (o.textDescription || ''),   // V58: built from the cloud layers when NOAA leaves the words blank
             rh: val(o.relativeHumidity) ?? hour.rh, dew: val(o.dewpoint) !== null ? cToF(val(o.dewpoint)) : hour.dew,
             wind: val(o.windSpeed) !== null ? kmhToMph(val(o.windSpeed)) : hour.wind, gust: val(o.windGust) !== null ? kmhToMph(val(o.windGust)) : hour.gust,
             dir: compass(val(o.windDirection)), deg: val(o.windDirection), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null, trend };
