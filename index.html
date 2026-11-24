@@ -47,7 +47,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · V26</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · V27</div>
 
 <script src="winter.js"></script>
 <script>
@@ -640,6 +640,16 @@
   document.addEventListener('click', async () => {
     if (Date.now() - swipedAt < 500) return;      // the end of a swipe isn't a tap
     keepAwake();
+    // On the Winter scene a tap opens or closes the three-day forecast, with no sound (V27).
+    if (scene === 'winter' && window.WinterScene) {
+      hint.classList.add('gone');
+      WinterScene.tap();
+      try {
+        const el = document.documentElement;
+        if (!(document.fullscreenElement || document.webkitFullscreenElement)) await (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      } catch (e) {}
+      return;
+    }
     if (tapped && audio) {
       if (audio.state !== 'running') { try { audio.resume(); } catch (e) {} }
       const s = nextSound();

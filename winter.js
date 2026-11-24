@@ -18,6 +18,8 @@
 // and in its last 12 hours the clouds start gathering.
 // Every threshold below is a first guess, easy to change.
 //
+// A tap opens a three-day forecast box to the left of the house (V27).
+//
 // Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
 // rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
 (() => {
@@ -38,6 +40,11 @@
   const COL = 2;
   let wx = { status: 'loading', day: isDayByClock(), sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: '' };
   let cover = 0, fog = 0, light = wx.day ? 1 : 0;   // shown values, eased toward the weather
+  // THREE-DAY FORECAST BOX (V27): a tap on the Winter scene opens a small box to the
+  // left of the house with today and the next two days from NOAA: the day, the
+  // forecast in words, the high and low, and the chance of rain or snow. Tap again
+  // to close it. (Taps here make no sound; sounds belong to the Christmas display.)
+  let days = [], panelOpen = false, panelA = 0;
 
   function isDayByClock() { const h = new Date().getHours(); return previewTime ? previewTime === 'day' : h >= 7 && h < 17; }
 
@@ -73,6 +80,12 @@
       coming: { sky: 'partly', coming: { when: 'TOMORROW', total: 4, hoursUntil: 10 } },
     }[previewWx] || {};
     wx = Object.assign(base, p);
+    const name = (n) => new Date(Date.now() + n * 864e5).toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+    days = [
+      { name: name(0), words: (previewWx || 'Sunny').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), hi: 38, lo: 24, pop: 20 },
+      { name: name(1), words: 'Mostly Cloudy', hi: 35, lo: 27, pop: 40 },
+      { name: name(2), words: 'Snow Showers Likely', hi: 31, lo: 19, pop: 70 },
+    ];
   }
   async function loadWeather() {
     if (previewWx) { setPreview(); return; }
@@ -114,6 +127,17 @@
         coming = { when, total: ahead, hoursUntil: (first - now) / 3600e3 };
       }
       wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: period.shortForecast };
+      // Three days for the forecast box: NOAA's day and night periods grouped by date.
+      const byDate = new Map();
+      for (const p of fc.properties.periods) {
+        const d = new Date(p.startTime), key = d.toDateString();
+        if (!byDate.has(key)) byDate.set(key, { name: d.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase(), words: '', hi: null, lo: null, pop: 0 });
+        const e = byDate.get(key);
+        if (p.isDaytime) { e.hi = p.temperature; e.words = p.shortForecast; }
+        else { e.lo = p.temperature; if (!e.words) e.words = p.shortForecast; }
+        e.pop = Math.max(e.pop, (p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value) || 0);
+      }
+      days = [...byDate.values()].slice(0, 3);
     } catch (e) {
       wx = Object.assign({}, wx, { status: 'offline', day: isDayByClock() });
     }
@@ -359,12 +383,45 @@
       arr[i] += ((arr[i - 1] + arr[i + 1]) / 2 - arr[i]) * 0.05;
     }
     status();
+    panel();
+  }
+  function panel() {
+    panelA += ((panelOpen ? 1 : 0) - panelA) * 0.15;
+    if (panelA < 0.02) return;
+    const fs = Math.max(12, Math.min(20, Math.round(Math.min(W, H) / 38)));
+    const x = W * 0.04, w = Math.min(W * 0.4, house.x - W * 0.07, fs * 19);
+    const lineH = fs * 1.45, blockH = lineH * 3 + fs * 0.6, pad = fs * 0.8;
+    const h = pad * 2 + fs * 1.2 + Math.max(1, days.length) * blockH;
+    const y = Math.max(H * 0.29, Math.min(H * 0.32, groundY(x) - h - H * 0.03));
+    ctx.save(); ctx.globalAlpha = panelA;
+    ctx.fillStyle = 'rgba(8,12,18,0.78)'; ctx.strokeStyle = 'rgba(230,238,246,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, fs * 0.6); else ctx.rect(x, y, w, h);
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#9fb0c0'; ctx.font = `600 ${Math.round(fs * 0.75)}px ui-monospace, Menlo, monospace`;
+    ctx.fillText('NOAA · CENTRE HALL · 3 DAYS', x + pad, y + pad);
+    if (!days.length) { ctx.fillStyle = '#eef3f8'; ctx.font = `500 ${fs}px ui-monospace, Menlo, monospace`; ctx.fillText(wx.status === 'offline' ? 'Forecast unavailable' : 'Loading…', x + pad, y + pad + fs * 1.6); }
+    const fit = (text, max) => { let s2 = text; while (s2.length > 3 && ctx.measureText(s2).width > max) s2 = s2.slice(0, -2); return s2 === text ? s2 : s2.trim() + '…'; };
+    days.forEach((d, i) => {
+      const by = y + pad + fs * 1.2 + i * blockH + fs * 0.4;
+      if (i) { ctx.fillStyle = 'rgba(230,238,246,0.15)'; ctx.fillRect(x + pad, by - fs * 0.35, w - pad * 2, 1); }
+      ctx.fillStyle = '#ffffff'; ctx.font = `700 ${fs}px ui-monospace, Menlo, monospace`;
+      ctx.fillText(d.name, x + pad, by);
+      ctx.fillStyle = '#dfe8f1'; ctx.font = `500 ${Math.round(fs * 0.9)}px ui-monospace, Menlo, monospace`;
+      ctx.fillText(fit(d.words || '', w - pad * 2), x + pad, by + lineH);
+      const temps = [d.hi !== null ? `HIGH ${d.hi}°` : '', d.lo !== null ? `LOW ${d.lo}°` : ''].filter(Boolean).join('  ');
+      ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.round(fs * 0.9)}px ui-monospace, Menlo, monospace`;
+      ctx.fillText(fit(temps + (d.pop ? `  ·  ${d.pop}% PRECIP` : ''), w - pad * 2), x + pad, by + lineH * 2);
+    });
+    ctx.restore();
   }
 
   window.WinterScene = {
+    tap() { panelOpen = !panelOpen; },
     start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 3600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen }),
   };
 })();
