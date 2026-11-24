@@ -78,6 +78,10 @@ Under the built-in quick ideas, the Kitchen also searches TheMealDB (themealdb.c
 
 The KITCHEN heading and the buttons (Find meals and Back) are amber, to match the weather station page (V63).
 
+## Menu scrolling (V70)
+
+Dragging up on the menu scrolls it. A swipe up only closes the menu when it was already scrolled all the way to the bottom as the finger went down, and it has to be a good long swipe. The ✕ button always closes it. Before this, any upward swipe closed the menu, so long sections like the verses couldn't be scrolled to.
+
 ## Night clock
 
 In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by default, 10 PM–6 AM, or 11 PM–7 AM), any scene is covered by a big, dim clock on black with the date and the moon's phase. Tap it to use the app; after 5 minutes it goes back to the clock until morning. It drifts slightly each minute so nothing burns in. Preview with `?night`.

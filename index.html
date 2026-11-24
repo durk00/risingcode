@@ -47,7 +47,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V69</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V70</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -690,8 +690,9 @@
   // so the menu swipe must not wait for touchend (V35). A drag that starts while Kitchen's results are
   // scrolled down is a scroll, not a menu swipe.
   const kitchenScrolled = () => { const k = document.getElementById('kitchen'); return scene === 'kitchen' && !!k && k.scrollTop > 0; };
-  let lastX = 0, lastY = 0, scrolledStart = false;
-  const swipeStart = (x, y, t) => { downX = inKitchenContent(t) && scene === 'kitchen' ? null : x; downY = y; lastX = x; lastY = y; scrolledStart = kitchenScrolled(); downFromTop = y < MENU_SWIPE_MIN_Y(); };
+  const MENU_CLOSE_DY = 140;                      // V70: how far up a swipe must go to close the menu
+  let lastX = 0, lastY = 0, scrolledStart = false, menuEndStart = false;
+  const swipeStart = (x, y, t) => { downX = inKitchenContent(t) && scene === 'kitchen' ? null : x; downY = y; lastX = x; lastY = y; scrolledStart = kitchenScrolled(); downFromTop = y < MENU_SWIPE_MIN_Y(); menuEndStart = !!(window.Menu && Menu.isOpen() && Menu.atBottom()); };
   const swipeMove = (x, y) => {
     if (downX === null) return;
     lastX = x; lastY = y;
@@ -699,7 +700,9 @@
     if (dy >= 80 && dy > Math.abs(dx) * 1.5 && window.Menu && !Menu.isOpen() && !downFromTop && !scrolledStart) swipeEnd(x, y);   // open mid-drag
     // Close mid-drag too (V36): Safari can cancel an upward drag on the menu's scrollable layer. If the menu is
     // taller than the screen and not scrolled to its end, the drag is a scroll; the ✕ button still closes.
-    if (dy <= -80 && -dy > Math.abs(dx) * 1.5 && window.Menu && Menu.isOpen() && Menu.atBottom()) swipeEnd(x, y);
+    // V70: only when the menu was already at its very end when the finger went down, and a longer swipe;
+    // otherwise an upward drag scrolls the menu (William couldn't read the verses: it kept closing).
+    if (dy <= -MENU_CLOSE_DY && -dy > Math.abs(dx) * 1.5 && window.Menu && Menu.isOpen() && menuEndStart) swipeEnd(x, y);
   };
   const swipeEnd = (x, y) => {
     if (downX === null) return;
@@ -708,7 +711,7 @@
     if (window.Menu && Math.abs(dy) >= 80 && Math.abs(dy) > Math.abs(dx) * 1.5) {
       swipedAt = Date.now();
       if (dy > 0 && !Menu.isOpen()) { if (!downFromTop && !scrolledStart) Menu.open(); }
-      else if (dy < 0 && Menu.isOpen()) Menu.close();
+      else if (dy < 0 && Menu.isOpen() && menuEndStart && -dy >= MENU_CLOSE_DY) Menu.close();
       return;
     }
     if (window.Menu && Menu.isOpen()) return;
