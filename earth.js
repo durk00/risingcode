@@ -151,5 +151,5 @@
     draw() { if (ctx && W) draw(); },
     face(lonDeg) { spin = lonDeg * Math.PI / 180; },   // for checking: turn a given longitude toward the viewer
   };
-  spin = HOME.lon * Math.PI / 180;               // starts with North America in view (V51: no hometown marker)
+  spin = (window.Place ? Place.lon : HOME.lon) * Math.PI / 180;               // starts with North America in view (V51: no hometown marker)
 })();
