@@ -40,14 +40,36 @@
   let depth = null, roofDepth = null;            // snow height per 2-px column
   const COL = 2;
   let wx = { status: 'loading', day: isDayByClock(), sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: '' };
-  let cover = 0, fog = 0, light = wx.day ? 1 : 0;   // shown values, eased toward the weather
+  let cover = 0, fog = 0, light = 0;   // shown values, eased toward the weather (light is set from the sun on the first frame)
   // THREE-DAY FORECAST BOX (V27): a tap on the Winter scene opens a small box to the
   // left of the house with today and the next two days from NOAA: the day, the
   // forecast in words, the high and low, and the chance of rain or snow. Tap again
   // to close it. (Taps here make no sound; sounds belong to the Christmas display.)
   let days = [], panelOpen = false, panelA = 0;
 
-  function isDayByClock() { const h = new Date().getHours(); return previewTime ? previewTime === 'day' : h >= 7 && h < 17; }
+  // DAWN AND DUSK (V46): daylight follows the real sunrise and sunset for Centre Hall, worked
+  // out on the device for each day of the year, not the forecast's 6-to-6 periods. The sky
+  // brightens over the half hour before sunrise to the half hour after, and dims the same
+  // way at sunset, so the scene changes in real time as it does outside.
+  function sunAt(rise, d = new Date()) {
+    const rad = Math.PI / 180, N = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), lh = LON / 15;
+    const t = N + ((rise ? 6 : 18) - lh) / 24, M = 0.9856 * t - 3.289;
+    const L = (M + 1.916 * Math.sin(M * rad) + 0.020 * Math.sin(2 * M * rad) + 282.634 + 360) % 360;
+    let RA = (Math.atan(0.91764 * Math.tan(L * rad)) / rad + 360) % 360;
+    RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+    const sinDec = 0.39782 * Math.sin(L * rad), cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(LAT * rad)) / (cosDec * Math.cos(LAT * rad));
+    const Hh = (rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
+    const UT = (Hh + RA - 0.06571 * t - 6.622 - lh + 48) % 24;
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3);
+  }
+  function daylight(now = new Date()) {                // 0 night ... 1 day, with a one-hour blend at each end
+    if (previewTime) return previewTime === 'day' ? 1 : 0;
+    const up = sunAt(true, now), down = sunAt(false, now), half = 30 * 60e3;
+    const ramp = (t, a) => Math.max(0, Math.min(1, (t - (a - half)) / (2 * half)));
+    return Math.min(ramp(+now, +up), 1 - ramp(+now, +down));
+  }
+  function isDayByClock() { return daylight() >= 0.5; }
 
   // ---- weather -------------------------------------------------------------
   function hoursOf(iso) {                        // "PT6H", "P1DT3H" -> hours
@@ -415,7 +437,7 @@
     const ease = (cur, want, k) => cur + (want - cur) * (first ? 1 : k);
     cover = ease(cover, targetCover(), 0.01);
     fog = ease(fog, wx.sky === 'fog' ? 1 : 0, 0.01);
-    light = ease(light, wx.day ? 1 : 0, 0.004);
+    light = ease(light, daylight(), 0.02);   // follows the real sun (V46)
     // Ground: white while snow is in today's forecast (a light cover at least),
     // otherwise any snow melts slowly away to bare ground.
     if (wx.snowToday) { const floor = H * 0.008; for (let i = 0; i < depth.length; i++) if (depth[i] < floor) depth[i] = first ? floor : depth[i] + 0.02; }
