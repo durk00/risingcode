@@ -41,9 +41,9 @@
 </style>
 </head>
 <body>
-<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree and a pulsing star"></canvas>
+<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · TREE V5</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V6</div>
 
 <script>
 (() => {
@@ -247,6 +247,114 @@
     ctx.globalAlpha = 0.82 + 0.18 * p; ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(star.x, star.y, R, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
+    drawSanta();
+  }
+
+  // SANTA (Nov 23): Santa in his sleigh behind three reindeer, Rudolph in front with
+  // his red nose, flying right to left across the upper part of the screen. Drawn in
+  // code like everything else, each character on a soft block of its color so the
+  // shape reads from across the room. First pass 8 seconds after it opens, then every 40 to 90 seconds.
+  // Letters in the pictures: A antlers, G reindeer, N Rudolph's nose, n the other
+  // noses, R red, W white, S Santa's face, B the sack, h the harness.
+  const DEER = [
+    [ // legs out
+      '.A...A..........',
+      '..A.A...........',
+      '..AAA...........',
+      '...GG...........',
+      '..GGGG..........',
+      'nGGGGG.........G',
+      '....GGGGGGGGGGG.',
+      '....GGGGGGGGGGG.',
+      '....GGGGGGGGGG..',
+      '...G.G.....G..G.',
+      '..G...G...G....G',
+    ],
+    [ // legs tucked
+      '.A...A..........',
+      '..A.A...........',
+      '..AAA...........',
+      '...GG...........',
+      '..GGGG..........',
+      'nGGGGG.........G',
+      '....GGGGGGGGGGG.',
+      '....GGGGGGGGGGG.',
+      '....GGGGGGGGGG..',
+      '.....GG....GG...',
+      '......GG..GG....',
+    ],
+  ];
+  const SLEIGH = [
+    '..........WWW..........',
+    '.........RRRRR.........',
+    '........WSSSSW.........',
+    '........WWWWWW....BBB..',
+    '........WWWWW....BBBBB.',
+    '.......RRRRRRR..BBBBBB.',
+    'RR....RRRRRRRRRRRRRRRRR',
+    '.RRRRRRRRRRRRRRRRRRRRR.',
+    '..RRRRRRRRRRRRRRRRRRR..',
+    '...W..............W....',
+    'WWWWWWWWWWWWWWWWWWWWWW.',
+    'W......................',
+  ];
+  const TEAM = 3, GAP = 5, DEER_W = 16, HARNESS_ROW = 6;
+  // Build both frames of the whole team as rows of letters, nose of Rudolph first.
+  function teamFrame(f) {
+    const deerW = DEER_W + GAP, width = TEAM * deerW + SLEIGH[0].length;
+    const out = Array.from({ length: SLEIGH.length }, () => Array(width).fill('.'));
+    const deerTop = SLEIGH.length - DEER[0].length - 1;   // reindeer fly a little higher than the sleigh
+    for (let d = 0; d < TEAM; d++) {
+      const pic = DEER[(f + d) % 2];
+      pic.forEach((line, r) => [...line].forEach((ch, c) => {
+        if (ch === '.') return;
+        out[deerTop + r][d * deerW + c] = ch === 'n' && d === 0 ? 'N' : ch;
+      }));
+      // Harness from each reindeer's back to the next one behind it, and on to the sleigh.
+      for (let c = d * deerW + DEER_W - 1; c < (d + 1) * deerW + 1; c++) if (out[deerTop + HARNESS_ROW][c] === '.') out[deerTop + HARNESS_ROW][c] = 'h';
+    }
+    for (let c = TEAM * deerW - GAP; c < TEAM * deerW + 1; c++) if (out[deerTop + HARNESS_ROW + 1][c] === '.') out[deerTop + HARNESS_ROW + 1][c] = 'h';
+    SLEIGH.forEach((line, r) => [...line].forEach((ch, c) => { if (ch !== '.') out[r][TEAM * deerW + c] = ch; }));
+    return out.map(row => row.join(''));
+  }
+  const SANTA_FRAMES = [teamFrame(0), teamFrame(1)];
+  const SANTA_COLOR = { A: 'frost', G: 'halo', N: 'ember', n: 'halo', R: 'ember', W: 'frost', S: 'halo', B: 'leaf', h: 'halo' };
+  const santaGlyphs = SANTA_FRAMES[0].map(line => [...line].map(pick));
+  let santa = null, santaIn = 240;   // frames until the next pass (30 a second)
+  function drawSanta() {
+    if (!santa) {
+      if (--santaIn > 0) return;
+      const cell = size * 1.15;
+      const width = SANTA_FRAMES[0][0].length * cell;
+      santa = { cell, width, x: W + cell * 2, y: H * 0.17, t: 0, speed: (W + width) / (12 * 30) * (reduce ? 0.6 : 1) };
+    }
+    const { cell } = santa;
+    santa.t++;
+    santa.x -= santa.speed;
+    if (santa.x + santa.width < -cell * 2) { santa = null; santaIn = 1200 + ((Math.random() * 1500) | 0); return; }
+    const frame = SANTA_FRAMES[(santa.t / 6 | 0) % 2];
+    const bob = Math.sin(santa.t / 14) * cell * 0.8;
+    ctx.font = `bold ${cell}px ${C.mono}`;
+    frame.forEach((line, r) => {
+      for (let c = 0; c < line.length; c++) {
+        const ch = line[c];
+        if (ch === '.') continue;
+        const x = santa.x + c * cell, y = santa.y + r * cell + bob;
+        if (x < -cell || x > W + cell) continue;
+        ctx.globalAlpha = 0.9; ctx.fillStyle = C.void;      // cut the rain behind it so the shape reads
+        ctx.fillRect(x - cell / 2, y, cell, cell);
+        const col = C[SANTA_COLOR[ch]];
+        ctx.fillStyle = col;
+        if (ch !== 'h') { ctx.globalAlpha = 0.38; ctx.fillRect(x - cell / 2, y, cell, cell); }
+        ctx.globalAlpha = ch === 'h' ? 0.7 : 1;
+        if (ch === 'N') { ctx.shadowColor = col; ctx.shadowBlur = cell * 2.5; }
+        ctx.fillText(santaGlyphs[r][c] || '*', x, y);
+        ctx.shadowBlur = 0;
+      }
+    });
+    if (Math.random() < 0.3) { const r = (Math.random() * santaGlyphs.length) | 0, c = (Math.random() * santaGlyphs[0].length) | 0; santaGlyphs[r][c] = pick(); }
+    ctx.globalAlpha = 1;
+    ctx.font = `${size}px ${C.mono}`;
   }
 
   // 30 frames a second is plenty for something this slow, and easier on the battery.
