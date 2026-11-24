@@ -1,7 +1,8 @@
 // PORTRAIT (Nov 24, 2026): a screensaver choice. An AI's face made of rising code, looking
 // straight out at whoever is in front of the screen, after a ChatGPT image William liked
 // (that one was a profile; this one faces you). Dark, with the face in amber code.
-//   - head, neck and shoulders in amber, brighter along the outline and the features
+//   - head, neck and shoulders in amber, brighter along the outline and the features; since V52
+//     a structured head: squared crown, cheekbones, a strong angled jaw and a squared chin
 //   - big eyes, where the code runs faster and brighter than anywhere else
 //   - the pace changes at random, like the Christmas display: the face and the eyes each
 //     drift between slow, steady and fast, holding each for anywhere from 1 to 5 minutes
@@ -25,17 +26,43 @@
     const cx = W / 2, cy = H * 0.44, a = Math.min(W * 0.2, H * 0.21), b = a * 1.33;
     const eyeY = cy - b * 0.05, eyeDX = a * 0.43, erx = a * 0.31, ery = a * 0.17;
     light = new Float32Array(cols * (rows + 1));   // rounded shading: brighter at the middle of the face, falling off to the sides
-    const inHead = (x, y) => { const k = 1 - 0.18 * Math.max(0, (y - cy) / b); const u = (x - cx) / (a * k), v = (y - cy) / b; return u * u + v * v < 1; };
-    const inNeck = (x, y) => Math.abs(x - cx) < a * 0.42 && y > cy + b * 0.7 && y < cy + b * 1.35;
+    // V52: a head with structure, not an egg: a broad, slightly squared crown, temples,
+    // cheekbones, then a strong angled jaw coming to a squared chin. Traced as one outline
+    // (the right half, mirrored), in units of the head's half-width and half-height.
+    const HALF = [[0, -1], [0.42, -0.97], [0.74, -0.84], [0.92, -0.6], [0.99, -0.3], [1, -0.05], [0.98, 0.12], [0.95, 0.28],
+      [0.9, 0.45], [0.86, 0.6], [0.8, 0.7], [0.6, 0.85], [0.38, 0.97], [0.2, 1.02], [0, 1.03]];
+    const OUTLINE = HALF.concat(HALF.slice(0, -1).reverse().map(([u, v]) => [-u, v])).map(([u, v]) => [cx + u * a, cy + v * b]);
+    const inHead = (x, y) => {
+      let inn = false;
+      for (let i = 0, j = OUTLINE.length - 1; i < OUTLINE.length; j = i++) {
+        const [xi, yi] = OUTLINE[i], [xj, yj] = OUTLINE[j];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inn = !inn;
+      }
+      return inn;
+    };
+    const inNeck = (x, y) => y > cy + b * 0.75 && y < cy + b * 1.4 && Math.abs(x - cx) < a * (0.46 + 0.22 * Math.max(0, (y - cy - b * 1.1) / (b * 0.3)));   // a solid neck that widens into the shoulders
     const inShoulders = (x, y) => { const u = (x - cx) / (a * 2.4), v = (y - (cy + b * 2.05)) / (b * 0.85); return u * u + v * v < 1; };
     const inside = (x, y) => inHead(x, y) || inNeck(x, y) || inShoulders(x, y);
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
       const x = c * cell + cell / 2, y = r * cell + cell / 2;
       if (!inside(x, y)) continue;
       let v = 1;
-      light[r * cols + c] = inHead(x, y) ? Math.max(0, 1 - Math.pow((x - cx) / a, 2) * 0.9 - Math.pow((y - cy) / b, 2) * 0.4) : Math.max(0, 0.55 - Math.abs(x - cx) / (a * 4));
+      const u = (x - cx) / a, w = (y - cy) / b;
+      let L = inHead(x, y) ? Math.max(0, 1 - u * u * 0.9 - w * w * 0.35) : Math.max(0, 0.55 - Math.abs(x - cx) / (a * 4));
+      if (inHead(x, y)) {
+        // Planes of the face: hollows under the cheekbones, a lit ridge along each cheekbone,
+        // and shadow under the jaw so it stands out from the neck.
+        const hollow = Math.pow((Math.abs(u) - 0.58) / 0.2, 2) + Math.pow((w - 0.42) / 0.2, 2);
+        if (hollow < 1) L *= 0.35 + 0.65 * hollow;
+        const ridge = Math.abs(w - (0.2 - (Math.abs(u) - 0.4) * 0.25));
+        if (Math.abs(u) > 0.38 && Math.abs(u) < 0.9 && ridge < 0.045) L = Math.min(1, L + 0.45);
+      } else if (y < cy + b * 1.15) L *= 0.3;
+      light[r * cols + c] = L;
       // Outline: a skin cell next to the background.
       if (!inside(x - cell, y) || !inside(x + cell, y) || !inside(x, y - cell) || !inside(x, y + cell)) v = 2;
+      // The jawline: drawn twice as thick from the jaw angle down to the chin, on the face and
+      // where the jaw meets the neck, so it reads strong.
+      if (inHead(x, y) && y > cy + b * 0.5 && (!inHead(x - 2 * cell, y) || !inHead(x + 2 * cell, y) || !inHead(x, y + 2 * cell))) v = 2;
       for (const s of [-1, 1]) {
         const ex = cx + s * eyeDX, u = (x - ex) / erx, w = (y - eyeY) / ery, d = u * u + w * w;
         if (d < 1) v = Math.hypot(x - ex, y - eyeY) < a * 0.1 ? 4 : 3;
