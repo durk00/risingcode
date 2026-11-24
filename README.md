@@ -42,6 +42,12 @@ Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, 
 
 `wxnow.js` reads the last several readings from up to 5 nearby NOAA stations and takes the newest from the last 2 hours. When NOAA leaves a reading's words blank, it builds them from what the station measured: what is falling, and the cloud layers (clear, few, scattered, broken, overcast). Winter and Details both use it. When no station reading is available and the forecast only says a chance, Winter shows clouds but nothing falling. When the words say clear (Clear, Mostly Clear, Mostly Sunny), no clouds are drawn; only "Partly" draws a few (V59).
 
+## Location (V66)
+
+The weather, alerts and daylight follow wherever the iPad is in the US (`place.js`). The first time, the iPad asks "Allow location?". If allowed, the spot is rounded to about half a mile, kept on the device, and only sent to NOAA (api.weather.gov) to get that place's weather. NOAA names the nearest town, and the screens say it ("NOAA · FRESNO"). It's checked again each time the app starts. If location isn't allowed, the spot is outside the US, or it can't tell, everything stays on Centre Hall, PA. Menu → LOCATION switches between **Where this iPad is** and **Centre Hall, PA**. The clock and the Earth's day and night were already right anywhere. The Around Penns Valley events stay Penns Valley.
+
+V66 also fixed sunrise and sunset west of about Chicago: the sunset had come out as yesterday's, which would have left the Winter scene dark all afternoon in California.
+
 ## Weather details
 
 One more swipe left, past Winter (swipe right to go back). In `details.js`, laid out like a home weather station's indoor console: outdoor temperature with feels-like and today's high and low, a wind compass (arrowhead on the side the wind comes from) with speed and gusts, humidity and dew point, pressure with a rising/falling/steady arrow, today's rain chance, cloud cover, and sunrise and sunset, from the nearest NOAA station with a recent reading (falling back to this hour's forecast); then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.

@@ -20,12 +20,15 @@
 // Refreshed every hour while it's showing. Preview with sample numbers by adding
 // ?details-sample to the address.
 (() => {
-  const LAT = 40.8473, LON = -77.6858;          // Centre Hall, PA (town center), same as Winter
+  // V66: the same place as Winter (place.js); a change of place fetches everything again.
+  let LAT = window.Place ? Place.lat : 40.8473, LON = window.Place ? Place.lon : -77.6858;
+  const placeName = () => (window.Place ? Place.name : 'CENTRE HALL');
   const HOURS = 72;
   const DRY_RH = 50, DRY_POP = 20;               // the drying-hours rule
   const sample = /[?&]details-sample\b/.test(location.search);
   let ctx, W = 0, H = 0;
   let data = null, status = 'loading', lastLoad = 0;
+  if (window.Place) Place.onChange(p => { if (p.lat === LAT && p.lon === LON) return; LAT = p.lat; LON = p.lon; data = null; status = 'loading'; lastLoad = 0; });
 
   const cToF = (c) => c === null || c === undefined ? null : c * 9 / 5 + 32;
   const kmhToMph = (k) => k === null || k === undefined ? null : k * 0.621371;
@@ -62,6 +65,7 @@
   async function load() {
     lastLoad = Date.now();
     if (sample) { data = makeSample(); status = 'ok'; return; }
+    const at = LAT + ',' + LON;                   // V66: drop a reply for a place we've since left
     try {
       const pt = await (await fetch(`https://api.weather.gov/points/${LAT},${LON}`)).json();
       const [grid, stations] = await Promise.all([
@@ -105,6 +109,7 @@
       if (!d.now && hour.temp !== null) {
         d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', deg: null, pressure: null, trend: '' };
       }
+      if (at !== LAT + ',' + LON) return;
       data = d; status = 'ok';
     } catch (e) { status = data ? 'ok' : 'offline'; }
   }
@@ -136,7 +141,13 @@
     const cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(LAT * rad)) / (cosDec * Math.cos(LAT * rad));
     const Hh = (rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
     const UT = (Hh + RA - 0.06571 * t - 6.622 - lh + 48) % 24;
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3);
+    // V66: keep it on this calendar day. West of about Chicago the sunset falls after midnight
+    // UTC, and without this it came out as yesterday's sunset.
+    let r = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3;
+    const noon = +new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+    while (r - noon > 12 * 3600e3) r -= 864e5;
+    while (noon - r > 12 * 3600e3) r += 864e5;
+    return new Date(r);
   }
   const clock = (dt) => dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).toUpperCase();
   function tile(x, y, w, h, fs, label) {
@@ -292,8 +303,8 @@
     const m = Math.max(14, W * 0.025);
     // Header: name on the left, the date and time on the right, like the console's top line.
     ctx.fillStyle = C.text; ctx.font = font(800, fs * 1.05); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(sample ? 'WEATHER STATION · SAMPLE NUMBERS' : 'WEATHER STATION · CENTRE HALL', m, m * 0.6);
-    const nowD = new Date(), title = sample ? 'WEATHER STATION · SAMPLE NUMBERS' : 'WEATHER STATION · CENTRE HALL';
+    ctx.fillText(sample ? 'WEATHER STATION · SAMPLE NUMBERS' : `WEATHER STATION · ${placeName()}`, m, m * 0.6);
+    const nowD = new Date(), title = sample ? 'WEATHER STATION · SAMPLE NUMBERS' : `WEATHER STATION · ${placeName()}`;
     const stamp = nowD.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase() + '  ' + clock(nowD);
     const narrow = ctx.measureText(title).width + ctx.measureText(stamp).width + fs * 2 > W - m * 2;   // on a phone the date goes under the name
     ctx.textAlign = narrow ? 'left' : 'right'; ctx.fillText(stamp, narrow ? m : W - m, m * 0.6 + (narrow ? fs * 1.4 : 0));

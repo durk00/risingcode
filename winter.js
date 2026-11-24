@@ -24,7 +24,10 @@
 // Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
 // rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
 (() => {
-  const LAT = 40.8473, LON = -77.6858;          // Centre Hall, PA (town center)
+  // V66: the place comes from place.js (where this iPad is, or Centre Hall, PA); when it
+  // changes, the forecast, alerts and daylight are fetched again for the new place.
+  let LAT = window.Place ? Place.lat : 40.8473, LON = window.Place ? Place.lon : -77.6858;
+  const placeName = () => (window.Place ? Place.name : 'CENTRE HALL');
   const RATE_MODERATE = 0.1, RATE_HEAVY = 0.5;   // snow, inches per hour
   const LOOKAHEAD_HRS = 48;                      // how far ahead upcoming snow is previewed
   const GATHER_HRS = 12;                         // clouds start gathering this long before it
@@ -61,7 +64,13 @@
     const cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(LAT * rad)) / (cosDec * Math.cos(LAT * rad));
     const Hh = (rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
     const UT = (Hh + RA - 0.06571 * t - 6.622 - lh + 48) % 24;
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3);
+    // V66: keep it on this calendar day. West of about Chicago the sunset falls after midnight
+    // UTC, and without this it came out as yesterday's sunset.
+    let r = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3;
+    const noon = +new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+    while (r - noon > 12 * 3600e3) r -= 864e5;
+    while (noon - r > 12 * 3600e3) r += 864e5;
+    return new Date(r);
   }
   function daylight(now = new Date()) {                // 0 night ... 1 day, with a one-hour blend at each end
     if (previewTime) return previewTime === 'day' ? 1 : 0;
@@ -116,6 +125,7 @@
   }
   async function loadWeather() {
     if (previewWx) { setPreview(); return; }
+    const at = LAT + ',' + LON, stale = () => at !== LAT + ',' + LON;   // V66: drop a reply for a place we've since left
     try {
       const pt = await (await fetch(`https://api.weather.gov/points/${LAT},${LON}`)).json();
       const [fc, grid] = await Promise.all([
@@ -167,6 +177,7 @@
         const when = sameDay ? (new Date(first).getHours() >= 17 ? 'TONIGHT' : 'TODAY') : tomorrow ? 'TOMORROW' : day;
         coming = { when, total: ahead, hoursUntil: (first - now) / 3600e3 };
       }
+      if (stale()) return;
       wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: observed ? 'Now: ' + observed : period.shortForecast, forecastWords: period.shortForecast };
       // Three days for the forecast box: NOAA's day and night periods grouped by date.
       const byDate = new Map();
@@ -180,6 +191,7 @@
       }
       days = [...byDate.values()].slice(0, 3);
     } catch (e) {
+      if (stale()) return;
       wx = Object.assign({}, wx, { status: 'offline', day: isDayByClock() });
     }
   }
@@ -427,7 +439,7 @@
     ctx.font = `500 ${Math.max(11, Math.round(Math.min(W, H) / 60))}px ui-monospace, Menlo, monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';   // top left, clear of the tap hint at the bottom
     ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.8;
-    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · CENTRE HALL'} · ${say}`, 16, 14);
+    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · ' + placeName()} · ${say}`, 16, 14);
     ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   }
 
@@ -515,7 +527,9 @@
       return;
     }
     try {
+      const at = LAT + ',' + LON;
       const r = await (await fetch(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`)).json();
+      if (at !== LAT + ',' + LON) return;
       alerts = (r.features || []).map(f => f.properties).map(p => ({
         id: p.id, event: p.event, severity: p.severity, ends: p.ends || p.expires,
         headline: p.headline || p.event, description: p.description || '', instruction: p.instruction || '',
@@ -604,7 +618,7 @@
     ctx.fill(); ctx.stroke();
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#9fb0c0'; ctx.font = `600 ${Math.round(fs * 0.75)}px ui-monospace, Menlo, monospace`;
-    ctx.fillText('NOAA · CENTRE HALL · 3 DAYS', x + pad, y + pad);
+    ctx.fillText(`NOAA · ${placeName()} · 3 DAYS`, x + pad, y + pad);
     if (!days.length) { ctx.fillStyle = '#eef3f8'; ctx.font = `500 ${fs}px ui-monospace, Menlo, monospace`; ctx.fillText(wx.status === 'offline' ? 'Forecast unavailable' : 'Loading…', x + pad, y + pad + fs * 1.6); }
     const fit = (text, max) => { let s2 = text; while (s2.length > 3 && ctx.measureText(s2).width > max) s2 = s2.slice(0, -2); return s2 === text ? s2 : s2.trim() + '…'; };
     days.forEach((d, i) => {
@@ -641,7 +655,9 @@
       if (detail || !b || !(x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;
       slideDir = dx < 0 ? -1 : 1; return true;
     },
-    start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
+    start(context) { ctx = context; if (!this.started) { this.started = true;
+      if (window.Place) Place.onChange(p => { if (p.lat === LAT && p.lon === LON) return; LAT = p.lat; LON = p.lon; days = []; wx = Object.assign({}, wx, { status: 'loading' }); loadWeather(); loadAlerts(); });
+      loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
     debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail }),

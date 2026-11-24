@@ -5,6 +5,7 @@
 //             tapping the Christmas display: toot, Jingle Bells, icicles, silent)
 //   SCREENSAVER (V49) Christmas display or plain code rain, or Auto by the season (index.html)
 //   NIGHT CLOCK (V42) the hours the dim night clock covers the screen (nightclock.js)
+//   LOCATION (V66) where this iPad is, or Centre Hall, PA (place.js)
 //   AROUND PENNS VALLEY (V33) upcoming Penns Valley events, each with its source named
 //             and linked. Only the YMCA of Centre County's Penns Valley calendar
 //             (its public Events API, which a browser may read) works from this page; no
@@ -121,6 +122,9 @@
       ${window.NightClock ? `<h2>NIGHT CLOCK</h2>
       <p class="help">During these hours the screen becomes a big, dim clock. Tap it to wake the app for 5 minutes.</p>
       <div class="opts">${NightClock.options().map(o => `<button class="opt${o.id === NightClock.get() ? ' on' : ''}" data-night="${o.id}">${o.name}</button>`).join('')}</div>` : ''}
+      ${window.Place ? `<h2>LOCATION</h2>
+      <p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
+      <div class="opts">${Place.options().map(o => `<button class="opt${o.id === Place.mode() ? ' on' : ''}" data-place="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       ${localHtml()}
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
@@ -135,6 +139,7 @@
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
     if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }
+    if (b.dataset.place && window.Place) { Place.set(b.dataset.place); render(); }
     if (b.dataset.wild) { wild = b.dataset.wild; try { localStorage.setItem('risingcode_wildcard', wild); } catch (e2) {} render(); }
   });
 
