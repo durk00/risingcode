@@ -70,7 +70,7 @@ A My Corner choice (`verses.js`). Two or three King James verses picked for wher
 
 ## Screensaver choice
 
-Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, a starfield and a thin atmosphere, turning once about every 7 minutes. Remembered on the device.
+Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, a starfield and a thin atmosphere, turning once about every 7 minutes. The Earth is flying through a dust cloud (`debris.js`): a haze of fine dust drifts past, and rocks big and small tumble across the screen in every direction, often in groups of 1 to 5, some coming straight at you and growing as they come. Most pass behind the globe; now and then a big one sweeps past in front. Each rock is lit on the sun's side. Remembered on the device.
 
 ## Portrait screensaver
 
