@@ -287,17 +287,34 @@
       ctx.globalAlpha = clearness * (1 - light) * (0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t / 40 + s.p)));
       ctx.fillStyle = '#e9f1ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill();
     }
-    // Sun by day, moon by night, upper left, fading behind cloud.
-    const bx = W * 0.2, by = H * 0.17, br = Math.min(W, H) * 0.05;
-    const vis = Math.max(0, 1 - cover * 1.2);
-    if (vis > 0.02) {
-      ctx.globalAlpha = vis;
-      const glow = ctx.createRadialGradient(bx, by, 0, bx, by, br * (light > 0.5 ? 4 : 2.5));
-      glow.addColorStop(0, light > 0.5 ? 'rgba(255,240,200,0.9)' : 'rgba(220,230,245,0.35)');
+    // THE SUN AND MOON WHERE THEY REALLY ARE (V68): skypath.js works out each one's place in
+    // the sky for this iPad's location right now. The scene looks south: east is the left edge,
+    // west the right, the horizon is the hills, and higher in the sky is higher on the screen.
+    // So the sun comes up on the left at sunrise, arcs across and sets on the right; the moon
+    // does the same on its own schedule, and shows by day too, pale, when it's up. Both fade
+    // behind cloud. Previews (?time=day or night) keep the old fixed spot, upper left.
+    const br = Math.min(W, H) * 0.05, vis = Math.max(0, 1 - cover * 1.2), D = Math.PI / 180;
+    const place = (p) => {
+      const hz = H * 0.8, top = H * 0.07;
+      const y = p.alt >= 0 ? hz - Math.pow(Math.sin(p.alt * D), 0.7) * (hz - top) : hz - p.alt * H * 0.012;
+      return { x: W * (p.az - 45) / 270, y, alt: p.alt };
+    };
+    let bodies;
+    if (window.SkyPath && !previewTime) {
+      const now = Date.now(), s = SkyPath.sun(now, LAT, LON), m = SkyPath.moon(now, LAT, LON);
+      bodies = [];
+      if (m.alt > -3) bodies.push(Object.assign({ kind: 'moon' }, place(m)));
+      if (s.alt > -3) bodies.push(Object.assign({ kind: 'sun' }, place(s)));
+    } else bodies = [{ kind: light > 0.5 ? 'sun' : 'moon', x: W * 0.2, y: H * 0.17, alt: 45 }];
+    if (vis > 0.02) for (const b of bodies) {
+      const isSun = b.kind === 'sun', low = Math.max(0, Math.min(1, b.alt / 10));   // low = 0 at the horizon
+      ctx.globalAlpha = vis * (isSun ? 1 : 0.45 + 0.55 * (1 - light));            // a daytime moon is pale
+      const glow = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, br * (isSun ? 4 : 2.5));
+      glow.addColorStop(0, isSun ? (low < 1 ? `rgba(255,${190 + 50 * low | 0},${140 + 60 * low | 0},0.9)` : 'rgba(255,240,200,0.9)') : 'rgba(220,230,245,0.35)');
       glow.addColorStop(1, 'rgba(255,240,200,0)');
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(bx, by, br * 4, 0, 6.3); ctx.fill();
-      if (light > 0.5) { ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.3); ctx.fill(); }
-      else moon(bx, by, br * 0.8, '#e8eef6');                               // tonight's real phase
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(b.x, b.y, br * 4, 0, 6.3); ctx.fill();
+      if (isSun) { ctx.fillStyle = low < 1 ? `rgb(255,${200 + 46 * low | 0},${150 + 66 * low | 0})` : '#fff6d8'; ctx.beginPath(); ctx.arc(b.x, b.y, br, 0, 6.3); ctx.fill(); }
+      else moon(b.x, b.y, br * 0.8, '#e8eef6');                                    // tonight's real phase
       ctx.globalAlpha = 1;
     }
     // Clouds: puffy groups of circles drifting right to left; white by day, grey when heavy.
