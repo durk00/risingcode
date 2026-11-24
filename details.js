@@ -1,4 +1,7 @@
-// DETAILS (Nov 24, 2026): a third scene for Rising Code, one more swipe left past
+// DETAILS (Nov 24, 2026), laid out since V39 like a home weather station's indoor console
+// (outdoor temperature with feels-like and today's high/low, a wind compass, humidity and
+// dew point, pressure with its trend, rain chance, cloud cover, sunrise and sunset).
+// A third scene for Rising Code, one more swipe left past
 // Winter (swipe right to go back). The detailed NOAA weather for Centre Hall, PA:
 //
 //   RIGHT NOW   the latest reading from the nearest NOAA weather station:
@@ -42,17 +45,17 @@
 
   function makeSample() {
     const t0 = new Date(); t0.setMinutes(0, 0, 0);
-    const temp = [], dew = [], rh = [], pop = [], wind = [], gust = [];
+    const temp = [], dew = [], rh = [], pop = [], wind = [], gust = [], sky = [];
     for (let i = 0; i < HOURS; i++) {
       const hr = (t0.getHours() + i) % 24, day = Math.floor((t0.getHours() + i) / 24);
       const tt = 30 + day * 2 + 10 * Math.sin((hr - 9) / 24 * 2 * Math.PI);
       temp.push(tt); dew.push(tt - 8 - 6 * Math.sin((hr - 9) / 24 * 2 * Math.PI) + (day === 2 ? 7 : 0));
       rh.push(Math.max(25, Math.min(100, 68 - 32 * Math.sin((hr - 9) / 24 * 2 * Math.PI) + (day === 2 ? 25 : 0))));
       pop.push(day === 2 ? Math.min(90, 40 + hr * 2) : day === 1 && hr > 18 ? 25 : 5);
-      wind.push(6 + 5 * Math.sin(i / 7)); gust.push(14 + 7 * Math.sin(i / 7));
+      wind.push(6 + 5 * Math.sin(i / 7)); gust.push(14 + 7 * Math.sin(i / 7)); sky.push(day === 2 ? 90 : 30);
     }
-    return { t0: +t0, temp, dew, rh, pop, wind, gust,
-      now: { station: 'SAMPLE STATION', when: new Date(), temp: 31, words: 'Mostly Clear', rh: 72, dew: 23, wind: 5, gust: null, dir: 'NW', pressure: 30.12 } };
+    return { t0: +t0, temp, dew, rh, pop, wind, gust, sky, hi: 41, lo: 22,
+      now: { station: 'SAMPLE STATION', when: new Date(), temp: 31, words: 'Mostly Clear', rh: 72, dew: 23, wind: 9, gust: 17, dir: 'NW', deg: 315, pressure: 30.12, trend: 'RISING' } };
   }
 
   const compass = (deg) => deg === null || deg === undefined ? '' : ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8];
@@ -68,7 +71,12 @@
       const g = grid.properties, t0d = new Date(); t0d.setMinutes(0, 0, 0); const t0 = +t0d;
       const d = { t0,
         temp: hourly(g.temperature, t0, cToF), dew: hourly(g.dewpoint, t0, cToF), rh: hourly(g.relativeHumidity, t0),
-        pop: hourly(g.probabilityOfPrecipitation, t0), wind: hourly(g.windSpeed, t0, kmhToMph), gust: hourly(g.windGust, t0, kmhToMph), now: null };
+        pop: hourly(g.probabilityOfPrecipitation, t0), wind: hourly(g.windSpeed, t0, kmhToMph), gust: hourly(g.windGust, t0, kmhToMph),
+        sky: hourly(g.skyCover, t0), now: null, hi: null, lo: null };
+      // Today's high and low (V39), from NOAA's daily max/min for today's date.
+      const today = new Date().toDateString();
+      const daily = (series) => { for (const v of (series && series.values) || []) { const st = new Date(v.validTime.split('/')[0]); const mid = new Date(+st + hoursOf(v.validTime.split('/')[1]) * 1800e3); if (mid.toDateString() === today) return cToF(v.value); } return null; };
+      d.hi = daily(g.maxTemperature); d.lo = daily(g.minTemperature);
       // RIGHT NOW (V38): the nearest station sometimes has no recent reading, or blanks
       // for some values. Try the nearest few and take the first with a temperature from
       // the last 3 hours; fill any blanks from this hour of the forecast; and if no
@@ -76,20 +84,26 @@
       const hour = { temp: d.temp[0], rh: d.rh[0], dew: d.dew[0], wind: d.wind[0], gust: d.gust[0] };
       for (const st of (stations.features || []).slice(0, 5)) {
         try {
-          const o = (await (await fetch(`https://api.weather.gov/stations/${st.properties.stationIdentifier}/observations/latest`)).json()).properties;
+          // The last several readings (V39), so pressure can show which way it's heading.
+          const list = ((await (await fetch(`https://api.weather.gov/stations/${st.properties.stationIdentifier}/observations?limit=8`)).json()).features || []).map(f => f.properties);
+          const o = list.find(x => x && x.temperature && x.temperature.value !== null);
           const when = new Date(o.timestamp);
+          const pNow = o.barometricPressure && o.barometricPressure.value;
+          const old = list.find(x => x && x.barometricPressure && x.barometricPressure.value && new Date(o.timestamp) - new Date(x.timestamp) >= 2.5 * 3600e3);
+          const dp = pNow && old ? (pNow - old.barometricPressure.value) / 3386.39 : null;
+          const trend = dp === null ? '' : dp > 0.02 ? 'RISING' : dp < -0.02 ? 'FALLING' : 'STEADY';
           if (!o || o.temperature.value === null || Date.now() - when > 3 * 3600e3) continue;
           const val = (x) => (x && x.value !== null && x.value !== undefined ? x.value : null);
           d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when,
             temp: cToF(val(o.temperature)), words: o.textDescription || '',
             rh: val(o.relativeHumidity) ?? hour.rh, dew: val(o.dewpoint) !== null ? cToF(val(o.dewpoint)) : hour.dew,
             wind: val(o.windSpeed) !== null ? kmhToMph(val(o.windSpeed)) : hour.wind, gust: val(o.windGust) !== null ? kmhToMph(val(o.windGust)) : hour.gust,
-            dir: compass(val(o.windDirection)), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null };
+            dir: compass(val(o.windDirection)), deg: val(o.windDirection), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null, trend };
           break;
         } catch (e) { /* try the next station */ }
       }
       if (!d.now && hour.temp !== null) {
-        d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', pressure: null };
+        d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', deg: null, pressure: null, trend: '' };
       }
       data = d; status = 'ok';
     } catch (e) { status = data ? 'ok' : 'offline'; }
@@ -100,27 +114,98 @@
   const font = (w, px) => `${w} ${Math.round(px)}px ui-monospace, Menlo, monospace`;
   const fmt = (v, unit, digits = 0) => v === null || v === undefined || isNaN(v) ? '—' : v.toFixed(digits) + unit;
 
-  function rightNow(x, y, w, h, fs) {
-    const n = data && data.now;
-    ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.8); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText('RIGHT NOW' + (n ? ` · ${n.station} · ${n.when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).toUpperCase()}` : ''), x, y);
-    if (!n) { ctx.fillStyle = C.text; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA unavailable' : status === 'loading' ? 'Loading…' : 'No station reading right now', x, y + fs * 1.6); return; }
-    ctx.fillStyle = C.text; ctx.font = font(800, fs * 3.2);
-    const t = fmt(n.temp, '°F'); ctx.fillText(t, x, y + fs * 1.3);
-    const tw = ctx.measureText(t).width + fs * 1.5;
-    ctx.font = font(600, fs * 1.1); ctx.fillText(n.words, x + tw, y + fs * 1.5);
-    const items = [['HUMIDITY', fmt(n.rh, '%')], ['DEW POINT', fmt(n.dew, '°F')],
-      ['WIND', n.wind === null ? '—' : `${n.dir} ${fmt(n.wind, '')} MPH`], ['GUSTS', fmt(n.gust, ' MPH')], ['PRESSURE', fmt(n.pressure, ' IN', 2)]];
-    // Five readings in a row, or two rows of three on a narrow screen.
-    const perRow = (w - tw) / items.length < fs * 7.5 ? 3 : items.length, colW = (w - tw) / perRow;
-    items.forEach(([k, v], i) => {
-      const cxx = x + tw + (i % perRow) * colW, ry = y + fs * 3.1 + Math.floor(i / perRow) * fs * 2.1 - (perRow < items.length ? fs * 0.6 : 0);
-      ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.72); ctx.fillText(k, cxx, ry);
-      ctx.fillStyle = C.text; ctx.font = font(700, fs * 1.05); ctx.fillText(v, cxx, ry + fs * 0.9);
-    });
+  // ---- the console (V39): laid out like a home weather station's indoor display ----
+  // Feels like: wind chill when it's cold and breezy, heat index when it's hot.
+  function feelsLike(t, rh, v) {
+    if (t === null) return null;
+    if (t <= 50 && v !== null && v > 3) return 35.74 + 0.6215 * t - 35.75 * Math.pow(v, 0.16) + 0.4275 * t * Math.pow(v, 0.16);
+    if (t >= 80 && rh !== null) return -42.379 + 2.04901523 * t + 10.14333127 * rh - 0.22475541 * t * rh - 0.00683783 * t * t - 0.05481717 * rh * rh + 0.00122874 * t * t * rh + 0.00085282 * t * rh * rh - 0.00000199 * t * t * rh * rh;
+    return t;
+  }
+  // Sunrise and sunset for Centre Hall, worked out on the device (the standard almanac method).
+  function sunTime(rise) {
+    const rad = Math.PI / 180, d = new Date(), N = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), lh = LON / 15;
+    const t = N + ((rise ? 6 : 18) - lh) / 24, M = 0.9856 * t - 3.289;
+    const L = (M + 1.916 * Math.sin(M * rad) + 0.020 * Math.sin(2 * M * rad) + 282.634 + 360) % 360;
+    let RA = (Math.atan(0.91764 * Math.tan(L * rad)) / rad + 360) % 360;
+    RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+    const sinDec = 0.39782 * Math.sin(L * rad), cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(LAT * rad)) / (cosDec * Math.cos(LAT * rad));
+    const Hh = (rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15;
+    const UT = (Hh + RA - 0.06571 * t - 6.622 - lh + 48) % 24;
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + UT * 3600e3);
+  }
+  const clock = (dt) => dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).toUpperCase();
+  function tile(x, y, w, h, fs, label) {
+    ctx.fillStyle = C.panel; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, fs * 0.5); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = font(700, fs * 0.72); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(label, x + fs * 0.7, y + fs * 0.55);
+  }
+  function big(text, x, y, px, weight = 800, color = C.text, align = 'left') {
+    ctx.fillStyle = color; ctx.font = font(weight, px); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, x, y);
+  }
+  function consoleTiles(x, y, w, h, fs) {
+    const n = (data && data.now) || {};
+    const gap = fs * 0.6, row1 = h * 0.62, row2 = h - row1 - gap;
+    // Row 1: outdoor temperature (wide), wind compass, humidity.
+    const w1 = (w - gap * 2) * 0.42, w2 = (w - gap * 2) * 0.3, w3 = (w - gap * 2) * 0.28;
+    tile(x, y, w1, row1, fs, 'OUTDOOR');
+    big(fmt(n.temp, '°F'), x + fs * 0.8, y + row1 * 0.62, Math.min(row1 * 0.42, w1 * 0.3));
+    ctx.fillStyle = C.text; ctx.font = font(600, fs); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const fl = feelsLike(n.temp, n.rh, n.wind);
+    ctx.fillText(`FEELS LIKE ${fmt(fl, '°F')}`, x + fs * 0.8, y + row1 * 0.78);
+    ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.85);
+    ctx.fillText(`TODAY HIGH ${fmt(data.hi, '°F')}  LOW ${fmt(data.lo, '°F')}`, x + fs * 0.8, y + row1 * 0.92);
+    if (n.words) { ctx.textAlign = 'right'; ctx.fillStyle = C.text; ctx.font = font(600, fs * 0.85); ctx.textBaseline = 'top'; ctx.fillText(n.words.toUpperCase(), x + w1 - fs * 0.7, y + fs * 0.55); }
+    // Wind: a compass ring, the arrowhead on the side the wind comes FROM, speed and gust inside.
+    const wx = x + w1 + gap; tile(wx, y, w2, row1, fs, 'WIND');
+    const cx = wx + w2 / 2, cy = y + row1 * 0.56, r = Math.min(w2 * 0.36, row1 * 0.36);
+    ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.3); ctx.stroke();
+    for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; const r2 = k % 4 ? r * 0.93 : r * 0.86; ctx.beginPath(); ctx.moveTo(cx + Math.sin(a) * r, cy - Math.cos(a) * r); ctx.lineTo(cx + Math.sin(a) * r2, cy - Math.cos(a) * r2); ctx.stroke(); }
+    ctx.fillStyle = C.dim; ctx.font = font(700, fs * 0.7); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([l, a]) => ctx.fillText(l, cx + Math.sin(a * Math.PI / 180) * (r + fs * 0.75), cy - Math.cos(a * Math.PI / 180) * (r + fs * 0.75)));
+    if (n.deg !== null && n.deg !== undefined) {
+      const a = n.deg * Math.PI / 180, tipX = cx + Math.sin(a) * r * 0.82, tipY = cy - Math.cos(a) * r * 0.82;
+      ctx.fillStyle = '#ffffff'; ctx.beginPath();
+      ctx.moveTo(cx + Math.sin(a) * r * 1.05, cy - Math.cos(a) * r * 1.05);
+      ctx.lineTo(tipX + Math.cos(a) * r * 0.12, tipY + Math.sin(a) * r * 0.12);
+      ctx.lineTo(tipX - Math.cos(a) * r * 0.12, tipY - Math.sin(a) * r * 0.12); ctx.closePath(); ctx.fill();
+    }
+    big(n.wind === null || n.wind === undefined ? '—' : `${Math.round(n.wind)}`, cx, cy + fs * 0.4, r * 0.62, 800, C.text, 'center');
+    ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.7); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(`MPH ${n.dir || ''}`.trim(), cx, cy + fs * 0.65);
+    ctx.fillText(`GUST ${n.gust === null || n.gust === undefined ? '—' : Math.round(n.gust)}`, cx, cy + fs * 1.5);
+    // Humidity and dew point.
+    const hx = wx + w2 + gap; tile(hx, y, w3, row1, fs, 'HUMIDITY');
+    big(fmt(n.rh, '%'), hx + fs * 0.8, y + row1 * 0.5, Math.min(row1 * 0.3, w3 * 0.3));
+    ctx.fillStyle = C.dim; ctx.font = font(700, fs * 0.72); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('DEW POINT', hx + fs * 0.8, y + row1 * 0.62);
+    big(fmt(n.dew, '°F'), hx + fs * 0.8, y + row1 * 0.62 + fs * 2.4, fs * 1.8, 700);
+    // Row 2: pressure with its trend, rain chance today, cloud cover now, sun.
+    const y2 = y + row1 + gap, w4 = (w - gap * 3) / 4;
+    const small = (i, label, value, sub) => {
+      const tx = x + i * (w4 + gap); tile(tx, y2, w4, row2, fs, label);
+      let px = Math.min(row2 * 0.36, fs * 2.2);
+      ctx.font = font(800, px); while (px > 8 && ctx.measureText(value).width > w4 - fs * 1.4) { px -= 1; ctx.font = font(800, px); }   // shrink to fit narrow tiles
+      big(value, tx + fs * 0.8, y2 + row2 * 0.66, px, 800);
+      if (sub) { ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.72); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(sub, tx + fs * 0.8, y2 + row2 * 0.9); }
+    };
+    const arrow = { RISING: ' ↑', FALLING: ' ↓', STEADY: ' →' }[n.trend] || '';
+    small(0, 'PRESSURE', fmt(n.pressure, ' IN', 2) + arrow, n.trend || '');
+    const todayLeft = 24 - new Date(data.t0).getHours();
+    const popToday = Math.max(0, ...data.pop.slice(0, todayLeft).filter(v => v !== null));
+    small(1, 'RAIN CHANCE TODAY', `${Math.round(popToday)}%`, 'NOAA FORECAST');
+    small(2, 'CLOUD COVER', fmt(data.sky ? data.sky[0] : null, '%'), 'THIS HOUR');
+    // Sun: sunrise and sunset on two lines so they fit.
+    { const tx = x + 3 * (w4 + gap); tile(tx, y2, w4, row2, fs, 'SUNRISE · SUNSET');
+      const px = Math.min(row2 * 0.24, fs * 1.6);
+      big('↑ ' + clock(sunTime(true)), tx + fs * 0.8, y2 + row2 * 0.55, px, 800);
+      big('↓ ' + clock(sunTime(false)), tx + fs * 0.8, y2 + row2 * 0.55 + px * 1.25, px, 800); }
   }
 
   function strip(x, y, w, h, fs, title, series, opts) {
+    let lastLabelY = null;
     ctx.fillStyle = C.panel; ctx.fillRect(x, y, w, h);
     const pl = fs * 3.2, pr = fs * 5.2, pt = fs * 1.5, pb = fs * 0.5;
     const cx = x + pl, cw = w - pl - pr, cy = y + pt, ch = h - pt - pb;
@@ -159,7 +244,9 @@
       const lastI = s.v.map((v, i) => v === null ? -1 : i).filter(i => i >= 0).pop();
       if (lastI !== undefined && lastI >= 0) {
         ctx.fillStyle = s.bars ? C.bar : s.color; ctx.font = font(700, fs * 0.7); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        const ly = Math.max(cy + fs * 0.5, Math.min(cy + ch - fs * 0.5, Y(s.v[lastI]) + (s.nudge || 0) * fs));
+        let ly = Math.max(cy + fs * 0.5, Math.min(cy + ch - fs * 0.5, Y(s.v[lastI]) + (s.nudge || 0) * fs));
+        if (lastLabelY !== null && Math.abs(ly - lastLabelY) < fs * 0.9) ly = lastLabelY + (ly >= lastLabelY ? 1 : -1) * fs * 0.9;   // keep two labels from overlapping
+        lastLabelY = ly;
         ctx.fillText(s.label, cx + cw + fs * 0.5, ly);
       }
     }
@@ -171,21 +258,29 @@
     if (!data && status === 'loading' && !lastLoad) load();
     if (Date.now() - lastLoad > 3600e3) load();
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    const fs = Math.max(11, Math.min(18, Math.round(Math.min(W, H) / 44)));
-    const m = Math.max(16, W * 0.03);
-    ctx.fillStyle = C.text; ctx.font = font(800, fs * 1.1); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(sample ? 'WEATHER DETAILS · SAMPLE NUMBERS' : 'WEATHER DETAILS · NOAA · CENTRE HALL', m, m * 0.7);
-    if (!data) { ctx.fillStyle = C.dim; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA forecast unavailable right now.' : 'Loading…', m, m * 0.7 + fs * 2.4); return; }
-    const top = m * 0.7 + fs * 2.2;
-    rightNow(m, top, W - m * 2, fs * 5.5, fs);
-    const chartsTop = top + fs * 6.6, gap = fs * 0.5, n = 4;
-    const sh = (H - chartsTop - m - fs * 1.6 - gap * (n - 1)) / n, sw = W - m * 2;
-    let geo = null;
-    geo = strip(m, chartsTop, sw, sh, fs, 'TEMPERATURE AND DEW POINT', [
+    const fs = Math.max(11, Math.min(18, Math.round(Math.min(W, H) / 46)));
+    const m = Math.max(14, W * 0.025);
+    // Header: name on the left, the date and time on the right, like the console's top line.
+    ctx.fillStyle = C.text; ctx.font = font(800, fs * 1.05); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(sample ? 'WEATHER STATION · SAMPLE NUMBERS' : 'WEATHER STATION · CENTRE HALL', m, m * 0.6);
+    const nowD = new Date(), title = sample ? 'WEATHER STATION · SAMPLE NUMBERS' : 'WEATHER STATION · CENTRE HALL';
+    const stamp = nowD.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase() + '  ' + clock(nowD);
+    const narrow = ctx.measureText(title).width + ctx.measureText(stamp).width + fs * 2 > W - m * 2;   // on a phone the date goes under the name
+    ctx.textAlign = narrow ? 'left' : 'right'; ctx.fillText(stamp, narrow ? m : W - m, m * 0.6 + (narrow ? fs * 1.4 : 0));
+    if (!data) { ctx.textAlign = 'left'; ctx.fillStyle = C.dim; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA forecast unavailable right now.' : 'Loading…', m, m * 0.6 + fs * 2.4); return; }
+    const n = data.now;
+    ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.72); ctx.textAlign = 'right';
+    if (n) ctx.fillText(`READING: ${n.station} · ${clock(n.when)}`, W - m, m * 0.6 + fs * (narrow ? 2.8 : 1.5));
+    const top = m * 0.6 + fs * (narrow ? 4.1 : 2.8), sw = W - m * 2;
+    const consoleH = Math.min(H * 0.45, sw * 0.42);
+    consoleTiles(m, top, sw, consoleH, fs);
+    const chartsTop = top + consoleH + fs * 0.9, gap = fs * 0.4, k = 4;
+    const sh = (H - chartsTop - m * 0.6 - fs * 1.5 - gap * (k - 1)) / k;
+    const geo = strip(m, chartsTop, sw, sh, fs, 'NEXT 3 DAYS · TEMPERATURE AND DEW POINT', [
       { v: data.temp, color: C.line, label: 'TEMP' },
       { v: data.dew, color: C.line2, dash: [7, 5], label: 'DEW PT', nudge: 0.8 },
     ], { unit: '°F' });
-    strip(m, chartsTop + (sh + gap), sw, sh, fs, `HUMIDITY · SHADED: DRYING HOURS (UNDER ${DRY_RH}% AND UNDER ${DRY_POP}% CHANCE OF RAIN)`, [
+    strip(m, chartsTop + (sh + gap), sw, sh, fs, `HUMIDITY · SHADED: DRYING HOURS (UNDER ${DRY_RH}%, UNDER ${DRY_POP}% RAIN CHANCE)`, [
       { v: data.rh, color: C.line, label: 'HUMIDITY' },
     ], { unit: '%', min: 0, max: 100, shade: (i) => data.rh[i] !== null && data.rh[i] < DRY_RH && (data.pop[i] || 0) < DRY_POP });
     strip(m, chartsTop + (sh + gap) * 2, sw, sh, fs, 'CHANCE OF RAIN OR SNOW', [
@@ -195,15 +290,13 @@
       { v: data.wind, color: C.line, label: 'WIND' },
       { v: data.gust, color: C.line2, dash: [2, 4], width: 2.6, label: 'GUSTS', nudge: -0.8 },
     ], { unit: ' MPH', min: 0, max: Math.max(20, Math.ceil(Math.max(...data.gust.concat(data.wind).filter(v => v !== null)) / 10) * 10 + 5) });
-    // Shared time line along the bottom: day names at midnight, then 6 AM / noon / 6 PM.
-    const by = chartsTop + (sh + gap) * 4 - gap + fs * 0.4;
+    const by = chartsTop + (sh + gap) * k - gap + fs * 0.35;
     ctx.textBaseline = 'top'; ctx.textAlign = 'center';
     for (let i = 0; i < HOURS; i++) {
-      const dt = new Date(data.t0 + i * 3600e3), hr = dt.getHours();
-      const x = geo.X(i);
-      if (i === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.7); ctx.textAlign = 'left'; ctx.fillText('NOW', x, by); ctx.textAlign = 'center'; continue; }
-      if (hr === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.72); ctx.fillText(dt.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase(), x, by); }
-      else if (hr === 12 && i > 3) { ctx.fillStyle = C.dim; ctx.font = font(500, fs * 0.65); ctx.fillText('NOON', x, by); }
+      const dt = new Date(data.t0 + i * 3600e3), hr = dt.getHours(), x = geo.X(i);
+      if (i === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.68); ctx.textAlign = 'left'; ctx.fillText('NOW', x, by); ctx.textAlign = 'center'; continue; }
+      if (hr === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.7); ctx.fillText(dt.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase(), x, by); }
+      else if (hr === 12 && i > 3) { ctx.fillStyle = C.dim; ctx.font = font(500, fs * 0.62); ctx.fillText('NOON', x, by); }
     }
   }
 
