@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree and a pulsing star"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · TREE V2</div>
+<div id="hint">TAP FOR FULL SCREEN · TREE V3</div>
 
 <script>
 (() => {
@@ -134,13 +134,15 @@
         if (inside) mask[r * cols + c] = 1;
       }
     }
-    // 2 marks an edge cell: inside, with a neighbor outside.
+    // 2 marks an outline cell: inside, within two cells of the outside. That makes
+    // the outline two characters thick, like a line drawn with a heavier pen (Nov 23).
     tree = new Uint8Array(cols * (rows + 1));
     treeBase = new Array(cols * (rows + 1));
     const at = (c, r) => c >= 0 && c < cols && r >= 0 && r <= rows && mask[r * cols + c] === 1;
     for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
       if (!at(c, r)) continue;
-      const edge = !at(c - 1, r) || !at(c + 1, r) || !at(c, r - 1) || !at(c, r + 1);
+      const edge = !at(c - 1, r) || !at(c + 1, r) || !at(c, r - 1) || !at(c, r + 1)
+        || !at(c - 2, r) || !at(c + 2, r) || !at(c, r - 2) || !at(c, r + 2);
       tree[r * cols + c] = edge ? 2 : 1;
       treeBase[r * cols + c] = pick();
     }
