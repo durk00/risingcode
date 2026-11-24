@@ -5,6 +5,8 @@
 //   - the real day and night: the sunlit half is bright and the night half dim, with the
 //     terminator where it actually is right now (from the date and time)
 //   - a starfield behind, and a thin blue atmosphere rim
+//   - V61: the night side in night vision: green phosphor land and sea, and the city lights
+//     glowing where the people are (lights.js, from real city populations)
 //   - flying through a dust cloud: dust and tumbling rocks in every direction (debris.js)
 (() => {
   const MW = 180, MH = 90;
@@ -45,6 +47,45 @@
     return [x, y * Math.cos(TILT) - z * Math.sin(TILT), y * Math.sin(TILT) + z * Math.cos(TILT)];
   }
 
+  // The city lights themselves (V61): a fine dot for every lit 1-degree square on the night
+  // side, brighter for bigger places, with a soft glow around the biggest. They fade in across
+  // the line between day and night, the way the lights come on at dusk.
+  // The green phosphor glow of night vision over the dark half (V61): worked out on a small
+  // 64 by 64 map of the globe a few times a second, then drawn smooth under the code.
+  let glowMap = null, glowAge = 0;
+  function nightGlow(cx, cy, R, sun) {
+    const N = 64;
+    if (!glowMap) { glowMap = document.createElement('canvas'); glowMap.width = glowMap.height = N; glowAge = 0; }
+    if (glowAge-- <= 0) {
+      glowAge = 15;
+      const g = glowMap.getContext('2d'), img = g.createImageData(N, N), cT = Math.cos(TILT), sT = Math.sin(TILT);
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const nx = (i + 0.5) / N * 2 - 1, ny = 1 - (j + 0.5) / N * 2, q = Math.min(1, nx * nx + ny * ny), nz = Math.sqrt(1 - q);
+        const wy = ny * cT + nz * sT, wz = -ny * sT + nz * cT;
+        const lat = Math.asin(Math.max(-1, Math.min(1, wy))), lon = Math.atan2(nx, wz) + spin;
+        const n = vec(lat, lon), light = n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2];
+        const night = 1 - Math.max(0, Math.min(1, (light + 0.08) / 0.16)), k = (j * N + i) * 4;
+        img.data[k] = 10; img.data[k + 1] = 48; img.data[k + 2] = 24; img.data[k + 3] = 255 * night * (0.45 + 0.4 * nz);
+      }
+      g.putImageData(img, 0, 0);
+    }
+    ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true; ctx.drawImage(glowMap, cx - R, cy - R, R * 2, R * 2);
+  }
+  function cityLights(cx, cy, R, sun) {
+    if (!window.CityLights) return;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.3); ctx.clip();
+    for (const s of CityLights.spots) {
+      const v = toView(s.lat, s.lon); if (v[2] < 0.04) continue;
+      const n = vec(s.lat, s.lon), light = n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2];
+      const night = 1 - Math.max(0, Math.min(1, (light + 0.08) / 0.16)); if (night < 0.05) continue;
+      const x = cx + v[0] * R, y = cy - v[1] * R, b = s.b, edge = 0.45 + 0.55 * v[2];
+      ctx.globalAlpha = Math.min(1, night * edge * (0.4 + 0.8 * b)); ctx.fillStyle = b > 0.6 ? '#fbfff2' : '#d8ffc8';
+      const d = (1.2 + 3.2 * b * b) * edge; ctx.fillRect(x - d / 2, y - d / 2, d, d);
+      if (b > 0.6) { ctx.globalAlpha = night * edge * 0.16; ctx.fillStyle = '#cfffb8'; ctx.beginPath(); ctx.arc(x, y, d * 2.6, 0, 6.3); ctx.fill(); }
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+
   function draw() {
     t++; spin -= 0.0005;                          // one turn in about 7 minutes, eastward like the real thing
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -62,6 +103,8 @@
     ctx.fillStyle = '#02060b'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.3); ctx.fill();
     ctx.font = `${cell}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const cT = Math.cos(TILT), sT = Math.sin(TILT);
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.3); ctx.clip();
+    nightGlow(cx, cy, R, sun);
     for (let c = 0; c < cols; c++) {
       const x = c * cell + cell / 2, nx = (x - cx) / R; if (Math.abs(nx) > 1) continue;
       const st = streams[c], headRow = Math.floor(st.head);
@@ -77,15 +120,23 @@
         const day = Math.max(0, Math.min(1, (light + 0.08) / 0.16));      // a soft line between day and night
         const k = r - headRow, inTrail = k >= 0 && k < st.len, fade = inTrail ? 1 - k / st.len : 0;
         // Land and ice stand out even between streams, so the continents always read.
-        const a = ((isLand || ice ? 0.68 : 0.15) + 0.7 * fade * fade) * (0.55 + 0.45 * nz) * (0.22 + 0.78 * day);
+        // Night vision (V61): the dark side stays readable in phosphor green instead of fading out,
+        // and where there are cities the code lights up.
+        const night = 1 - day, nv = night > 0.5;
+        let a = ((isLand || ice ? 0.68 : nv ? 0.26 : 0.15) + 0.7 * fade * fade) * (0.55 + 0.45 * nz) * (0.38 + 0.62 * day);
+        const city = night > 0.05 && window.CityLights ? CityLights.at(latD, lonD) * night : 0;
+        if (city > 0.04) a = Math.max(a, (0.3 + 0.7 * city) * (0.6 + 0.4 * nz));
         ctx.globalAlpha = Math.min(1, a);
-        ctx.fillStyle = k === 0 ? '#ffffff' : ice ? '#e6f2ff' : isLand ? '#46d884' : '#3f8fe0';
+        ctx.fillStyle = k === 0 ? (nv ? '#e9ffe0' : '#ffffff') : city > 0.04 ? (city > 0.5 ? '#f6ffe6' : '#c8ffb8')
+          : nv ? (ice ? '#c9f5d4' : isLand ? '#4ee07a' : '#1f7a4c') : ice ? '#e6f2ff' : isLand ? '#46d884' : '#3f8fe0';
         ctx.fillText(glyph[r * cols + c], x, y);
       }
       st.head -= st.speed;
       if (st.head + st.len < 0) { st.head = rows + Math.random() * rows * 0.5; st.speed = 0.12 + Math.random() * 0.25; st.len = 12 + ((Math.random() * 28) | 0); }
     }
+    ctx.restore();
     for (let i = 0; i < 20; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
+    cityLights(cx, cy, R, sun);
     if (window.Debris) Debris.front(ctx);
     ctx.globalAlpha = 1;
   }
