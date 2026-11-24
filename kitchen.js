@@ -79,6 +79,7 @@
     padding: calc(28px + env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 48px max(24px, env(safe-area-inset-left, 0px)); }
   #kitchen.show { display: block; }
   #kitchen .wrap { max-width: 720px; margin: 0 auto; }
+  #kitchen .back { margin-bottom: 14px; padding: 10px 16px; font-size: 15px; }
   #kitchen h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 4px; }
   #kitchen p.sub { color: #93a4b4; font-size: 13px; margin: 0 0 18px; }
   #kitchen .row { display: flex; gap: 10px; }
@@ -95,7 +96,7 @@
   #kitchen .msg { margin-top: 16px; color: #93a4b4; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   const el = document.createElement('div'); el.id = 'kitchen'; el.setAttribute('aria-hidden', 'true');
-  el.innerHTML = `<div class="wrap"><h1>KITCHEN</h1>
+  el.innerHTML = `<div class="wrap"><button type="button" class="back" aria-label="Back to weather details">← Back</button><h1>KITCHEN</h1>
     <p class="sub">Use my ingredients: list what you have, separated by commas.</p>
     <form class="row" autocomplete="off"><input id="kitchen-in" type="text" placeholder="eggs, rice, spinach…" aria-label="Ingredients you have"><button type="submit">Find meals</button></form>
     <div id="kitchen-out" aria-live="polite"></div></div>`;
@@ -114,6 +115,6 @@
       <p class="steps">${esc(m.steps)}</p></div>`).join('') +
       '<p class="msg">Ideas come from a short built-in recipe list, not from AI or the web, so treat them as starting points.</p>';
   });
-  el.addEventListener('click', (e) => e.stopPropagation());     // Kitchen taps never reach the scenes
-  window.Kitchen = { show(on) { el.classList.toggle('show', !!on); el.setAttribute('aria-hidden', on ? 'false' : 'true'); if (!on) input.blur(); }, suggest, RECIPES, STAPLES };
+  el.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('.back') && window.Kitchen && Kitchen.onBack) Kitchen.onBack(); });     // Kitchen taps never reach the scenes
+  window.Kitchen = { onBack: null, show(on) { el.classList.toggle('show', !!on); el.setAttribute('aria-hidden', on ? 'false' : 'true'); if (!on) input.blur(); }, suggest, RECIPES, STAPLES };
 })();
