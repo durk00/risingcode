@@ -70,4 +70,8 @@ A My Corner choice (`verses.js`). Two or three King James verses picked for wher
 
 ## Screensaver choice
 
-Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, Centre Hall marked with an amber pulse, a starfield and a thin atmosphere, turning once about every 7 minutes. Remembered on the device.
+Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through January 6, plain code rain the rest of the year), **Christmas** all year, **Code rain**: the same rising blue, green and white code with no tree, star, Santa, radar or sounds; or **Earth** (`earth.js`): the globe drawn in rising code with real continents (a built-in 2-degree land map; oceans blue, land green, ice white), the real day and night line for the current date and time, a starfield and a thin atmosphere, turning once about every 7 minutes. Remembered on the device.
+
+## Portrait screensaver
+
+Menu → SCREENSAVER → **Portrait** (`face.js`): an AI's face in amber code, facing the viewer: head, neck and shoulders with rounded shading, the outline, brows, nose and a slight smile picked out brighter, shadowed eye sockets, and big glowing eyes where the code runs fastest. The face and the eyes each change pace at random (slow, steady, fast), holding each for 1 to 5 minutes. Faint dark-blue code drifts behind.
