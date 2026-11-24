@@ -311,10 +311,14 @@
     ctx.fillStyle = tone('#2b3646', '#6e4a3a'); ctx.fillRect(ch.x, ch.top, ch.w, roofY(ch.x + ch.w) - ch.top + 2);   // chimney
     ctx.fillStyle = tone('#3a4657', '#82604e'); ctx.fillRect(ch.x - 2, ch.top - 3, ch.w + 4, 4);
     const flick = 0.85 + 0.15 * Math.sin(t / 23) * Math.sin(t / 7);                    // firelight
-    const lit = (1 - light) * flick + light * 0.45;
+    const lit = (1 - light) * flick;   // V45: by day the lights are off: dark glass; at night they glow
     const win = (wx0, wy, ww, wh) => {
       ctx.fillStyle = mix('#33414f', '#ffd68a', lit); ctx.shadowColor = '#ffcf7a'; ctx.shadowBlur = ww * 0.6 * (1 - light);
       ctx.fillRect(wx0, wy, ww, wh); ctx.shadowBlur = 0;
+      if (light > 0.3) {                         // a faint daylight reflection across the dark glass
+        ctx.save(); ctx.globalAlpha = 0.18 * light; ctx.fillStyle = '#dfe8f1';
+        ctx.beginPath(); ctx.moveTo(wx0, wy + wh * 0.55); ctx.lineTo(wx0 + ww * 0.55, wy); ctx.lineTo(wx0 + ww * 0.8, wy); ctx.lineTo(wx0, wy + wh * 0.9); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
       ctx.strokeStyle = tone('#121822', '#efe6da'); ctx.lineWidth = Math.max(1, ww * 0.08);
       ctx.strokeRect(wx0, wy, ww, wh);
       ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy); ctx.lineTo(wx0 + ww / 2, wy + wh); ctx.moveTo(wx0, wy + wh / 2); ctx.lineTo(wx0 + ww, wy + wh / 2); ctx.stroke();
