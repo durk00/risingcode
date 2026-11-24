@@ -130,7 +130,7 @@
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
       ${wild === 'verses' ? versesHtml() : ''}
-      <footer>SWIPE UP OR TAP ✕ TO CLOSE</footer></div>`;
+      <footer>TAP ✕ TO CLOSE, OR AT THE BOTTOM GIVE IT A GOOD SWIPE UP</footer></div>`;
   }
   el.addEventListener('click', (e) => {
     e.stopPropagation();                         // menu taps never reach the scenes
