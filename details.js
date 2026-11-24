@@ -183,7 +183,16 @@
     // Row 1: outdoor temperature (wide), wind compass, humidity.
     const w1 = (w - gap * 2) * 0.42, w2 = (w - gap * 2) * 0.3, w3 = (w - gap * 2) * 0.28;
     tile(x, y, w1, row1, fs, 'OUTDOOR');
-    big(fmt(n.temp, '°F'), x + fs * 0.8, y + row1 * 0.62, Math.min(row1 * 0.42, w1 * 0.3));
+    // V67: the temperature and the weather icon share the top of the tile without touching;
+    // on a narrow tile (an iPad standing up) the number gets a little smaller to make room.
+    const iconR = Math.min(row1 * 0.2, w1 * 0.13), tempText = fmt(n.temp, '°F');
+    let tempPx = Math.min(row1 * 0.42, w1 * 0.3);
+    ctx.font = font(800, tempPx);
+    const room = w1 - fs * 0.8 - iconR * 2.6 - fs * 0.6, tw = ctx.measureText(tempText).width;
+    if (tw > room) tempPx *= room / tw;
+    ctx.font = font(800, tempPx);
+    const iconX = Math.max(x + w1 * 0.8, x + fs * 0.8 + ctx.measureText(tempText).width + iconR * 1.5);
+    big(tempText, x + fs * 0.8, y + row1 * 0.62, tempPx);
     ctx.fillStyle = C.text; ctx.font = font(600, fs); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     const fl = feelsLike(n.temp, n.rh, n.wind);
     ctx.fillText(`FEELS LIKE ${fmt(fl, '°F')}`, x + fs * 0.8, y + row1 * 0.78);
@@ -197,7 +206,7 @@
       const sky = data.sky ? data.sky[0] : null, pop = data.pop ? data.pop[0] : 0;
       const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 50 ? 'Partly Cloudy' : 'Clear');
       const nowT = new Date(), night = nowT < sunTime(true) || nowT > sunTime(false);
-      if (words) amberIcon(words, night, x + w1 * 0.8, y + row1 * 0.47, Math.min(row1 * 0.2, w1 * 0.13));
+      if (words) amberIcon(words, night, Math.min(iconX, x + w1 - iconR * 1.2), y + row1 * 0.47, iconR);
     }
     // Wind: a compass ring, the arrowhead on the side the wind comes FROM, speed and gust inside.
     const wx = x + w1 + gap; tile(wx, y, w2, row1, fs, 'WIND');

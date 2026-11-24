@@ -52,7 +52,7 @@ V66 also fixed sunrise and sunset west of about Chicago: the sunset had come out
 
 One more swipe left, past Winter (swipe right to go back). In `details.js`, laid out like a home weather station's indoor console: outdoor temperature with feels-like and today's high and low, a wind compass (arrowhead on the side the wind comes from) with speed and gusts, humidity and dew point, pressure with a rising/falling/steady arrow, today's rain chance, cloud cover, and sunrise and sunset, from the nearest NOAA station with a recent reading (falling back to this hour's forecast); then the next 72 hours hour by hour from the NOAA forecast grid in four strips on one time line: temperature and dew point; humidity, with the drying hours shaded (humidity under 50% and under a 20% chance of rain); chance of rain or snow; wind and gusts. Lines differ by style and brightness and are labeled. Preview with `?details-sample`.
 
-Everything that was white on this page is amber (V60): the readings, the words, the main graph line, the rain-chance bars, the wind arrow and the weather icon.
+The temperature and the weather icon never overlap: on a narrow tile (an iPad standing up) the number gets a little smaller to make room (V67). Everything that was white on this page is amber (V60): the readings, the words, the main graph line, the rain-chance bars, the wind arrow and the weather icon.
 
 ## Kitchen (V34)
 
