@@ -58,4 +58,4 @@ Under the built-in quick ideas, the Kitchen also searches TheMealDB (themealdb.c
 
 ## Night clock
 
-In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM, 10 PM–6 AM by default, or 11 PM–7 AM), any scene is covered by a big, dim clock on black with the date and the moon's phase. Tap it to use the app; after 5 minutes it goes back to the clock until morning. It drifts slightly each minute so nothing burns in. Preview with `?night`.
+In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by default, 10 PM–6 AM, or 11 PM–7 AM), any scene is covered by a big, dim clock on black with the date and the moon's phase. Tap it to use the app; after 5 minutes it goes back to the clock until morning. It drifts slightly each minute so nothing burns in. Preview with `?night`.
