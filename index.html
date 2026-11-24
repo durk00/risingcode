@@ -43,7 +43,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V7</div>
+<div id="hint">TAP FOR FULL SCREEN · SANTA V8</div>
 
 <script>
 (() => {
@@ -324,16 +324,18 @@
   function drawSanta() {
     if (!santa) {
       if (--santaIn > 0) return;
-      const cell = size * 0.6;
+      // Far off in a big sky (Nov 23, V8): tiny, high above the tree, a little hazy,
+      // and slower, about 22 seconds to cross. Its height varies a bit from pass to pass.
+      const cell = Math.max(2.5, size * 0.3);
       const width = SANTA_FRAMES[0][0].length * cell;
-      santa = { cell, width, x: W + cell * 2, y: H * 0.17, t: 0, speed: (W + width) / (12 * 30) * (reduce ? 0.6 : 1) };
+      santa = { cell, width, x: W + cell * 2, y: H * (0.04 + Math.random() * 0.05), t: 0, speed: (W + width) / (22 * 30) * (reduce ? 0.6 : 1) };
     }
     const { cell } = santa;
     santa.t++;
     santa.x -= santa.speed;
     if (santa.x + santa.width < -cell * 2) { santa = null; santaIn = 1200 + ((Math.random() * 1500) | 0); return; }
     const frame = SANTA_FRAMES[(santa.t / 6 | 0) % 2];
-    const bob = Math.sin(santa.t / 14) * cell * 0.8;
+    const bob = Math.sin(santa.t / 18) * cell * 1.2;
     ctx.font = `bold ${cell}px ${C.mono}`;
     frame.forEach((line, r) => {
       for (let c = 0; c < line.length; c++) {
@@ -341,14 +343,14 @@
         if (ch === '.') continue;
         const x = santa.x + c * cell, y = santa.y + r * cell + bob;
         if (x < -cell || x > W + cell) continue;
-        ctx.globalAlpha = 0.9; ctx.fillStyle = C.void;      // cut the rain behind it so the shape reads
+        ctx.globalAlpha = 0.85; ctx.fillStyle = C.void;     // cut the rain behind it so the shape reads
         ctx.fillRect(x - cell / 2, y, cell, cell);
         const col = C[SANTA_COLOR[ch]];
         ctx.fillStyle = col;
-        if (ch !== 'h') { ctx.globalAlpha = 0.38; ctx.fillRect(x - cell / 2, y, cell, cell); }
-        ctx.globalAlpha = ch === 'h' ? 0.7 : 1;
-        if (ch === 'N') { ctx.shadowColor = col; ctx.shadowBlur = cell * 2.5; }
-        ctx.fillText(santaGlyphs[r][c] || '*', x, y);
+        // So small it's drawn as tiny solid squares, a little hazy with distance.
+        ctx.globalAlpha = ch === 'h' ? 0.45 : 0.85;
+        if (ch === 'N') { ctx.globalAlpha = 1; ctx.shadowColor = col; ctx.shadowBlur = cell * 4; }
+        ctx.fillRect(x - cell / 2, y, cell * 0.92, cell * 0.92);
         ctx.shadowBlur = 0;
       }
     });
