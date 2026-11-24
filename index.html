@@ -44,9 +44,9 @@
 </style>
 </head>
 <body>
-<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, and Santa's sleigh flying past now and then"></canvas>
+<canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN · SANTA V11</div>
+<div id="hint">TAP FOR FULL SCREEN AND SOUND · SANTA V12</div>
 
 <script>
 (() => {
@@ -253,6 +253,7 @@
     ctx.globalAlpha = 0.82 + 0.18 * p; ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(star.x, star.y, R, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
+    drawRadar();
     drawSanta();
   }
 
@@ -382,6 +383,87 @@
   }
 
 
+  // RADAR (Nov 23, V12): one very thin warm-gold line sweeping clockwise around the
+  // middle of the screen, once every 10 seconds, with a faint glow and nothing else.
+  // When it passes over Santa or any of the reindeer, the sleigh bells ring: the
+  // opening of "Jingle Bells" (1857, public domain) on bell tones with a sleigh-bell
+  // shake on each beat. Browsers only allow sound after a tap, so the first tap
+  // (the one for full screen) turns it on.
+  const SWEEP_SECS = 10;
+  let sweep = -Math.PI / 2, sweepPrev = sweep;              // starts pointing straight up
+  function drawRadar() {
+    sweepPrev = sweep;
+    sweep += (Math.PI * 2) / (SWEEP_SECS * 30) * (reduce ? 0.5 : 1);
+    if (sweep > Math.PI) sweep -= Math.PI * 2, sweepPrev -= Math.PI * 2;
+    const cx = W / 2, cy = H / 2, reach = Math.hypot(W, H);
+    ctx.save();
+    ctx.strokeStyle = C.halo; ctx.lineWidth = 1; ctx.globalAlpha = 0.55;
+    ctx.shadowColor = C.halo; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sweep) * reach, cy + Math.sin(sweep) * reach); ctx.stroke();
+    ctx.restore();
+    if (santa && sweptOverSanta(cx, cy)) jingle();
+  }
+  // Points along the team (every reindeer and the sleigh), in screen position.
+  function sweptOverSanta(cx, cy) {
+    const { cell } = santa, len = SANTA_FRAMES[0][0].length, cos = Math.cos(santa.tilt), sin = Math.sin(santa.tilt);
+    for (let c = 0; c < len; c += 3) for (const r of [2, 7, 11]) {
+      const lx = c * cell, ly = r * cell;
+      const px = santa.x + lx * cos - ly * sin, py = santa.y + lx * sin + ly * cos;
+      if (px < 0 || px > W || py < 0 || py > H) continue;
+      let a = Math.atan2(py - cy, px - cx);
+      while (a < sweepPrev) a += Math.PI * 2;
+      if (a <= sweep) return true;
+    }
+    return false;
+  }
+
+  let audio = null, jingleUntil = 0;
+  function unlockAudio() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audio) audio = new AC();
+      if (audio.state === 'suspended') audio.resume();
+    } catch (e) { audio = null; }
+  }
+  function bell(t, freq, dur) {
+    // A bell: the note plus two higher, quieter partials, struck and fading.
+    [[1, 0.28], [2.76, 0.09], [5.4, 0.04]].forEach(([m, g]) => {
+      const o = audio.createOscillator(), v = audio.createGain();
+      o.type = 'sine'; o.frequency.value = freq * m;
+      v.gain.setValueAtTime(0.0001, t);
+      v.gain.exponentialRampToValueAtTime(g, t + 0.005);
+      v.gain.exponentialRampToValueAtTime(0.0001, t + dur * (m === 1 ? 1 : 0.5));
+      o.connect(v).connect(jingleOut); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  let noise = null, jingleOut = null;
+  function shake(t) {
+    // Sleigh bells: a quick bright rattle of filtered noise.
+    if (!noise) {
+      noise = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+      const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = audio.createBufferSource(), f = audio.createBiquadFilter(), v = audio.createGain();
+    src.buffer = noise; f.type = 'bandpass'; f.frequency.value = 7000; f.Q.value = 1.2;
+    v.gain.setValueAtTime(0.0001, t);
+    v.gain.exponentialRampToValueAtTime(0.12, t + 0.004);
+    v.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    src.connect(f).connect(v).connect(jingleOut); src.start(t); src.stop(t + 0.15);
+  }
+  function jingle() {
+    if (!audio || audio.state !== 'running') return;
+    const now = audio.currentTime;
+    if (now < jingleUntil) return;                          // one tune at a time
+    if (!jingleOut) { jingleOut = audio.createGain(); jingleOut.gain.value = 0.5; jingleOut.connect(audio.destination); }
+    const E = 659.25, G = 783.99, Cn = 523.25, D = 587.33, beat = 0.2;
+    const tune = [[E, 1], [E, 1], [E, 2], [E, 1], [E, 1], [E, 2], [E, 1], [G, 1], [Cn, 1.5], [D, 0.5], [E, 4]];
+    let t = now + 0.05;
+    for (const [f, n] of tune) { bell(t, f, Math.max(0.35, n * beat * 1.6)); t += n * beat; }
+    for (let b = now + 0.05; b < t; b += beat) shake(b);
+    jingleUntil = t + 0.5;
+  }
+
   // 30 frames a second is plenty for something this slow, and easier on the battery.
   let last = 0;
   function loop(t) {
@@ -400,6 +482,7 @@
   document.addEventListener('click', async () => {
     hint.classList.add('gone');
     keepAwake();
+    unlockAudio();
     try {
       const el = document.documentElement;
       const full = document.fullscreenElement || document.webkitFullscreenElement;
