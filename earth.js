@@ -1,0 +1,107 @@
+// EARTH (Nov 24, 2026): a screensaver choice. The globe drawn in rising code, after an idea
+// William got from Grok, with Claude's own touches:
+//   - real continents (a 2-degree land map built in), oceans blue, land green, ice white
+//   - the code RISES, like the rest of Rising Code, clipped to the sphere
+//   - the real day and night: the sunlit half is bright and the night half dim, with the
+//     terminator where it actually is right now (from the date and time)
+//   - Centre Hall marked with a slow amber pulse when it turns into view
+//   - a starfield behind, and a thin blue atmosphere rim
+(() => {
+  const MW = 180, MH = 90;
+  const MASK_B64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwAfvAAAAAAAAAAAAAAAAAAAAAAAAx37///+AAAAAGoABAAAAAAAAAAAAAIe8P///wAA8AAAAAA0AAAAAAAAAAAwADw////4AAIAAAAAAHAAAAAAAAAAALivwAf//wAAAAADAAP/wAHIAAAAAADsj38AH/+gAAAAAEAH///OAAAAgBgAAfw3/gB/+gAAAgAMHe///+/9gBAP/7/nbdrwD/+AAAH/Ag7H////////8H//////g8H/gAAAf/6//f////////Mf/////9H4D4A+AA+ev///////////AP/////4A0B4AAAD5/////////////Af1////gHgA4AAAP5///////////LwAHgD///gH0AAAAAG4/////////+AMAABAC///4D+AAAAGCx/////////4A4AAAAB////n/gAAAOCR/////////4A4AAAAAf///3/wAAAbH//////////9AgAAAAAP/////gAAADf//////////9AAAAAAAF////0YAAAB///////////8AAAAAAAD////8EAAAB///v///////5AAAAAAAD////+AAAAB/f5f///////wAAAAAAAD////gAAAAfxnwP///////jgAAAAAAD///+AAAAAPCb3///////+AAAAAAAAD///8AAAAAfCJf//////+ECAAAAAAAB///8AAAAAGDRf///////mMAAAAAAAA///8AAAAAH+Ai///////E8AAAAAAAAf//wAAAAAP/AA///////BgAAAAAAAAP//gAAAAAf/73///////gAAAAAAAAAD/AQAAAAAf//9/f/////gAAAAAAAAAF+AQAAAAB///+/n/////AAAAAAAAAAC+AAAAAAB///+fwH///+AAAAAAAAAAAeAwAAAAD////f/D///8gAAAAAAAAAAeGEAAAAD////v+B/j/AAAAAAAAAAAAPMAwAAAD////n+AfB+gAAAAAAAAAAAD8AAAAAD////34AeBfAgAAAAAAAAAAAPAAAAAH////3gAcAfAgAAAAAAAAAAADAAAAAD////6AAcAfgwAAAAAAAAAAABBwAAAD////8wAMATAIAAAAAAAAAAAAr/AAAB/////gAIASAAAAAAAAAAAAAAH/gAAA/////gACAAAIAAAAAAAAAAAAH/8AAAYH///AAAAsGAAAAAAAAAAAAAH/+AAAAB//+AAAAUOAAAAAAAAAAAAAP/+AAAAB//8AAAAc+gAAAAAAAAAAAAP//gAAAD//4AAAAMeBgAAAAAAAAAAAP//8AAAB//wAAAAGdCuAAAAAAAAAAAf///AAAA//wAAAACAAHgAAAAAAAAAAP///gAAA//wAAAAB4AHggAAAAAAAAAH///AAAAf/wAAAAACIDQIAAAAAAAAAH//+AAAAf/wAAAAAAAAAAAAAAAAAAAD//+AAAA//wgAAAAABxAAAAAAAAAAAD//8AAAA//wgAAAAAHxgBAAAAAAAAAA//8AAAA//zgAAAAAf/gAAAAAAAAAAAf/8AAAA//DgAAAAAf/gAAAAAAAAAAAf/8AAAAf/DAAAAAD//4CAAAAAAAAAAf/wAAAAf/DAAAAAH//4AAAAAAAAAAAf/AAAAAf+DAAAAAH//8AAAAAAAAAAAf/AAAAAP8AAAAAAH//+AAAAAAAAAAA/+AAAAAP8AAAAAAH//+AAAAAAAAAAA/8AAAAAH4AAAAAAD//+AAAAAAAAAAA/8AAAAAHwAAAAAADwf8AAAAAAAAAAA/gAAAAAAAAAAAAACAP4AAAAAAAAAAB/wAAAAAAAAAAAAAAAD4AEAAAAAAAAB+AAAAAAAAAAAAAAAAAAAGAAAAAAAAB6AAAAAAAAAAAAAAAAAwAMAAAAAAAAA8AAAAAAAAAAAAAAAAAQAYAAAAAAAAB4AAAAAAAAAAAAAAAAAAAwAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAACAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAA8AAf/8d/AAAAAAAAAAAAkAAAAAAACP/+H//////AAAAAAAAAAA+AAAAIf////+////////AAAAAAAOMKPAAAB///////////////gAAAH/8D//8AAAH//////////////4AAAF/////8AAAP///////////////4AAIf/////gwBwf///////////////4AAAH//////AAD////////////////wAAA///////+f//////////////////A/wH///////////////////////////////////////////////////////////////////////////////////////';
+  const bits = Uint8Array.from(atob(MASK_B64), c => c.charCodeAt(0));
+  const land = (lat, lon) => {
+    const r = Math.min(MH - 1, Math.max(0, Math.floor((90 - lat) / 2))), c = ((Math.floor((lon + 180) / 2) % MW) + MW) % MW;
+    const i = r * MW + c; return (bits[i >> 3] >> (7 - (i & 7))) & 1;
+  };
+  const HOME = { lat: 40.8473, lon: -77.6858 };
+  const KANA = Array.from({ length: 0xFF9D - 0xFF66 + 1 }, (_, i) => String.fromCharCode(0xFF66 + i));
+  const GL = KANA.concat('0123456789'.split(''));
+  const pick = () => GL[(Math.random() * GL.length) | 0];
+  const TILT = 23.4 * Math.PI / 180;
+  let ctx, W = 0, H = 0, cell = 10, cols = 0, rows = 0, streams = [], stars = [], spin = 0, t = 0, glyph = [];
+
+  function resize(w, h) {
+    W = w; H = h; cell = Math.max(8, Math.round(Math.min(W, H) / 70));
+    cols = Math.ceil(W / cell); rows = Math.ceil(H / cell);
+    streams = Array.from({ length: cols }, () => ({ head: Math.random() * rows * 1.5, speed: 0.12 + Math.random() * 0.25, len: 12 + ((Math.random() * 28) | 0) }));
+    glyph = Array.from({ length: cols * (rows + 1) }, pick);
+    stars = Array.from({ length: Math.round(W * H / 4000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.1 + 0.2, p: Math.random() * 6.3 }));
+  }
+
+  // The sun right now, as a direction from Earth's center: its latitude from the day of the
+  // year (the seasons) and its longitude from the clock (noon where it's overhead).
+  function sunNow() {
+    const d = new Date(), N = Math.floor((d - Date.UTC(d.getUTCFullYear(), 0, 0)) / 864e5);
+    const decl = -23.44 * Math.cos(2 * Math.PI / 365 * (N + 10)) * Math.PI / 180;
+    const lon = -15 * (d.getUTCHours() + d.getUTCMinutes() / 60 - 12) * Math.PI / 180;
+    return [Math.cos(decl) * Math.sin(lon), Math.sin(decl), Math.cos(decl) * Math.cos(lon)];
+  }
+  const vec = (lat, lon) => [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
+  // World to view: turn to the longitude facing us, then tip the north pole toward us.
+  function toView(lat, lon) {
+    const [x, y, z] = vec(lat, lon - spin);
+    return [x, y * Math.cos(TILT) - z * Math.sin(TILT), y * Math.sin(TILT) + z * Math.cos(TILT)];
+  }
+
+  function draw() {
+    t++; spin -= 0.0005;                          // one turn in about 7 minutes, eastward like the real thing
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.42, sun = sunNow();
+    for (const s of stars) {
+      if (Math.hypot(s.x - cx, s.y - cy) < R * 1.05) continue;
+      ctx.globalAlpha = 0.3 + 0.35 * (0.5 + 0.5 * Math.sin(t / 50 + s.p)); ctx.fillStyle = '#dfe8f5';
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    }
+    // A thin blue atmosphere around the globe.
+    const g = ctx.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.12);
+    g.addColorStop(0, 'rgba(70,150,230,0.35)'); g.addColorStop(1, 'rgba(70,150,230,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, 6.3); ctx.fill();
+    ctx.fillStyle = '#02060b'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.3); ctx.fill();
+    ctx.font = `${cell}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const cT = Math.cos(TILT), sT = Math.sin(TILT);
+    for (let c = 0; c < cols; c++) {
+      const x = c * cell + cell / 2, nx = (x - cx) / R; if (Math.abs(nx) > 1) continue;
+      const st = streams[c], headRow = Math.floor(st.head);
+      for (let r = 0; r <= rows; r++) {
+        const y = r * cell + cell / 2, ny = (cy - y) / R, q = nx * nx + ny * ny; if (q > 1) continue;
+        const nz = Math.sqrt(1 - q);
+        // Back from the view to the globe: latitude and longitude under this spot.
+        const wy = ny * cT + nz * sT, wz = -ny * sT + nz * cT;
+        const lat = Math.asin(Math.max(-1, Math.min(1, wy))), lon = Math.atan2(nx, wz) + spin;
+        const latD = lat * 180 / Math.PI, lonD = ((lon * 180 / Math.PI + 540) % 360) - 180;
+        const isLand = land(latD, lonD), ice = (isLand && Math.abs(latD) > 62) || Math.abs(latD) > 78;
+        const n = vec(lat, lon), light = n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2];
+        const day = Math.max(0, Math.min(1, (light + 0.08) / 0.16));      // a soft line between day and night
+        const k = r - headRow, inTrail = k >= 0 && k < st.len, fade = inTrail ? 1 - k / st.len : 0;
+        // Land and ice stand out even between streams, so the continents always read.
+        const a = ((isLand || ice ? 0.68 : 0.15) + 0.7 * fade * fade) * (0.55 + 0.45 * nz) * (0.22 + 0.78 * day);
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.fillStyle = k === 0 ? '#ffffff' : ice ? '#e6f2ff' : isLand ? '#46d884' : '#3f8fe0';
+        ctx.fillText(glyph[r * cols + c], x, y);
+      }
+      st.head -= st.speed;
+      if (st.head + st.len < 0) { st.head = rows + Math.random() * rows * 0.5; st.speed = 0.12 + Math.random() * 0.25; st.len = 12 + ((Math.random() * 28) | 0); }
+    }
+    for (let i = 0; i < 20; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
+    // Centre Hall: a slow amber pulse when it's on the side facing us.
+    const h = toView(HOME.lat * Math.PI / 180, HOME.lon * Math.PI / 180);
+    if (h[2] > 0.08) {
+      const hx = cx + h[0] * R, hy = cy - h[1] * R, p = 0.5 + 0.5 * Math.sin(t / 20);
+      ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(hx, hy, cell * 0.35, 0, 6.3); ctx.fill();
+      ctx.globalAlpha = 0.7 * (1 - p); ctx.strokeStyle = '#ffcf7a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hy, cell * (0.6 + 2.2 * p), 0, 6.3); ctx.stroke();
+      ctx.globalAlpha = 0.8 * Math.min(1, (h[2] - 0.08) * 5); ctx.fillStyle = '#ffe2a8'; ctx.font = `600 ${Math.round(cell * 0.9)}px ui-monospace, monospace`; ctx.textAlign = 'left';
+      ctx.fillText('CENTRE HALL', hx + cell * 1.2, hy);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  window.EarthSaver = {
+    start(c) { ctx = c; },
+    resize,
+    draw() { if (ctx && W) draw(); },
+    face(lonDeg) { spin = lonDeg * Math.PI / 180; },   // for checking: turn a given longitude toward the viewer
+  };
+  spin = HOME.lon * Math.PI / 180;               // starts with home in view
+})();
