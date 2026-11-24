@@ -74,4 +74,4 @@ Menu → SCREENSAVER: **Auto** (the Christmas display from November 20 through J
 
 ## Portrait screensaver
 
-Menu → SCREENSAVER → **Portrait** (`face.js`): an AI's face in amber code, facing the viewer: head, neck and shoulders with rounded shading, the outline, brows, nose and a slight smile picked out brighter, shadowed eye sockets, and big glowing eyes where the code runs fastest. The face and the eyes each change pace at random (slow, steady, fast), holding each for 1 to 5 minutes. Faint dark-blue code drifts behind.
+Menu → SCREENSAVER → **Portrait** (`face.js`): an AI's face in amber code, drawn from the picture William chose (an amber circuit-and-binary face). The picture is built in as a small brightness map: it glows softly underneath, and every spot of it is a character of code, bright where the picture is bright. Streams of brighter code rise through the face, and the eyes glow with the fastest-changing code. The face and the eyes each change pace at random (slow, steady, fast), holding each for 1 to 5 minutes. Outside the picture, dim dark-blue code moves very slowly.
