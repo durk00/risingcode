@@ -7,6 +7,7 @@
 //   - a starfield behind, and a thin blue atmosphere rim
 //   - V61: the night side in night vision: green phosphor land and sea, and the city lights
 //     glowing where the people are (lights.js, from real city populations)
+//   - V62: Starcloud-1, the first data center in space, on its real orbit (sat.js)
 //   - flying through a dust cloud: dust and tumbling rocks in every direction (debris.js)
 (() => {
   const MW = 180, MH = 90;
@@ -137,6 +138,7 @@
     ctx.restore();
     for (let i = 0; i < 20; i++) glyph[(Math.random() * glyph.length) | 0] = pick();
     cityLights(cx, cy, R, sun);
+    if (window.Orbiter) Orbiter.draw(ctx, cx, cy, R, toView);   // V62: Starcloud-1, the data center in orbit (sat.js)
     if (window.Debris) Debris.front(ctx);
     ctx.globalAlpha = 1;
   }
