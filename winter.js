@@ -1,124 +1,292 @@
 // WINTER (Nov 24, 2026): a second scene for Rising Code. Swipe left on the
 // Christmas display to get here, swipe right to go back (index.html handles the
-// swipe). A night landscape drawn in code: rolling hills, pine trees, a house with
-// lit windows and a smoking chimney, snow falling and piling up on the ground and
-// the roof.
+// swipe). A landscape drawn in code: rolling hills, pine trees, and a house with
+// lit windows and a chimney whose smoke never stops.
 //
-// The weather comes from NOAA (the National Weather Service, api.weather.gov) for
-// Centre Hall, PA, refreshed every hour, and the scene shows what is COMING, not
-// only what is happening now:
-//   snowing now        flakes fall, light / moderate / heavy by the forecast rate,
-//                      and snow piles up toward a depth set by the forecast total
-//   snow within 48 hrs clouds gather across the top, thicker the closer it gets,
-//                      with a few stray flurries in the last day
-//   no snow forecast   a clear night: stars, chimney smoke, the old snow cover
-// The thresholds below are first guesses, easy to change.
+// V26: THE SCENE MATCHES TODAY'S NOAA FORECAST for Centre Hall, PA (the National
+// Weather Service, api.weather.gov), refreshed every hour. The sky and the ground
+// both follow it:
+//   day or night   from the forecast period that's on now (sun by day; moon and
+//                  stars by night)
+//   sky            clear / partly cloudy / cloudy / fog, from that period's words
+//   falling        rain, snow, or a mix, from the same words; snow comes down
+//                  light / moderate / heavy by the forecast rate
+//   ground         white when snow is in today's forecast, piling up while it
+//                  falls; bare otherwise (any snow left melts away slowly)
+// Upcoming snow is still previewed on top of today's weather: if snow is due in the
+// next two days but not now, a line at the bottom says when and about how much,
+// and in its last 12 hours the clouds start gathering.
+// Every threshold below is a first guess, easy to change.
 //
-// Preview any state by adding ?snow=light, ?snow=moderate, ?snow=heavy,
-// ?snow=coming or ?snow=none to the address.
+// Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
+// rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
 (() => {
   const LAT = 40.8473, LON = -77.6858;          // Centre Hall, PA (town center)
-  const RATE_MODERATE = 0.1, RATE_HEAVY = 0.5;   // inches per hour
-  const LOOKAHEAD_HRS = 48;                      // how far ahead "coming" looks
+  const RATE_MODERATE = 0.1, RATE_HEAVY = 0.5;   // snow, inches per hour
+  const LOOKAHEAD_HRS = 48;                      // how far ahead upcoming snow is previewed
+  const GATHER_HRS = 12;                         // clouds start gathering this long before it
   const FILL_MINUTES = 30;                       // time for a heavy snow to reach its full depth
 
-  const preview = (location.search.match(/[?&]snow=(\w+)/) || [])[1];
+  const q = location.search;
+  const old = { light: 'snow-light', moderate: 'snow', heavy: 'snow-heavy', coming: 'coming', none: 'sunny' };
+  const previewWx = (q.match(/[?&]wx=([\w-]+)/) || [])[1] || old[(q.match(/[?&]snow=(\w+)/) || [])[1]];
+  const previewTime = (q.match(/[?&]time=(day|night)/) || [])[1];
+
   let ctx, W = 0, H = 0, t = 0;
-  let flakes = [], stars = [], smoke = [], trees = [];
+  let flakes = [], drops = [], stars = [], smoke = [], trees = [], clouds = [];
   let depth = null, roofDepth = null;            // snow height per 2-px column
   const COL = 2;
-  let wx = { kind: 'loading', rate: 0, hoursUntil: null, total: 0, when: '' };
-  let cover = 0;                                 // cloud cover shown, eases toward the target
+  let wx = { status: 'loading', day: isDayByClock(), sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: '' };
+  let cover = 0, fog = 0, light = wx.day ? 1 : 0;   // shown values, eased toward the weather
+
+  function isDayByClock() { const h = new Date().getHours(); return previewTime ? previewTime === 'day' : h >= 7 && h < 17; }
 
   // ---- weather -------------------------------------------------------------
   function hoursOf(iso) {                        // "PT6H", "P1DT3H" -> hours
     const m = /P(?:(\d+)D)?T?(?:(\d+)H)?/.exec(iso || '');
     return m ? (+(m[1] || 0)) * 24 + (+(m[2] || 0)) : 1;
   }
+  // Words from the forecast ("Mostly Sunny", "Chance Snow Showers", "Rain And Snow")
+  // to what the scene shows.
+  function readWords(words) {
+    const w = (words || '').toLowerCase();
+    const fall = /sleet|freezing|wintry|rain and snow|snow and rain|ice pellets/.test(w) ? 'mix'
+      : /snow|flurr|blizzard/.test(w) ? 'snow'
+      : /rain|shower|drizzle|thunder|storm/.test(w) ? 'rain' : 'none';
+    const sky = fall !== 'none' ? 'cloudy'
+      : /fog|haze|mist|smoke/.test(w) ? 'fog'
+      : /mostly cloudy|^cloudy|overcast/.test(w) ? 'cloudy'
+      : /partly|mostly sunny|mostly clear|few clouds/.test(w) ? 'partly' : 'clear';
+    const chance = /chance|slight|isolated|scattered/.test(w);
+    return { fall, sky, chance };
+  }
+  function setPreview() {
+    const day = previewTime ? previewTime === 'day' : isDayByClock();
+    const base = { status: 'preview', day, sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: previewWx };
+    const p = {
+      sunny: {}, partly: { sky: 'partly' }, cloudy: { sky: 'cloudy' }, fog: { sky: 'fog' },
+      rain: { sky: 'cloudy', fall: 'rain', rain: 0.15 },
+      mix: { sky: 'cloudy', fall: 'mix', rate: 0.1, rain: 0.08, snowToday: true, todayTotal: 2 },
+      'snow-light': { sky: 'cloudy', fall: 'snow', rate: 0.05, snowToday: true, todayTotal: 1 },
+      snow: { sky: 'cloudy', fall: 'snow', rate: 0.3, snowToday: true, todayTotal: 4 },
+      'snow-heavy': { sky: 'cloudy', fall: 'snow', rate: 0.9, snowToday: true, todayTotal: 9 },
+      coming: { sky: 'partly', coming: { when: 'TOMORROW', total: 4, hoursUntil: 10 } },
+    }[previewWx] || {};
+    wx = Object.assign(base, p);
+  }
   async function loadWeather() {
-    if (preview) {
-      const p = { light: 0.05, moderate: 0.3, heavy: 0.9 }[preview];
-      wx = p ? { kind: 'snowing', rate: p, hoursUntil: 0, total: p * 10, when: 'now' }
-        : preview === 'coming' ? { kind: 'coming', rate: 0, hoursUntil: 14, total: 4, when: 'TOMORROW' }
-        : { kind: 'clear', rate: 0, hoursUntil: null, total: 0, when: '' };
-      return;
-    }
+    if (previewWx) { setPreview(); return; }
     try {
       const pt = await (await fetch(`https://api.weather.gov/points/${LAT},${LON}`)).json();
-      const grid = await (await fetch(pt.properties.forecastGridData)).json();
-      const vals = (grid.properties.snowfallAmount && grid.properties.snowfallAmount.values) || [];
+      const [fc, grid] = await Promise.all([
+        fetch(pt.properties.forecast).then(r => r.json()),
+        fetch(pt.properties.forecastGridData).then(r => r.json()),
+      ]);
       const now = Date.now();
-      let rate = 0, total = 0, first = null;
-      for (const v of vals) {
-        const [startIso, dur] = v.validTime.split('/');
-        const start = Date.parse(startIso), hrs = hoursOf(dur), end = start + hrs * 3600e3;
+      const period = fc.properties.periods.find(p => Date.parse(p.startTime) <= now && now < Date.parse(p.endTime)) || fc.properties.periods[0];
+      const { fall, sky, chance } = readWords(period.shortForecast);
+      const g = grid.properties;
+      const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      let rate = 0, todayTotal = 0, ahead = 0, first = null;
+      for (const v of (g.snowfallAmount && g.snowfallAmount.values) || []) {
+        const [s, d] = v.validTime.split('/'); const start = Date.parse(s), hrs = hoursOf(d), end = start + hrs * 3600e3;
         const inches = (v.value || 0) / 25.4;     // NOAA gives millimeters
-        if (inches <= 0 || end < now || start > now + LOOKAHEAD_HRS * 3600e3) continue;
-        total += inches;
+        if (inches <= 0) continue;
+        if (start < +midnight && end > +startOfDay) todayTotal += inches;
         if (start <= now && now < end) rate = Math.max(rate, inches / hrs);
-        if (first === null || start < first) first = start;
+        if (end > now && start < now + LOOKAHEAD_HRS * 3600e3) { ahead += inches; if (first === null || start < first) first = start; }
       }
-      if (rate > 0) wx = { kind: 'snowing', rate, hoursUntil: 0, total, when: 'now' };
-      else if (first !== null) {
-        const h = Math.max(0, (first - now) / 3600e3);
+      let rain = 0;
+      for (const v of (g.quantitativePrecipitation && g.quantitativePrecipitation.values) || []) {
+        const [s, d] = v.validTime.split('/'); const start = Date.parse(s), hrs = hoursOf(d);
+        if (start <= now && now < start + hrs * 3600e3) rain = (v.value || 0) / 25.4 / hrs;
+      }
+      const snowFalling = fall === 'snow' || fall === 'mix';
+      if (snowFalling && rate === 0) rate = chance ? 0.03 : 0.08;
+      if (fall === 'rain' && rain === 0) rain = chance ? 0.03 : 0.1;
+      let coming = null;
+      if (!snowFalling && first !== null && first > now) {
         const day = new Date(first).toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
         const sameDay = new Date(first).toDateString() === new Date().toDateString();
-        const evening = new Date(first).getHours() >= 17;
-        wx = { kind: 'coming', rate: 0, hoursUntil: h, total, when: sameDay ? (evening ? 'TONIGHT' : 'TODAY') : day };
-      } else wx = { kind: 'clear', rate: 0, hoursUntil: null, total: 0, when: '' };
+        const tomorrow = new Date(now + 864e5).toDateString() === new Date(first).toDateString();
+        const when = sameDay ? (new Date(first).getHours() >= 17 ? 'TONIGHT' : 'TODAY') : tomorrow ? 'TOMORROW' : day;
+        coming = { when, total: ahead, hoursUntil: (first - now) / 3600e3 };
+      }
+      wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: period.shortForecast };
     } catch (e) {
-      wx = { kind: 'offline', rate: 0, hoursUntil: null, total: 0, when: '' };
+      wx = Object.assign({}, wx, { status: 'offline', day: isDayByClock() });
     }
   }
 
   // ---- layout --------------------------------------------------------------
   const groundY = (x) => H * 0.8 + Math.sin(x / W * 5.2 + 0.6) * H * 0.025 + Math.sin(x / W * 11.3) * H * 0.008;
   let house = null;
-  function layout() {
-    const hw = Math.min(W * 0.26, H * 0.36), hh = hw * 0.6, hx = W * 0.62 - hw / 2;
-    const base = groundY(W * 0.62) + H * 0.012;
-    house = { x: hx, w: hw, h: hh, base, top: base - hh, peak: base - hh - hw * 0.42, eave: hw * 0.08 };
-    const chx = hx + hw * 0.7;
-    house.chimney = { x: chx, w: hw * 0.09, top: roofY(chx) - hw * 0.2 };   // stands well above the roof
-    stars = Array.from({ length: Math.round(W * H / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * H * 0.6, r: Math.random() * 1.1 + 0.3, p: Math.random() * 6.3 }));
-    trees = [];
-    for (let i = 0; i < 9; i++) {
-      const x = (i < 5 ? W * (0.03 + i * 0.085) : W * (0.86 + (i - 5) * 0.045)) + (Math.random() - 0.5) * W * 0.03;
-      trees.push({ x, h: H * (0.12 + Math.random() * 0.1) });
-    }
-    const n = Math.ceil(W / COL) + 1;
-    const keep = depth && depth.length === n;
-    if (!keep) { depth = new Float32Array(n).fill(H * 0.012); roofDepth = new Float32Array(n).fill(0); }
-  }
-  // Roof outline: a peaked roof; returns the roof surface y at x, or null off the roof.
-  function roofY(x) {
+  function roofY(x) {                            // roof surface y at x, or null off the roof
     const { x: hx, w, top, peak, eave } = house;
     const l = hx - eave, r = hx + w + eave, mid = hx + w / 2;
     if (x < l || x > r) return null;
     const f = x < mid ? (x - l) / (mid - l) : (r - x) / (r - mid);
     return top + (peak - top) * f;
   }
+  function layout() {
+    const hw = Math.min(W * 0.26, H * 0.36), hh = hw * 0.6, hx = W * 0.62 - hw / 2;
+    const base = groundY(W * 0.62) + H * 0.012;
+    house = { x: hx, w: hw, h: hh, base, top: base - hh, peak: base - hh - hw * 0.42, eave: hw * 0.08 };
+    const chx = hx + hw * 0.7;
+    house.chimney = { x: chx, w: hw * 0.09, top: roofY(chx) - hw * 0.2 };
+    stars = Array.from({ length: Math.round(W * H / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * H * 0.6, r: Math.random() * 1.1 + 0.3, p: Math.random() * 6.3 }));
+    trees = [];
+    for (let i = 0; i < 9; i++) {
+      const x = (i < 5 ? W * (0.03 + i * 0.085) : W * (0.86 + (i - 5) * 0.045)) + (Math.random() - 0.5) * W * 0.03;
+      trees.push({ x, h: H * (0.12 + Math.random() * 0.1) });
+    }
+    clouds = Array.from({ length: 9 }, (_, i) => ({ x: Math.random() * (W + 400) - 200, y: H * (0.06 + Math.random() * 0.3), s: W * (0.1 + Math.random() * 0.08), v: 0.12 + Math.random() * 0.15, k: i }));
+    const n = Math.ceil(W / COL) + 1;
+    if (!depth || depth.length !== n) { depth = new Float32Array(n).fill(0); roofDepth = new Float32Array(n).fill(0); }
+  }
 
-  // ---- snow ----------------------------------------------------------------
+  // ---- what to show --------------------------------------------------------
+  const snowing = () => wx.fall === 'snow' || wx.fall === 'mix';
   function targetFlakes() {
+    if (!snowing()) return 0;
+    const area = W * H / (1024 * 768), n = wx.rate >= RATE_HEAVY ? 380 : wx.rate >= RATE_MODERATE ? 170 : 60;
+    return Math.round(area * n * (wx.fall === 'mix' ? 0.5 : 1));
+  }
+  function targetDrops() {
+    if (wx.fall !== 'rain' && wx.fall !== 'mix') return 0;
     const area = W * H / (1024 * 768);
-    if (wx.kind === 'snowing') return Math.round(area * (wx.rate >= RATE_HEAVY ? 380 : wx.rate >= RATE_MODERATE ? 170 : 60));
-    if (wx.kind === 'coming' && wx.hoursUntil < 24) return Math.round(area * 8);   // stray flurries
-    return 0;
+    return Math.round(area * Math.min(420, 90 + wx.rain * 1500) * (wx.fall === 'mix' ? 0.5 : 1));
   }
-  function maxDepth() {
-    // Forecast total to on-screen depth: an inch is 1.2% of the screen height,
-    // never more than a quarter of it.
-    return Math.min(H * 0.25, Math.max(H * 0.03, wx.total * H * 0.012));
+  function maxDepth() {                          // an inch of today's total is 1.2% of the screen, capped at a quarter
+    return Math.min(H * 0.25, Math.max(H * 0.02, wx.todayTotal * H * 0.012));
   }
-  function newFlake(top) {
-    const r = Math.random() * 1.8 + 0.6;
-    return { x: Math.random() * (W + 80) - 40, y: top ? -10 - Math.random() * H * 0.2 : Math.random() * H, r, vy: 0.35 + r * 0.45, ph: Math.random() * 6.3 };
+  function targetCover() {
+    let c = { clear: 0, partly: 0.4, cloudy: 0.9, fog: 0.5 }[wx.sky] || 0;
+    if (wx.fall !== 'none') c = 1;
+    if (wx.coming && wx.coming.hoursUntil < GATHER_HRS) c = Math.max(c, 0.9 * (1 - wx.coming.hoursUntil / GATHER_HRS));
+    return c;
   }
-  function land(x, onRoof) {
+
+  // ---- colors: by day and by night, blended by `light` ----------------------
+  const mix = (a, b, f) => {
+    const p = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const A = p(a), B = p(b);
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * f).toString(16).padStart(2, '0')).join('');
+  };
+  const tone = (night, day) => mix(night, day, light);
+
+  // ---- drawing -------------------------------------------------------------
+  function sky() {
+    const grey = Math.min(1, cover * 1.1);
+    const g = ctx.createLinearGradient(0, 0, 0, H * 0.8);
+    g.addColorStop(0, mix(tone('#03060c', '#3f78b8'), tone('#141a22', '#8a939e'), grey));
+    g.addColorStop(1, mix(tone('#0f1a2a', '#a9cbea'), tone('#1d242d', '#b4bcc5'), grey));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const clearness = Math.max(0, 1 - cover * 1.3);
+    if (clearness > 0.02 && light < 0.9) for (const s of stars) {
+      ctx.globalAlpha = clearness * (1 - light) * (0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t / 40 + s.p)));
+      ctx.fillStyle = '#e9f1ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill();
+    }
+    // Sun by day, moon by night, upper left, fading behind cloud.
+    const bx = W * 0.2, by = H * 0.17, br = Math.min(W, H) * 0.05;
+    const vis = Math.max(0, 1 - cover * 1.2);
+    if (vis > 0.02) {
+      ctx.globalAlpha = vis;
+      const glow = ctx.createRadialGradient(bx, by, 0, bx, by, br * (light > 0.5 ? 4 : 2.5));
+      glow.addColorStop(0, light > 0.5 ? 'rgba(255,240,200,0.9)' : 'rgba(220,230,245,0.35)');
+      glow.addColorStop(1, 'rgba(255,240,200,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(bx, by, br * 4, 0, 6.3); ctx.fill();
+      ctx.fillStyle = light > 0.5 ? '#fff6d8' : '#e8eef6';
+      ctx.beginPath(); ctx.arc(bx, by, light > 0.5 ? br : br * 0.7, 0, 6.3); ctx.fill();
+      if (light <= 0.5) { ctx.fillStyle = tone('#03060c', '#3f78b8'); ctx.beginPath(); ctx.arc(bx + br * 0.3, by - br * 0.15, br * 0.6, 0, 6.3); ctx.fill(); }   // crescent
+      ctx.globalAlpha = 1;
+    }
+    // Clouds: puffy groups of circles drifting right to left; white by day, grey when heavy.
+    if (cover > 0.02) {
+      const n = Math.ceil(clouds.length * Math.min(1, cover + 0.2));
+      const col = mix(tone('#2a323d', '#f4f6f9'), tone('#20262e', '#9aa3ad'), Math.min(1, cover));
+      for (let i = 0; i < n; i++) {
+        const c = clouds[i];
+        c.x -= c.v; if (c.x < -c.s * 2) { c.x = W + c.s * 2; c.y = H * (0.06 + Math.random() * 0.3); }
+        ctx.globalAlpha = Math.min(0.95, 0.35 + cover * 0.6); ctx.fillStyle = col;
+        for (const [dx, dy, r] of [[0, 0, 0.5], [0.45, 0.1, 0.38], [-0.45, 0.12, 0.36], [0.2, -0.18, 0.34], [-0.15, -0.12, 0.3]]) {
+          ctx.beginPath(); ctx.arc(c.x + dx * c.s, c.y + dy * c.s * 0.6, r * c.s * 0.55, 0, 6.3); ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      if (cover > 0.85) { ctx.globalAlpha = (cover - 0.85) * 4; ctx.fillStyle = col; ctx.fillRect(0, 0, W, H * 0.12); ctx.globalAlpha = 1; }
+    }
+  }
+  function land() {
+    ctx.fillStyle = tone('#0b1320', '#55665a');                                         // far hills
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, H * 0.68 + Math.sin(x / W * 3.1 + 2) * H * 0.04);
+    ctx.lineTo(W, H); ctx.fill();
+    for (const tr of trees) {
+      const b = groundY(tr.x) + H * 0.01, w = tr.h * 0.42;
+      ctx.fillStyle = tone('#0a1a14', '#1f3a2c');
+      for (let k = 0; k < 3; k++) {
+        const top = b - tr.h + k * tr.h * 0.22, bot = b - tr.h * 0.1 - (2 - k) * tr.h * 0.18;
+        ctx.beginPath(); ctx.moveTo(tr.x, top); ctx.lineTo(tr.x - w * (0.55 + k * 0.22), bot); ctx.lineTo(tr.x + w * (0.55 + k * 0.22), bot); ctx.fill();
+      }
+    }
+    // Bare ground: winter grass and dirt, darker and glossier when it's raining.
+    const wet = wx.fall === 'rain' || wx.fall === 'mix' ? 0.35 : 0;
+    const g = ctx.createLinearGradient(0, H * 0.75, 0, H);
+    g.addColorStop(0, mix(tone('#141a14', '#6d6a4c'), tone('#0c100c', '#3e3d2c'), wet));
+    g.addColorStop(1, mix(tone('#0d110d', '#544a36'), tone('#080a08', '#2e2a20'), wet));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 4) ctx.lineTo(x, groundY(x));
+    ctx.lineTo(W, H); ctx.fill();
+  }
+  function drawHouse() {
+    const { x, w, h, top, peak, eave, chimney: ch } = house;
+    ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
+    ctx.fillStyle = tone('#121822', '#3a3d45');                                          // roof
+    ctx.beginPath(); ctx.moveTo(x - eave, top); ctx.lineTo(x + w / 2, peak); ctx.lineTo(x + w + eave, top); ctx.fill();
+    ctx.fillStyle = tone('#2b3646', '#6e4a3a'); ctx.fillRect(ch.x, ch.top, ch.w, roofY(ch.x + ch.w) - ch.top + 2);   // chimney
+    ctx.fillStyle = tone('#3a4657', '#82604e'); ctx.fillRect(ch.x - 2, ch.top - 3, ch.w + 4, 4);
+    const flick = 0.85 + 0.15 * Math.sin(t / 23) * Math.sin(t / 7);                    // firelight
+    const lit = (1 - light) * flick + light * 0.45;
+    const win = (wx0, wy, ww, wh) => {
+      ctx.fillStyle = mix('#33414f', '#ffd68a', lit); ctx.shadowColor = '#ffcf7a'; ctx.shadowBlur = ww * 0.6 * (1 - light);
+      ctx.fillRect(wx0, wy, ww, wh); ctx.shadowBlur = 0;
+      ctx.strokeStyle = tone('#121822', '#efe6da'); ctx.lineWidth = Math.max(1, ww * 0.08);
+      ctx.strokeRect(wx0, wy, ww, wh);
+      ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy); ctx.lineTo(wx0 + ww / 2, wy + wh); ctx.moveTo(wx0, wy + wh / 2); ctx.lineTo(wx0 + ww, wy + wh / 2); ctx.stroke();
+    };
+    win(x + w * 0.12, top + h * 0.25, w * 0.18, h * 0.3);
+    win(x + w * 0.7, top + h * 0.25, w * 0.18, h * 0.3);
+    ctx.fillStyle = tone('#3a2a1e', '#4a2f22'); ctx.fillRect(x + w * 0.43, top + h * 0.38, w * 0.14, h * 0.62);   // door
+    // Chimney smoke, always: soft puffs that rise, spread and drift, whatever the weather.
+    if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.24 });
+    for (const s of smoke) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15 + (wx.fall !== 'none' ? 0.2 : 0); s.r += 0.12; s.a *= 0.992; }
+    smoke = smoke.filter(s => s.a > 0.01 && s.y > -50);
+    const sc = tone('#bec8d4', '#e6eaee');
+    for (const s of smoke) { ctx.globalAlpha = s.a * (light > 0.5 ? 1.6 : 1); ctx.fillStyle = sc; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  function snowLayers() {
+    if (Math.max(...depth) < 0.3 && Math.max(...roofDepth) < 0.3) return;
+    const g = ctx.createLinearGradient(0, H * 0.6, 0, H);
+    g.addColorStop(0, tone('#dfe8f1', '#f6f9fc')); g.addColorStop(1, tone('#aebccb', '#d4dfe9'));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, H);
+    for (let i = 0; i < depth.length; i++) ctx.lineTo(i * COL, groundY(i * COL) - depth[i] + (depth[i] < 0.3 ? 2 : 0));
+    ctx.lineTo(W, H); ctx.fill();
+    ctx.fillStyle = tone('#e6eef6', '#fbfdff'); ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < roofDepth.length; i++) {
+      const x = i * COL, ry = roofY(x); if (ry === null) continue;
+      if (!started) { ctx.moveTo(x, ry); started = true; }
+      ctx.lineTo(x, ry - roofDepth[i]);
+    }
+    for (let i = roofDepth.length - 1; i >= 0; i--) { const x = i * COL, ry = roofY(x); if (ry !== null) ctx.lineTo(x, ry); }
+    if (started) ctx.fill();
+  }
+  function addSnow(x, onRoof) {
     const arr = onRoof ? roofDepth : depth;
     const i = Math.round(x / COL), cap = onRoof ? house.w * 0.12 : maxDepth();
-    // Each flake adds a little, spread over neighbors so the drifts stay smooth.
     const perFlake = cap / (FILL_MINUTES * 60 * 30) * (W / COL) / Math.max(1, targetFlakes()) * 700;
     for (let k = -4; k <= 4; k++) {
       const j = i + k; if (j < 0 || j >= arr.length) continue;
@@ -126,119 +294,66 @@
       arr[j] = Math.min(cap, arr[j] + perFlake * (5 - Math.abs(k)) / 25);
     }
   }
-
-  // ---- drawing -------------------------------------------------------------
-  function sky() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#03060c'); g.addColorStop(1, '#0f1a2a');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const clear = 1 - cover;
-    if (clear > 0.05) for (const s of stars) {
-      ctx.globalAlpha = clear * (0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t / 40 + s.p)));
-      ctx.fillStyle = '#e9f1ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill();
+  function precipitation() {
+    const nF = targetFlakes();
+    while (flakes.length < nF) { const r = Math.random() * 1.8 + 0.6; flakes.push({ x: Math.random() * (W + 80) - 40, y: flakes.length > nF * 0.5 ? -10 : Math.random() * H, r, vy: 0.35 + r * 0.45, ph: Math.random() * 6.3 }); }
+    if (flakes.length > nF) flakes.length = nF;
+    ctx.fillStyle = '#f2f7fc';
+    for (const f of flakes) {
+      f.y += f.vy; f.x += Math.sin(t / 50 + f.ph) * 0.35 + 0.15;
+      const ry = roofY(f.x), i = Math.max(0, Math.min(depth.length - 1, Math.round(f.x / COL)));
+      const reset = () => { f.x = Math.random() * (W + 80) - 40; f.y = -10 - Math.random() * 40; };
+      if (ry !== null && f.y >= ry - roofDepth[i] && f.y < ry + 6) { addSnow(f.x, true); reset(); continue; }
+      if (f.y >= groundY(f.x) - depth[i]) { addSnow(f.x, false); reset(); continue; }
+      ctx.globalAlpha = 0.55 + f.r * 0.18; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.3); ctx.fill();
     }
-    ctx.globalAlpha = 1;
-    if (cover > 0.02) {                          // clouds rolling across the top
-      for (let i = 0; i < 14; i++) {
-        const cx = ((i * 157 + t * 0.15 * (1 + (i % 3) * 0.3)) % (W + 400)) - 200;
-        const cy = H * (0.05 + (i % 4) * 0.07) * (0.6 + cover * 0.6);
-        const r = W * (0.12 + (i % 5) * 0.03) * (0.6 + cover * 0.5);
-        const g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        g2.addColorStop(0, `rgba(70,80,95,${0.35 * cover})`); g2.addColorStop(1, 'rgba(70,80,95,0)');
-        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.3); ctx.fill();
-      }
+    const nD = targetDrops();
+    while (drops.length < nD) drops.push({ x: Math.random() * (W + 200) - 100, y: Math.random() * H, v: 9 + Math.random() * 5, l: 8 + Math.random() * 10 });
+    if (drops.length > nD) drops.length = nD;
+    ctx.strokeStyle = tone('#9fb3c8', '#dce6ef'); ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.55; ctx.beginPath();
+    for (const d of drops) {
+      d.y += d.v; d.x -= d.v * 0.18;
+      const ry = roofY(d.x);
+      if (d.y >= groundY(d.x) || (ry !== null && d.y >= ry && d.y < ry + 12)) { d.x = Math.random() * (W + 200) - 100; d.y = -20; continue; }
+      ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.l * 0.18, d.y - d.l);
     }
+    ctx.stroke(); ctx.globalAlpha = 1;
   }
-  function hills() {
-    ctx.fillStyle = '#0b1320';
-    ctx.beginPath(); ctx.moveTo(0, H);
-    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, H * 0.68 + Math.sin(x / W * 3.1 + 2) * H * 0.04);
-    ctx.lineTo(W, H); ctx.fill();
-    for (const tr of trees) {
-      const b = groundY(tr.x) + H * 0.01, w = tr.h * 0.42;
-      ctx.fillStyle = '#0a1a14';
-      for (let k = 0; k < 3; k++) {
-        const top = b - tr.h + k * tr.h * 0.22, bot = b - tr.h * 0.1 - (2 - k) * tr.h * 0.18;
-        ctx.beginPath(); ctx.moveTo(tr.x, top); ctx.lineTo(tr.x - w * (0.55 + k * 0.22), bot); ctx.lineTo(tr.x + w * (0.55 + k * 0.22), bot); ctx.fill();
-      }
-    }
-  }
-  function drawHouse() {
-    const { x, w, h, base, top, peak, eave, chimney: ch } = house;
-    ctx.fillStyle = '#222c3a'; ctx.fillRect(x, top, w, h);                             // walls
-    ctx.fillStyle = '#121822';                                                         // roof
-    ctx.beginPath(); ctx.moveTo(x - eave, top); ctx.lineTo(x + w / 2, peak); ctx.lineTo(x + w + eave, top); ctx.fill();
-    ctx.fillStyle = '#2b3646'; ctx.fillRect(ch.x, ch.top, ch.w, roofY(ch.x + ch.w) - ch.top + 2);   // chimney, brick-dark
-    ctx.fillStyle = '#3a4657'; ctx.fillRect(ch.x - 2, ch.top - 3, ch.w + 4, 4);
-    const glow = 0.85 + 0.15 * Math.sin(t / 23) * Math.sin(t / 7);                    // firelight flicker
-    const win = (wx0, wy, ww, wh) => {
-      ctx.fillStyle = `rgba(255,214,138,${glow})`; ctx.shadowColor = '#ffcf7a'; ctx.shadowBlur = ww * 0.6;
-      ctx.fillRect(wx0, wy, ww, wh); ctx.shadowBlur = 0;
-      ctx.strokeStyle = '#121822'; ctx.lineWidth = Math.max(1, ww * 0.08);
-      ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy); ctx.lineTo(wx0 + ww / 2, wy + wh); ctx.moveTo(wx0, wy + wh / 2); ctx.lineTo(wx0 + ww, wy + wh / 2); ctx.stroke();
-    };
-    win(x + w * 0.12, top + h * 0.25, w * 0.18, h * 0.3);
-    win(x + w * 0.7, top + h * 0.25, w * 0.18, h * 0.3);
-    ctx.fillStyle = '#3a2a1e'; ctx.fillRect(x + w * 0.43, top + h * 0.38, w * 0.14, h * 0.62);   // door
-    // Chimney smoke: soft puffs that rise, spread and drift.
-    if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.22 });
-    for (const s of smoke) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15; s.r += 0.12; s.a *= 0.992; }
-    smoke = smoke.filter(s => s.a > 0.01 && s.y > -50);
-    for (const s of smoke) { ctx.fillStyle = `rgba(190,200,212,${s.a})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill(); }
-  }
-  function snowLayers() {
-    // Ground snow: from the drift line down to the bottom of the screen, over the
-    // foot of the house.
-    const g = ctx.createLinearGradient(0, H * 0.6, 0, H);
-    g.addColorStop(0, '#dfe8f1'); g.addColorStop(1, '#aebccb');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, H);
-    for (let i = 0; i < depth.length; i++) ctx.lineTo(i * COL, groundY(i * COL) - depth[i]);
-    ctx.lineTo(W, H); ctx.fill();
-    // Roof snow, riding on the roof line.
-    ctx.fillStyle = '#e6eef6'; ctx.beginPath();
-    let started = false, lastX = 0;
-    for (let i = 0; i < roofDepth.length; i++) {
-      const x = i * COL, ry = roofY(x); if (ry === null) continue;
-      if (!started) { ctx.moveTo(x, ry); started = true; }
-      ctx.lineTo(x, ry - roofDepth[i]); lastX = x;
-    }
-    for (let i = roofDepth.length - 1; i >= 0; i--) { const x = i * COL, ry = roofY(x); if (ry !== null) ctx.lineTo(x, ry); }
-    if (started) ctx.fill();
+  function fogLayer() {
+    if (fog < 0.02) return;
+    const g = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    const c = tone('#3a4450', '#d8dde2');
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, c); g.addColorStop(1, c);
+    ctx.globalAlpha = fog * 0.6; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
   }
   function status() {
-    const say = wx.kind === 'loading' ? 'CHECKING NOAA…'
-      : wx.kind === 'offline' ? 'NOAA FORECAST UNAVAILABLE'
-      : wx.kind === 'clear' ? 'NO SNOW IN THE FORECAST'
-      : wx.kind === 'coming' ? `SNOW COMING ${wx.when} · ABOUT ${wx.total < 1 ? 'UNDER 1' : Math.round(wx.total)} IN`
-      : `SNOWING · ${wx.rate >= RATE_HEAVY ? 'HEAVY' : wx.rate >= RATE_MODERATE ? 'MODERATE' : 'LIGHT'} · ABOUT ${wx.total < 1 ? 'UNDER 1' : Math.round(wx.total)} IN`;
-    ctx.globalAlpha = 0.55; ctx.fillStyle = '#0b1320';
+    const amt = (n) => n < 1 ? 'UNDER 1' : String(Math.round(n));
+    let say = wx.status === 'loading' ? 'CHECKING NOAA…'
+      : wx.status === 'offline' ? 'NOAA FORECAST UNAVAILABLE'
+      : (wx.words || '').toUpperCase();
+    if (wx.status !== 'loading' && wx.status !== 'offline' && wx.todayTotal > 0) say += ` · ABOUT ${amt(wx.todayTotal)} IN TODAY`;
+    if (wx.coming) say += ` · SNOW COMING ${wx.coming.when} · ABOUT ${amt(wx.coming.total)} IN`;
     ctx.font = `500 ${Math.max(11, Math.round(Math.min(W, H) / 60))}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    ctx.fillText(`${preview ? 'PREVIEW · ' : 'NOAA · CENTRE HALL · '}${say}`, 16, H - 14);
-    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';   // top left, clear of the tap hint at the bottom
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.8;
+    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · CENTRE HALL'} · ${say}`, 16, 14);
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   }
 
   // ---- the frame -------------------------------------------------------------
   function draw() {
     t++;
-    const want = wx.kind === 'snowing' ? Math.min(1, 0.55 + wx.rate)
-      : wx.kind === 'coming' ? Math.max(0.1, 1 - wx.hoursUntil / LOOKAHEAD_HRS) * 0.8 : 0;
-    cover += (want - cover) * (t < 3 ? 1 : 0.01);   // starts at the right cover, then eases
-    sky(); hills(); drawHouse(); snowLayers();
-    const n = targetFlakes();
-    while (flakes.length < n) flakes.push(newFlake(flakes.length > n * 0.5));
-    if (flakes.length > n) flakes.length = n;
-    ctx.fillStyle = '#f2f7fc';
-    for (const f of flakes) {
-      f.y += f.vy; f.x += Math.sin(t / 50 + f.ph) * 0.35 + 0.15;
-      const ry = roofY(f.x);
-      const i = Math.max(0, Math.min(depth.length - 1, Math.round(f.x / COL)));
-      if (ry !== null && f.y >= ry - roofDepth[i] && f.y < ry + 6) { if (wx.kind === 'snowing') land(f.x, true); Object.assign(f, newFlake(true)); continue; }
-      if (f.y >= groundY(f.x) - depth[i]) { if (wx.kind === 'snowing') land(f.x, false); Object.assign(f, newFlake(true)); continue; }
-      ctx.globalAlpha = 0.55 + f.r * 0.18; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.3); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // Drifts settle: a little smoothing each frame so piles don't spike.
+    const first = t < 3;
+    const ease = (cur, want, k) => cur + (want - cur) * (first ? 1 : k);
+    cover = ease(cover, targetCover(), 0.01);
+    fog = ease(fog, wx.sky === 'fog' ? 1 : 0, 0.01);
+    light = ease(light, wx.day ? 1 : 0, 0.004);
+    // Ground: white while snow is in today's forecast (a light cover at least),
+    // otherwise any snow melts slowly away to bare ground.
+    if (wx.snowToday) { const floor = H * 0.008; for (let i = 0; i < depth.length; i++) if (depth[i] < floor) depth[i] = first ? floor : depth[i] + 0.02; }
+    else { for (let i = 0; i < depth.length; i++) depth[i] = Math.max(0, depth[i] - (first ? 99 : 0.02)); for (let i = 0; i < roofDepth.length; i++) roofDepth[i] = Math.max(0, roofDepth[i] - (first ? 99 : 0.02)); }
+    sky(); land(); drawHouse(); snowLayers(); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;
       arr[i] += ((arr[i - 1] + arr[i + 1]) / 2 - arr[i]) * 0.05;
@@ -250,6 +365,6 @@
     start(context) { ctx = context; if (!this.started) { this.started = true; loadWeather(); setInterval(loadWeather, 3600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, wx }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx }),
   };
 })();
