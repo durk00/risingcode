@@ -46,7 +46,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · TAP AGAIN TO CHANGE IT · SANTA V22</div>
+<div id="hint">TAP FOR SOUND · TAP AGAIN TO CHANGE IT · SANTA V23</div>
 
 <script>
 (() => {
@@ -479,10 +479,12 @@
   //   jingle bells the opening of "Jingle Bells" (1857, public domain) on bell
   //                tones with a sleigh-bell shake on each beat (V12's sound)
   //   icicles      one quick bright shake of tiny bells (V13's sound)
+  //   silent       no sound (V23)
   const SOUNDS = [
     { name: 'TOOT', play: (t) => toot(t) },
     { name: 'JINGLE BELLS', play: (t) => jingleBells(t) },
     { name: 'ICICLES', play: (t) => icicles(t) },
+    { name: 'SILENT', play: () => true },        // V23: no sound at all; a pass still counts as done
   ];
   let soundPick = 0;
   try { soundPick = Math.max(0, SOUNDS.findIndex(x => x.name === localStorage.getItem('risingcode_sound'))); } catch (e) {}
