@@ -16,6 +16,7 @@
 (() => {
   const WILDCARDS = [
     { id: 'none', name: 'Nothing', note: '' },
+    { id: 'verses', name: 'Verses for the week', note: 'KING JAMES' },   // V47, verses.js
     { id: 'poem', name: 'Poem of the day', note: 'COMING' },
     { id: 'cook', name: 'What can I make?', note: 'COMING' },
   ];
@@ -50,6 +51,10 @@
   #menu .ev span { color: #93a4b4; font-size: 13px; }
   #menu .src { color: #93a4b4; font-size: 12px; letter-spacing: 0.08em; }
   #menu .src a { color: #e8eef4; }
+  #menu .verse { margin-top: 14px; padding: 16px 18px; border-radius: 10px; background: #121a23; border: 2px solid #243241; }
+  #menu .verse .vt { margin: 6px 0; font: 500 17px/1.55 Georgia, 'Times New Roman', serif; letter-spacing: 0.01em; }
+  #menu .verse sup { color: #93a4b4; font-size: 11px; }
+  #menu .verse .vref { margin: 10px 0 0; color: #e8eef4; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
@@ -87,6 +92,20 @@
     return head + local.items.map((e) => `<a class="ev" href="${esc(e.url)}" target="_blank" rel="noopener"><b>${esc(e.title)}</b><span>${esc(e.when)}${e.where ? ' · ' + esc(e.where) : ''}</span></a>`).join('') + src;
   }
 
+  // VERSES (V47): the week's passage, shown right under My Corner when picked.
+  let verse = { ref: '', state: 'idle', verses: [] };
+  function versesHtml() {
+    if (!window.Verses) return '';
+    const v = Verses.today();
+    if (verse.ref !== v.ref) {
+      verse = { ref: v.ref, state: 'loading', verses: [] };
+      Verses.text(v.ref).then(vs => { if (verse.ref === v.ref) { verse = { ref: v.ref, state: 'ok', verses: vs }; if (open) render(); } },
+        () => { if (verse.ref === v.ref) { verse = { ref: v.ref, state: 'error', verses: [] }; if (open) render(); } });
+    }
+    const body = verse.state === 'ok' ? verse.verses.map(x => `<p class="vt"><sup>${esc(x.n)}</sup> ${esc(x.t)}</p>`).join('')
+      : verse.state === 'error' ? '<p class="help">Couldn’t load the words right now; look it up by the reference below.</p>' : '<p class="help">Loading…</p>';
+    return `<div class="verse"><p class="src">${esc(v.label)}</p>${body}<p class="vref">${esc(v.ref)} · KING JAMES VERSION</p></div>`;
+  }
   function render() {
     const names = sound ? sound.names : [];
     const cur = sound ? sound.get() : -1;
@@ -102,6 +121,7 @@
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
+      ${wild === 'verses' ? versesHtml() : ''}
       <footer>SWIPE UP OR TAP ✕ TO CLOSE</footer></div>`;
   }
   el.addEventListener('click', (e) => {
