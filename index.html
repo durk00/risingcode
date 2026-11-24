@@ -47,7 +47,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V34</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V35</div>
 
 <script src="winter.js"></script>
 <script src="details.js"></script>
@@ -222,6 +222,7 @@
   }
 
   if (window.Kitchen && scene === 'kitchen') Kitchen.show(true);   // the iPad remembered Kitchen
+  if (window.Kitchen) Kitchen.onBack = () => stepScene(-1);     // the Back button in Kitchen (V35)
   function draw() {
     if (scene === 'kitchen') return;               // Kitchen is a page of its own, nothing to draw (V34)
     if (scene === 'winter' && window.WinterScene) { WinterScene.draw(); return; }
@@ -646,15 +647,26 @@
   const MENU_SWIPE_MIN_Y = () => Math.max(120, window.innerHeight * 0.2);
   let downFromTop = false;
   // A drag that starts in Kitchen's text box or results is that page's own (selecting, scrolling): never a swipe.
-  const inKitchenContent = (t) => !!(t && t.closest && t.closest('#kitchen input, #kitchen .card'));
-  const swipeStart = (x, y, t) => { downX = inKitchenContent(t) && scene === 'kitchen' ? null : x; downY = y; downFromTop = y < MENU_SWIPE_MIN_Y(); };
+  const inKitchenContent = (t) => !!(t && t.closest && t.closest('#kitchen input'));
+  // On iPad, Safari can take over a vertical drag on Kitchen's scrollable page and cancel the touch,
+  // so the menu swipe must not wait for touchend (V35). A drag that starts while Kitchen's results are
+  // scrolled down is a scroll, not a menu swipe.
+  const kitchenScrolled = () => { const k = document.getElementById('kitchen'); return scene === 'kitchen' && !!k && k.scrollTop > 0; };
+  let lastX = 0, lastY = 0, scrolledStart = false;
+  const swipeStart = (x, y, t) => { downX = inKitchenContent(t) && scene === 'kitchen' ? null : x; downY = y; lastX = x; lastY = y; scrolledStart = kitchenScrolled(); downFromTop = y < MENU_SWIPE_MIN_Y(); };
+  const swipeMove = (x, y) => {
+    if (downX === null) return;
+    lastX = x; lastY = y;
+    const dx = x - downX, dy = y - downY;
+    if (dy >= 80 && dy > Math.abs(dx) * 1.5 && window.Menu && !Menu.isOpen() && !downFromTop && !scrolledStart) swipeEnd(x, y);   // open mid-drag
+  };
   const swipeEnd = (x, y) => {
     if (downX === null) return;
     const dx = x - downX, dy = y - downY; downX = null;
     // Swipe down on any scene opens the menu; swipe up closes it (V32).
     if (window.Menu && Math.abs(dy) >= 80 && Math.abs(dy) > Math.abs(dx) * 1.5) {
       swipedAt = Date.now();
-      if (dy > 0 && !Menu.isOpen()) { if (!downFromTop) Menu.open(); }
+      if (dy > 0 && !Menu.isOpen()) { if (!downFromTop && !scrolledStart) Menu.open(); }
       else if (dy < 0 && Menu.isOpen()) Menu.close();
       return;
     }
@@ -667,6 +679,8 @@
     }
   };
   document.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; swipeStart(p.clientX, p.clientY, e.target); }, { passive: true });
+  document.addEventListener('touchmove', (e) => { const p = e.changedTouches[0]; swipeMove(p.clientX, p.clientY); }, { passive: true });
+  document.addEventListener('touchcancel', () => swipeEnd(lastX, lastY), { passive: true });
   document.addEventListener('touchend', (e) => { const p = e.changedTouches[0]; swipeEnd(p.clientX, p.clientY); }, { passive: true });
   document.addEventListener('mousedown', (e) => swipeStart(e.clientX, e.clientY, e.target));
   document.addEventListener('mouseup', (e) => swipeEnd(e.clientX, e.clientY));
