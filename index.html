@@ -46,7 +46,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR FULL SCREEN AND SOUND · SANTA V17</div>
+<div id="hint">TAP FOR FULL SCREEN AND SOUND · SANTA V18</div>
 
 <script>
 (() => {
@@ -435,6 +435,7 @@
     delay.delayTime.value = 0.24; back.gain.value = 0.32; tone.type = 'lowpass'; tone.frequency.value = 3500; wet.gain.value = 0.35;
     bus.connect(audio.destination);
     bus.connect(delay); delay.connect(tone); tone.connect(back); back.connect(delay); tone.connect(wet); wet.connect(audio.destination);
+    bus.wet = wet;
     return bus;
   }
   // V16, by request: a toot instead of bells. A low buzzy tone that sags in pitch,
@@ -460,6 +461,9 @@
     lfo.connect(depth).connect(v.gain);
     o.connect(lp).connect(v).connect(out);
     o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
+    // V18: the whole sound, echo included, is over in one second.
+    const w = out.wet.gain;
+    w.cancelScheduledValues(t); w.setValueAtTime(0.35, t); w.setValueAtTime(0.35, t + 0.75); w.linearRampToValueAtTime(0, t + 1);
   }
   function jingle() {
     if (!audio || audio.state !== 'running' || !santa || santa.rang) return;
