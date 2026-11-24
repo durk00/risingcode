@@ -86,7 +86,9 @@
     const sky = fall !== 'none' ? 'cloudy'
       : /fog|haze|mist|smoke/.test(w) ? 'fog'
       : /mostly cloudy|^cloudy|overcast/.test(w) ? 'cloudy'
-      : /partly|mostly sunny|mostly clear|few clouds/.test(w) ? 'partly' : 'clear';
+      // V59: "Mostly Clear" and "Mostly Sunny" draw as clear, no clouds: when the words say
+      // clear, the picture shows clear. Only "Partly" draws a few clouds.
+      : /partly/.test(w) ? 'partly' : 'clear';
     const chance = /chance|slight|isolated|scattered/.test(w);
     return { fall, sky, chance };
   }
