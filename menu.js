@@ -3,6 +3,7 @@
 // further:
 //   SOUND     which sound plays when the radar catches Santa (the same four as
 //             tapping the Christmas display: toot, Jingle Bells, icicles, silent)
+//   NIGHT CLOCK (V42) the hours the dim night clock covers the screen (nightclock.js)
 //   AROUND PENNS VALLEY (V33) upcoming Penns Valley events, each with its source named
 //             and linked. Only the YMCA of Centre County's Penns Valley calendar
 //             (its public Events API, which a browser may read) works from this page; no
@@ -94,6 +95,9 @@
       <h2>SOUND</h2>
       <p class="help">What plays on the Christmas display when the radar catches Santa.</p>
       <div class="opts">${names.map((n, i) => `<button class="opt${i === cur ? ' on' : ''}" data-sound="${i}">${n}</button>`).join('')}</div>
+      ${window.NightClock ? `<h2>NIGHT CLOCK</h2>
+      <p class="help">During these hours the screen becomes a big, dim clock. Tap it to wake the app for 5 minutes.</p>
+      <div class="opts">${NightClock.options().map(o => `<button class="opt${o.id === NightClock.get() ? ' on' : ''}" data-night="${o.id}">${o.name}</button>`).join('')}</div>` : ''}
       ${localHtml()}
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
@@ -105,6 +109,7 @@
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) { Menu.close(); return; }
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
+    if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }
     if (b.dataset.wild) { wild = b.dataset.wild; try { localStorage.setItem('risingcode_wildcard', wild); } catch (e2) {} render(); }
   });
 
