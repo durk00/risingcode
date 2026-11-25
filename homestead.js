@@ -73,6 +73,43 @@
       // Snow on the face shows as a white cap over the top edge.
       if (load[k] > 0.02) { ctx.fillStyle = shade('#f4f7fb', Math.max(0.55, light)); const sh = a.ph * 0.45 * load[k]; ctx.fillRect(x + 1, top - sh * 0.35, a.pw - 2, sh); }
     }
+    drawWiring(ctx, env, a);
+  }
+  // V79: the wiring, as it really runs on a ground mount. All 16 panels are one series string:
+  // each junction box's + lead plugs into the next panel's - lead. It starts at the lower row's
+  // right end, runs left, jumps up to the top row at the left end, runs right, so both ends of
+  // the string (+ and -) come out at the right end, nearest the house. The two home-run wires
+  // drop down the last leg into a gray conduit that goes into the ground; the run is buried
+  // and comes up again at the house wall into the disconnect box (drawHouseEnd).
+  function drawWiring(ctx, env, a) {
+    const light = env.light, wire = shade('#1c1e22', Math.max(0.5, light));
+    const box = (row, c) => { const x = a.x0 + c * a.pw, top = a.base - a.leg - (2 - row) * a.ph; return { l: x + a.pw * 0.42, r: x + a.pw * 0.58, y: top + a.ph * 0.22, top }; };
+    ctx.strokeStyle = wire; ctx.lineWidth = Math.max(1, a.pw * 0.025); ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let row = 0; row < 2; row++) for (let c = 0; c < 7; c++) {            // panel to panel, with a little sag
+      const p = box(row, c), q = box(row, c + 1);
+      ctx.moveTo(p.r, p.y); ctx.quadraticCurveTo((p.r + q.l) / 2, p.y + a.ph * 0.12, q.l, q.y);
+    }
+    const b8 = box(1, 0), b0 = box(0, 0), jx = a.x0 + a.pw * 0.12;              // row jumper at the left end
+    ctx.moveTo(b8.l, b8.y); ctx.lineTo(jx, b8.y); ctx.lineTo(jx, b0.y); ctx.lineTo(b0.l, b0.y);
+    const cx = a.x1 - a.pw * 0.12, cTop = a.base - a.leg + a.ph * 0.15;         // home runs down to the conduit
+    const b7 = box(0, 7), b15 = box(1, 7);
+    ctx.moveTo(b7.r, b7.y); ctx.lineTo(cx - 1.5, b7.y); ctx.lineTo(cx - 1.5, cTop);
+    ctx.moveTo(b15.r, b15.y); ctx.lineTo(cx + 1.5, b15.y); ctx.lineTo(cx + 1.5, cTop);
+    ctx.stroke();
+    ctx.fillStyle = shade('#8e9298', light); const cw = Math.max(4, a.pw * 0.09);   // conduit into the ground
+    ctx.fillRect(cx - cw / 2, cTop, cw, a.base - cTop + env.H * 0.01);
+    ctx.fillRect(cx - cw * 0.8, cTop - cw * 0.3, cw * 1.6, cw * 0.5);             // weatherhead fitting
+  }
+  // Where the buried run comes back up: a conduit up the house's left wall into a gray
+  // disconnect box. Drawn in front of the snow, since it's on the wall.
+  function drawHouseEnd(ctx, env) {
+    const h = env.house, light = env.light, S = h.h, x = h.x + h.w * 0.12, cw = Math.max(4, S * 0.035);
+    const bx = x - S * 0.03, by = h.base - S * 0.42, bw = S * 0.1, bh = S * 0.13;
+    ctx.fillStyle = shade('#8e9298', light); ctx.fillRect(x - cw / 2, by + bh, cw, h.base - by - bh + env.H * 0.01);
+    ctx.fillStyle = shade('#9aa0a6', light); ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = shade('#5d646c', light); ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = shade('#3a3e44', light); ctx.fillRect(bx + bw * 0.7, by + bh * 0.35, bw * 0.12, bh * 0.3);   // the handle
   }
   function drawWell(ctx, env, L) {
     const w = L.well, s = w.s, light = env.light, x = w.x, b = w.base;
@@ -243,6 +280,6 @@
     stepSnow(env, dt); stepPerson(env, L, dt);
     drawArray(ctx, env, L); drawWell(ctx, env, L); drawPaddock(ctx, env, L, dt);
   }
-  function front(ctx, env) { if (person) drawPerson(ctx, env, layout(env)); }
+  function front(ctx, env) { drawHouseEnd(ctx, env); if (person) drawPerson(ctx, env, layout(env)); }
   window.Homestead = { back, front, debug: () => ({ person: person && { task: person.task, state: person.state, x: Math.round(person.x) }, snow: load.map(v => +v.toFixed(2)), critters: (critters || []).map(c => c.kind) }) };
 })();
