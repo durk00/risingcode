@@ -57,7 +57,14 @@
   .tvbody .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; background: transparent; }
   .tvbody .screen .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px;
     color: #b98a46; font: 700 16px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; }
-  .tvbody .screen:fullscreen, .tvbody .screen:-webkit-full-screen { border: 0; border-radius: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
+  .tvbody .screen .pic { position: absolute; inset: 0; }
+  .tvbody .screen:fullscreen { border: 0; border-radius: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
+  .tvbody .screen:-webkit-full-screen { border: 0; border-radius: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
+  /* V86: in full screen, a shrink button (arrows pointing in), top right, back to the TV set. */
+  .tvbody .shrink { display: none; position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; width: 60px; height: 60px; z-index: 2;
+    border-radius: 12px; border: 2px solid #ffb84a; background: rgba(20,24,30,0.72); cursor: pointer; align-items: center; justify-content: center; padding: 0; }
+  .tvbody .screen:fullscreen .shrink { display: flex; }
+  .tvbody .screen:-webkit-full-screen .shrink { display: flex; }
   .tvbody .title { margin: 12px 2px 12px; min-height: 44px; }
   .tvbody .title .name { font-size: 20px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.45); }
   .tvbody .title .sub { font-size: 12px; color: #b98a46; margin-top: 3px; letter-spacing: 0.1em; text-transform: uppercase; }
@@ -67,7 +74,7 @@
 
   let root = null, opts = {}, ch = CHANNELS.find(c => c.id === saved.ch) || CHANNELS[1], list = [], idx = 0, on = false, loading = false, err = false, staticTimer = null;
   const $ = (s) => root.querySelector(s);
-  const scr = () => $('.screen');
+  const scr = () => $('.screen .pic');
 
   function channelsHtml() {
     return CHANNELS.map(c => `<button type="button" data-ch="${c.id}" class="${c.id === ch.id ? 'on' : ''}${c.wide ? ' wide' : ''}">${c.id}</button>`).join('') +
@@ -119,7 +126,7 @@
     idx = (idx + dir + list.length) % list.length; play();
   }
   function full() {
-    const s = scr();
+    const s = $('.screen');
     try { (s.requestFullscreen || s.webkitRequestFullscreen).call(s); } catch (e) {}
   }
   function power() {
@@ -129,7 +136,7 @@
 
   function mount(el, o) {
     root = el; opts = o || {};
-    root.innerHTML = `<div class="screen"></div><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div>
+    root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div>
       <div class="row"><button type="button" class="step" data-tvstep="-1" aria-label="Previous movie">◀</button><div class="bands"></div><button type="button" class="step" data-tvstep="1" aria-label="Next movie">▶</button></div>
       <div class="hint">◀ ▶ CHANGES THE MOVIE · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
     root.addEventListener('click', (e) => {
@@ -137,6 +144,7 @@
       if (b.dataset.ch) pick(b.dataset.ch);
       else if (b.dataset.tvstep) step(+b.dataset.tvstep);
       else if (b.dataset.full) full();
+      else if (b.classList.contains('shrink')) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e2) {} }
     });
     render();
   }
