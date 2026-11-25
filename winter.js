@@ -275,6 +275,14 @@
     ctx.arc(cx, cy, R, -Math.PI / 2, Math.PI / 2, !waxing);              // the lit edge
     ctx.ellipse(cx, cy, Math.max(0.01, rx), R, 0, Math.PI / 2, -Math.PI / 2, waxing !== gibbous);   // the terminator
     ctx.closePath(); ctx.fill();
+    // V75: the moon's darker "seas", faint gray patches on the lit part, so even a full moon
+    // reads as the moon and not a plain disc (William saw tonight's full moon as a sun).
+    ctx.save(); ctx.clip();
+    ctx.globalAlpha *= 0.28; ctx.fillStyle = '#5d6673';
+    for (const [dx, dy, q] of [[-0.28, -0.22, 0.3], [0.18, -0.3, 0.2], [0.05, 0.12, 0.26], [-0.32, 0.3, 0.16], [0.36, 0.22, 0.14]]) {
+      ctx.beginPath(); ctx.arc(cx + dx * R, cy + dy * R, q * R, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
   }
   function sky() {
     const grey = Math.min(1, cover * 1.1);
