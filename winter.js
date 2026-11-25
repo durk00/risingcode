@@ -363,6 +363,17 @@
     for (let x = 0; x <= W; x += 4) ctx.lineTo(x, groundY(x));
     ctx.lineTo(W, H); ctx.fill();
   }
+  const lamps = [0, 1].map(() => ({ v: 0.96, to: 0.96, next: 0 }));
+  function flame(i) {
+    const L = lamps[i];
+    if (t >= L.next) {
+      const gutter = Math.random() < 0.04;                                            // about once every half minute or so
+      L.to = gutter ? 0.88 + Math.random() * 0.03 : 0.94 + Math.random() * 0.05;
+      L.next = t + (gutter ? 4 + Math.random() * 5 : 18 + Math.random() * 40);        // frames: a dip is brief, a wander is slow
+    }
+    L.v += (L.to - L.v) * 0.08;
+    return L.v;
+  }
   function drawHouse() {
     const { x, w, h, top, peak, eave, chimney: ch } = house;
     ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
@@ -370,9 +381,11 @@
     ctx.beginPath(); ctx.moveTo(x - eave, top); ctx.lineTo(x + w / 2, peak); ctx.lineTo(x + w + eave, top); ctx.fill();
     ctx.fillStyle = tone('#2b3646', '#6e4a3a'); ctx.fillRect(ch.x, ch.top, ch.w, roofY(ch.x + ch.w) - ch.top + 2);   // chimney
     ctx.fillStyle = tone('#3a4657', '#82604e'); ctx.fillRect(ch.x - 2, ch.top - 3, ch.w + 4, 4);
-    const flick = 0.85 + 0.15 * Math.sin(t / 23) * Math.sin(t / 7);                    // firelight
-    const lit = (1 - light) * flick;   // V45: by day the lights are off: dark glass; at night they glow
-    const win = (wx0, wy, ww, wh) => {
+    // V111: an oil lamp in each window, each with its own flame. The flicker is an Easter egg:
+    // a slow, small wander (a few percent), and now and then a brief dip when the flame gutters,
+    // so a glance shows two steady lit windows and only a long look shows they're alive.
+    const win = (wx0, wy, ww, wh, i) => {
+      const lit = (1 - light) * flame(i);   // V45: by day the lights are off: dark glass; at night they glow
       ctx.fillStyle = mix('#33414f', '#ffd68a', lit); ctx.shadowColor = '#ffcf7a'; ctx.shadowBlur = ww * 0.6 * (1 - light);
       ctx.fillRect(wx0, wy, ww, wh); ctx.shadowBlur = 0;
       if (light > 0.3) {                         // a faint daylight reflection across the dark glass
@@ -383,8 +396,8 @@
       ctx.strokeRect(wx0, wy, ww, wh);
       ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy); ctx.lineTo(wx0 + ww / 2, wy + wh); ctx.moveTo(wx0, wy + wh / 2); ctx.lineTo(wx0 + ww, wy + wh / 2); ctx.stroke();
     };
-    win(x + w * 0.12, top + h * 0.25, w * 0.18, h * 0.3);
-    win(x + w * 0.7, top + h * 0.25, w * 0.18, h * 0.3);
+    win(x + w * 0.12, top + h * 0.25, w * 0.18, h * 0.3, 0);
+    win(x + w * 0.7, top + h * 0.25, w * 0.18, h * 0.3, 1);
     ctx.fillStyle = tone('#3a2a1e', '#4a2f22'); ctx.fillRect(x + w * 0.43, top + h * 0.38, w * 0.14, h * 0.62);   // door
     // Chimney smoke, always: soft puffs that rise, spread and drift, whatever the weather.
     if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.24 });
