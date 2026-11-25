@@ -38,6 +38,17 @@
     <li><b>Tap</b> does something different on each screen, explained below.</li>
   </ul>
 
+  <h2>YOUR LOCATION</h2>
+  <p>The first time the app opens, the iPad asks <b>"Allow location?"</b> Say <b>Allow</b>. Everything real in this app depends on knowing where you are:</p>
+  <ul>
+    <li>Your weather, and weather alerts for your area.</li>
+    <li>Your sunrise and sunset, and where the sun and moon sit in your sky.</li>
+    <li>Rain and snow on Home when it's really falling where you are.</li>
+    <li>News and talk stations near you on the radio.</li>
+  </ul>
+  <p>Your spot is rounded to about half a mile, stays on the iPad, and is only sent to NOAA, the government weather service, to get your weather. Nothing else gets it. It works anywhere in the US.</p>
+  <p>If you say no, the app still works, but it shows Happy Valley, PA instead of where you are. To change your mind later: on the iPad go to <b>Settings</b>, <b>Privacy &amp; Security</b>, <b>Location Services</b>, <b>Safari Websites</b>, and pick <b>While Using the App</b>. Then open the menu, and under <b>LOCATION</b> tap <b>Where this iPad is</b>.</p>
+
   <h2>THE SCREENS</h2>
   <p><b>Home.</b> Where the app opens. A house in the Pennsylvania woods under your real sky. The sun and moon rise on the left and set on the right at their real times, and the moon shows its real phase. Rain and snow fall when they are falling where you are, and snow piles up and melts. Deer come by at dawn and dusk, a bear in the warm months, geese in their seasons, a jet now and then. There's a homestead too: solar panels that collect snow, a well, a paddock with animals, and someone who lives there going about the chores. <b>Tap</b> for the three-day forecast; tap again to close it. A <b>red banner</b> across the top is a real weather alert: tap it to read it, swipe it sideways to put it away.</p>
   <p><b>The screensaver.</b> One swipe right of Home. Pick which one in the menu under SCREENSAVER: the Christmas display (from late November into January; on Christmas Eve a radar tracks Santa, and a tap turns the sound on), plain rising code, the Earth, or the portrait. The Earth turns in real time with the real line between day and night, city lights on the night side, and Starcloud-1, the first data center in space, passing over on its real orbit.</p>
@@ -71,7 +82,7 @@
     <li><b>SCREENSAVER</b>: which screensaver is one swipe right of Home.</li>
     <li><b>SOUND</b>: what plays when the Christmas radar catches Santa: a toot, Jingle Bells or icicles. Pick <b>SILENT</b> to turn the sound off.</li>
     <li><b>NIGHT CLOCK</b>: overnight, the screen turns into a big, dim clock with the date and the moon's phase. Pick the hours: <b>9 PM – 6 AM</b> (the usual), <b>10 PM – 6 AM</b> or <b>11 PM – 7 AM</b>, or pick <b>Off</b> to turn it off. While it's showing, tap the clock to use the app for 5 minutes.</li>
-    <li><b>LOCATION</b>: whose weather to show, where this iPad is or Happy Valley, PA. Your spot stays on the iPad and only goes to NOAA. It works anywhere in the US.</li>
+    <li><b>LOCATION</b>: whose weather to show, where this iPad is or Happy Valley, PA. See YOUR LOCATION above.</li>
     <li><b>AROUND HAPPY VALLEY</b>: upcoming local events. It only shows when the app is set to Happy Valley or the iPad is nearby.</li>
     <li><b>MY CORNER</b>: one thing just for your household, like verses for the week, picked for the season of the Church year.</li>
   </ul>
