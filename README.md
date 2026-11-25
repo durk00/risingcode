@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Shield in the menu (V134)
+
+A SHIELD button near the top of the menu, under HOW IT WORKS, opens Shield (https://wandering-shield-guard-pro.base44.app/), William's separate consumer-protection app, in its own tab: check a contractor's license, a car by its VIN, and more. Handy on a phone at a car lot. Close the tab to come back.
+
 ## Radio and TV fit an iPhone (V133)
 
 On an iPhone the radio and TV set was taller than the screen and the top of the TV was cut off. `phonefit.js` makes the buttons about half as tall and tightens the spacing on phone-width screens (under 560 pixels wide), so the whole set fits, TV picture included. The iPad and Chromebook are unchanged.
