@@ -68,50 +68,86 @@
   }
 
   // ---- field corn -----------------------------------------------------------------------
-  let stalks = null, stalkKey = '';
+  // V113: dense, a wall you can't see through: a solid backing in the corn's color plus three
+  // ranks of stalks. From mid-October on the stalks die back: they shrink, go gray-brown, lean
+  // and bend over at the top, and the leaves hang. Drawn once into an off-screen picture and
+  // reused (it only changes with the day, the light and the harvest's progress), so an old iPad
+  // isn't redrawing hundreds of stalks every frame.
+  let stalks = null, stalkKey = '', pic = null, picKey = '';
   function cornField(ctx, env, L, w) {
     const { W, H, light } = env, S = L.S;
-    const key = W + 'x' + H;
-    if (!stalks || stalkKey !== key) {
-      const r = rnd32('corn'), n = Math.ceil(W / Math.max(4, S * 0.03));
-      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + 0.2 + r() * 0.6) * W / n, h: 0.85 + r() * 0.3, lean: (r() - 0.5) * 0.12, back: r() < 0.5 }));
-      stalkKey = key;
-    }
     const d = w.day, hv = harvest(w, L.steps);
-    // Height and color through the year.
-    const grow = d < D.may5 ? 0 : d < D.jul25 ? ramp(d, D.may5, D.jul25) : 1;
-    const tan = ramp(d, D.sep1, D.oct15);
-    const fullH = S * 0.5;                                                         // taller than a man
-    const green = '#4f8a34', dry = '#c4a86c';
-    const col = mixHex(green, dry, tan);
     const cutX = hv.done < 0 ? W + 1 : hv.done * L.tl;                              // everything left of this is cut
+    const key = [W, H, d, Math.round(light * 24), Math.round(cutX)].join(':');
+    if (!pic || picKey !== key) { pic = pic || document.createElement('canvas'); paintCorn(pic, env, L, w, hv, cutX); picKey = key; }
+    ctx.drawImage(pic, 0, 0, W, H);
+    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, cutX), H);
+  }
+  function paintCorn(cv, env, L, w, hv, cutX) {
+    const { W, H, light } = env, S = L.S, d = w.day;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+    if (!stalks || stalkKey !== W + 'x' + H) {
+      const r = rnd32('corn'), n = Math.ceil(W / Math.max(2.2, S * 0.011));
+      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.12 }));
+      stalks.sort((a, b) => a.rank - b.rank);                                         // back rank first
+      stalkKey = W + 'x' + H;
+    }
+    const grow = d < D.may5 ? 0 : d < D.jul25 ? ramp(d, D.may5, D.jul25) : 1;
+    const tan = ramp(d, D.sep1, D.oct15), wither = ramp(d, D.oct15, D.nov1 + 35);
+    const fullH = S * 0.5 * (1 - 0.18 * wither);                                     // taller than a man; it slumps as it dies
+    const col = mixHex(mixHex('#4f8a34', '#c4a86c', tan), '#8c7754', wither);
+    const back = mixHex(mixHex('#2f5a22', '#8f7a50', tan), '#5e4f38', wither);
     const stubbleSeason = hv.done < 0 || (d >= harvestDay(w.year) && hv.done > 0);
-    ctx.save(); ctx.lineCap = 'round';
+    const worked = d >= D.apr28 && d < D.may5;                                         // stubble plowed under, nothing up yet
+    const standing = (x) => !(stubbleSeason && x < cutX) && grow > 0;
+    ctx.lineCap = 'round';
+    // The solid backing, wherever corn is standing, with a ragged top.
+    if (grow > 0.15) {
+      const r = rnd32('cornback'), top = fullH * (0.08 + 0.92 * grow) * 0.72;
+      ctx.fillStyle = shade(back, light);
+      let open = false;
+      for (let x = 0; x <= W + 6; x += 6) {
+        const gy = env.groundY(Math.min(W - 1, x)) - H * 0.014;
+        if (standing(x)) {
+          const y = gy - top * (0.85 + r() * 0.3);
+          if (!open) { ctx.beginPath(); ctx.moveTo(x, gy + 2); open = true; }
+          ctx.lineTo(x, y);
+        } else if (open) { ctx.lineTo(x, env.groundY(Math.min(W - 1, x)) + 2); ctx.closePath(); ctx.fill(); open = false; }
+      }
+      if (open) { ctx.lineTo(W, env.groundY(W - 1) + 2); ctx.lineTo(0, env.groundY(0) + 2); ctx.closePath(); ctx.fill(); }
+    }
     for (const s of stalks) {
-      const gy = env.groundY(s.x) - H * (s.back ? 0.012 : 0.004);
-      if (s.x < cutX && stubbleSeason || (grow === 0 && hv.done !== -1 && d < D.may5 && d > D.apr28)) {   // stubble (or bare after it's worked under)
-        if (d >= D.apr28 && d < D.may5) continue;
-        ctx.strokeStyle = shade('#a08a5a', light); ctx.lineWidth = Math.max(1, S * 0.008);
-        ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x + s.lean * 4, gy - S * 0.025); ctx.stroke();
+      const gy = env.groundY(Math.min(W - 1, s.x)) - H * (0.016 - s.rank * 0.006);
+      if (!standing(s.x)) {
+        if (worked || grow > 0 && !stubbleSeason) continue;
+        if (!stubbleSeason) continue;
+        if (s.rank !== 2 && s.x % 3 > 1) continue;                                     // stubble: short, sparser
+        ctx.strokeStyle = shade('#9c8658', light); ctx.lineWidth = Math.max(1, S * 0.007);
+        ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x + s.lean * 6, gy - S * 0.022); ctx.stroke();
         continue;
       }
-      if (grow === 0) continue;
-      const h = fullH * s.h * (0.08 + 0.92 * grow);
-      const top = gy - h, tx = s.x + s.lean * h;
-      ctx.strokeStyle = shade(col, light); ctx.lineWidth = Math.max(1.2, S * (0.007 + 0.008 * grow));
-      ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(tx, top); ctx.stroke();
-      ctx.lineWidth = Math.max(1, S * 0.006);                                         // leaves, drooping more once dry
-      for (let k = 1; k <= 3; k++) {
-        const ly = gy - h * k / 4.2, lx = s.x + s.lean * h * k / 4.2, sgn = k % 2 ? 1 : -1, len = h * 0.28 * (1 - tan * 0.3);
-        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx + sgn * len * 0.6, ly - len * 0.25, lx + sgn * len, ly + len * (0.15 + tan * 0.35)); ctx.stroke();
+      const h = fullH * s.h * (0.08 + 0.92 * grow) * (s.broke ? 1 - 0.45 * wither : 1);
+      const shadeK = 0.82 + s.rank * 0.09;                                             // front rank a little lighter
+      const c = shade(mixHex('#000000', col, shadeK), light);
+      // The stalk: straight while alive; leaning, and bent over at the top as it dies.
+      const tipDx = s.lean * h + s.bend * wither * h * (s.broke ? 0.55 : 0.28), tipDy = h * (1 - wither * (s.broke ? 0.45 : 0.12));
+      const midX = s.x + s.lean * h * 0.5, midY = gy - h * 0.6;
+      const tx = s.x + tipDx, ty = gy - tipDy;
+      ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.2, S * (0.006 + 0.007 * grow));
+      ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.quadraticCurveTo(midX, midY, tx, ty); ctx.stroke();
+      ctx.lineWidth = Math.max(1, S * 0.005);                                          // leaves: out and up while green, hanging once dead
+      for (let k = 1; k <= 4; k++) {
+        const f = k / 5, lx = s.x + (midX - s.x) * f * 1.6, ly = gy - h * f * 0.9, sgn = (k + s.rank) % 2 ? 1 : -1, len = h * (0.3 - 0.08 * wither);
+        const droop = 0.1 + tan * 0.3 + wither * 0.7;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx + sgn * len * (0.6 - wither * 0.25), ly - len * (0.25 - wither * 0.25), lx + sgn * len * (0.9 - wither * 0.45), ly + len * droop); ctx.stroke();
       }
-      if (d >= D.jul25 - 10 && grow > 0.85) {                                         // tassel, and an ear on the stalk
-        ctx.strokeStyle = shade(mixHex('#d9c27a', '#c8b48a', tan), light); ctx.beginPath(); ctx.moveTo(tx, top); ctx.lineTo(tx - S * 0.012, top - S * 0.025); ctx.moveTo(tx, top); ctx.lineTo(tx + S * 0.012, top - S * 0.022); ctx.stroke();
-        ctx.fillStyle = shade(mixHex('#7a8f3a', '#b8a06a', tan), light); ctx.beginPath(); ctx.ellipse(s.x + s.lean * h * 0.5 + S * 0.01, gy - h * 0.5, S * 0.008, S * 0.022, 0.3, 0, 6.3); ctx.fill();
+      if (d >= D.jul25 - 10 && grow > 0.85 && !s.broke) {                              // tassel, and an ear hanging on the stalk
+        ctx.strokeStyle = shade(mixHex(mixHex('#d9c27a', '#c8b48a', tan), '#8a7a5a', wither), light);
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx - S * 0.01, ty - S * 0.02 * (1 - wither)); ctx.moveTo(tx, ty); ctx.lineTo(tx + S * 0.01, ty - S * 0.018 * (1 - wither)); ctx.stroke();
+        if (s.rank === 2) { ctx.fillStyle = shade(mixHex(mixHex('#7a8f3a', '#b8a06a', tan), '#8a7350', wither), light); ctx.beginPath(); ctx.ellipse(midX + S * 0.01, midY + h * 0.08 + wither * h * 0.05, S * 0.008, S * 0.022, 0.3 + wither * 0.8, 0, 6.3); ctx.fill(); }
       }
     }
-    ctx.restore();
-    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, cutX), H);
   }
   // A small tractor pulling a one-row picker, the man in the red coat driving.
   function tractor(ctx, env, L, x, H) {
