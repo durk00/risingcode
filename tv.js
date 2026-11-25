@@ -22,6 +22,7 @@
     { id: 'CARTOONS', q: 'collection:classic_cartoons', wide: true },
     { id: 'OLD TV', q: 'collection:classic_tv', wide: true },
   ];
+  // YOUTUBE goes straight to YouTube's free-with-ads movies (the address William found, V88).
   const PER = 30;
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
@@ -147,7 +148,7 @@
     root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="titlerow"><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div><button type="button" class="full" data-full="1">⛶ FULL SCREEN</button></div>
       <div class="row"><button type="button" class="step" data-tvstep="-1" aria-label="Previous movie">◀</button><div class="bands"></div><button type="button" class="step" data-tvstep="1" aria-label="Next movie">▶</button></div>
       <div class="out"><span>NEWER MOVIES, FREE WITH ADS · OPENS THEIR APP OR SITE</span>
-        <a href="https://tubitv.com/" target="_blank" rel="noopener">TUBI</a><a href="https://pluto.tv/on-demand" target="_blank" rel="noopener">PLUTO TV</a><a href="https://www.youtube.com/feed/storefront" target="_blank" rel="noopener">YOUTUBE</a></div>
+        <a href="https://tubitv.com/" target="_blank" rel="noopener">TUBI</a><a href="https://pluto.tv/on-demand" target="_blank" rel="noopener">PLUTO TV</a><a href="https://www.youtube.com/feed/storefront?bp=ogUCKAY%3D" target="_blank" rel="noopener">YOUTUBE</a></div>
       <div class="hint">◀ ▶ CHANGES THE MOVIE · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
     root.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
