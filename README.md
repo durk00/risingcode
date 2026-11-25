@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Harder to pop up the radio by accident (V132)
+
+On an iPhone, scrolling the kitchen's recipes kept bringing up the radio. The swipe up for the radio now has to be longer and straighter (at least 120 pixels, about a fifth of the screen), and on the Kitchen, when the recipes scroll, a swipe up only scrolls. Every other screen still brings up the radio.
+
 ## Weather station fits an iPhone browser (V131)
 
 In Safari on an iPhone, the bottom of the weather station (the WIND AND GUSTS chart and the day names) sat under the browser's bottom bar. It now lays out in the part of the screen you can actually see. On a narrow screen the first NOON label is skipped so it doesn't print on top of NOW.
