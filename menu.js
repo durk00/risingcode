@@ -46,7 +46,7 @@
     border: 2px solid #243241; font: 600 16px ui-monospace, monospace; cursor: pointer; min-height: 56px; }
   /* The picked one stands out by brightness and a check mark, not by color alone. */
   #menu .opt.on { border-color: #ffffff; background: #1e2a37; }
-  #menu .allow { width: 100%; margin: 0 0 12px; border-color: #ffb84a; color: #ffb84a; text-align: center; font-weight: 800; letter-spacing: 0.1em; }
+  #menu .allow { width: 100%; margin: 0 0 12px; text-align: center; font-weight: 800; letter-spacing: 0.1em; }   /* V128: a plain button, not an amber outline that reads like a warning */
   #menu .opt.on::before { content: "✓ "; }
   #menu .opt small { display: block; color: #93a4b4; font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
   #menu .ev { display: block; padding: 12px 16px; margin-bottom: 8px; border-radius: 10px; background: #121a23; border: 2px solid #243241; color: #e8eef4; text-decoration: none; }
@@ -127,10 +127,13 @@
   function allowHtml() {
     const P = window.Place; if (!P) return '';
     const st = P.status(), m = P.mode();
-    if ((m === 'here' && st === 'ok') || st === 'outside') return '';
-    if (m === 'here' && st === 'checking') return '<p class="help">Asking the iPad…</p>';
+    // V128: only when "Where this iPad is" is picked and the iPad hasn't given its spot. Picking
+    // Happy Valley on purpose shows no button; tapping "Where this iPad is" does the asking.
+    if (m !== 'here' || st === 'ok' || st === 'outside') return '';
+    if (st === 'checking') return '<p class="help">Asking the iPad…</p>';
     const no = askedHere && m === 'here' && st === 'denied';
     return `<button class="opt allow" data-allowloc="1">ALLOW LOCATION<small>USE WHERE THIS iPAD IS FOR THE WEATHER, THE SKY AND THE RADIO</small></button>` +
+      (st === 'unavailable' ? '<p class="help">The iPad didn’t answer, so it’s showing Happy Valley. In Safari, open the page menu beside the address bar (it may show <b>aA</b>), then Website Settings → Location → Allow, and tap ALLOW LOCATION again.</p>' : '') +
       (no ? '<p class="help">The iPad still says no. Turn it on in Settings → Privacy &amp; Security → Location Services → Safari Websites → While Using the App, then tap ALLOW LOCATION again.</p>' : '');
   }
   if (window.Place) Place.onChange(() => { if (open) render(); });

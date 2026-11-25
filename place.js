@@ -32,7 +32,12 @@
   function locate() {
     if (mode !== 'here') return;
     if (!navigator.geolocation) { status = 'unavailable'; changed(); return; }
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+    // V128: in a Safari tab the iPad can sit on the question with no answer, and the menu said
+    // CHECKING… forever. After 30 seconds with no answer, stop waiting and use Happy Valley.
+    let answered = false;
+    setTimeout(() => { if (!answered && status === 'checking') { status = here ? 'ok' : 'unavailable'; changed(); } }, 30000);
+    if (status !== 'ok') { status = 'checking'; changed(); }
+    navigator.geolocation.getCurrentPosition(async (pos) => { answered = true;
       const lat = Math.round(pos.coords.latitude * 100) / 100, lon = Math.round(pos.coords.longitude * 100) / 100;
       const moved = !here || Math.abs(here.lat - lat) > 0.015 || Math.abs(here.lon - lon) > 0.015;
       if (!moved) { status = 'ok'; changed(); return; }
@@ -42,7 +47,7 @@
         here = { lat, lon, name: n.city || 'YOUR AREA', state: n.state };
         status = 'ok'; save(); changed();
       } catch (e) { if (!here) status = 'unavailable'; changed(); }
-    }, (err) => { status = err && err.code === 1 ? 'denied' : (here ? 'ok' : 'unavailable'); changed(); },
+    }, (err) => { answered = true; status = err && err.code === 1 ? 'denied' : (here ? 'ok' : 'unavailable'); changed(); },
     { enableHighAccuracy: false, timeout: 20000, maximumAge: 6 * 3600e3 });
   }
 
