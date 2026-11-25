@@ -52,7 +52,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V131</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V132</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -713,6 +713,11 @@
   // On iPad, Safari can take over a vertical drag on Kitchen's scrollable page and cancel the touch,
   // so the menu swipe must not wait for touchend (V35). A drag that starts while Kitchen's results are
   // scrolled down is a scroll, not a menu swipe.
+  // V132: the radio's swipe up is more deliberate: a longer, straighter swipe (at least 120 px,
+  // about a fifth of the screen), and never on the kitchen when its recipes scroll, so scrolling them
+  // doesn't pop the radio up. Every other screen still brings it up.
+  const RADIO_DY = () => Math.max(120, window.innerHeight * 0.18);
+  const kitchenScrolls = () => { const k = document.getElementById('kitchen'); return scene === 'kitchen' && !!k && k.scrollHeight > k.clientHeight + 4; };
   const kitchenScrolled = () => { const k = document.getElementById('kitchen'); return scene === 'kitchen' && !!k && k.scrollTop > 0; };
   const MENU_CLOSE_DY = 140;                      // V70: how far up a swipe must go to close the menu
   let lastX = 0, lastY = 0, scrolledStart = false, menuEndStart = false;
@@ -736,7 +741,7 @@
       swipedAt = Date.now();
       if (dy > 0 && !Menu.isOpen()) { if (!downFromTop && !scrolledStart) Menu.open(); }
       else if (dy < 0 && Menu.isOpen() && menuEndStart && -dy >= MENU_CLOSE_DY) Menu.close();
-      else if (dy < 0 && !Menu.isOpen() && fromMiddle && !scrolledStart && window.Radio) Radio.open();
+      else if (dy < 0 && !Menu.isOpen() && fromMiddle && !scrolledStart && !kitchenScrolls() && -dy >= RADIO_DY() && -dy > Math.abs(dx) * 2 && window.Radio) Radio.open();
       return;
     }
     if (window.Menu && Menu.isOpen()) return;

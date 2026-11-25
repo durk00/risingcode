@@ -34,7 +34,7 @@
   <ul>
     <li><b>Swipe left or right</b> to move between the screens.</li>
     <li><b>Swipe down</b> for the menu. Start the swipe a little below the top edge, since the very top belongs to the iPad.</li>
-    <li><b>Swipe up from the middle</b> for the radio and TV. Not from the very bottom edge, which also belongs to the iPad.</li>
+    <li><b>Swipe up from the middle</b> for the radio and TV: a good, long swipe straight up. Not from the very bottom edge, which also belongs to the iPad. On the Kitchen, swiping up scrolls the recipes instead, so use another screen.</li>
     <li><b>Tap</b> does something different on each screen, explained below.</li>
   </ul>
 
