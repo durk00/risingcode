@@ -186,6 +186,9 @@
     const shape = document.createElement('canvas'); shape.width = iconCanvas.width; shape.height = iconCanvas.height;
     shape.getContext('2d').drawImage(iconCanvas, 0, 0);
     ic.setTransform(1, 0, 0, 1, 0, 0);
+    // V75: at night the icon keeps its own colors, a silver moon and gray clouds, so the moon
+    // reads as the moon (tinted amber, tonight's full moon looked like a sun with no rays).
+    if (night) { ctx.drawImage(iconCanvas, cx - size / 2, cy - size / 2, size, size); return; }
     ic.globalCompositeOperation = 'multiply'; ic.fillStyle = AMBER; ic.fillRect(0, 0, iconCanvas.width, iconCanvas.height);
     ic.globalCompositeOperation = 'destination-in'; ic.drawImage(shape, 0, 0);
     ic.globalCompositeOperation = 'source-over';
@@ -224,6 +227,11 @@
       const words = n.words || (pop >= 50 ? (n.temp !== null && n.temp <= 32 ? 'Snow' : 'Rain') : sky === null ? '' : sky >= 88 ? 'Cloudy' : sky >= 50 ? 'Partly Cloudy' : 'Clear');
       const nowT = new Date(), night = nowT < sunTime(true) || nowT > sunTime(false);
       if (words) amberIcon(words, night, Math.min(iconX, x + w1 - iconR * 1.2), y + row1 * 0.47, iconR);
+      // V75: at night, the moon's phase by name under the icon.
+      if (words && night && WinterScene.moonPhaseName) {
+        ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.62); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(WinterScene.moonPhaseName(), Math.min(iconX, x + w1 - iconR * 1.2), y + row1 * 0.47 + iconR * 1.25);
+      }
     }
     // Wind: a compass ring, the arrowhead on the side the wind comes FROM, speed and gust inside.
     const wx = x + w1 + gap; tile(wx, y, w2, row1, fs, 'WIND');
