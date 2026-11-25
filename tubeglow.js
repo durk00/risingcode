@@ -7,16 +7,18 @@
 (() => {
   // Where the tubes sit behind the glass: across (0..1), how far down, how big, how strong.
   const TUBES = [{ x: 0.2, y: 0.8, r: 0.3, k: 0.95 }, { x: 0.53, y: 1.1, r: 0.36, k: 0.7 }, { x: 0.85, y: 0.75, r: 0.26, k: 0.85 }];
-  let warm = 0, last = 0;                          // 0 cold .. 1 fully warmed up; tubes take a moment either way
+  let warm = 0, last = 0, boost = 1;              // 0 cold .. 1 fully warmed up; tubes take a moment either way
   function paint(c, W, H, on, now = performance.now()) {
     const dt = last ? Math.min(0.2, (now - last) / 1000) : 0.2; last = now;
     warm += ((on ? 1 : 0) - warm) * Math.min(1, dt * (on ? 1.2 : 2.5));
+    const set = document.getElementById('radio');                               // V109: a touch brighter while the set has faded
+    boost += ((set && set.classList.contains('dim') ? 1.25 : 1) - boost) * Math.min(1, dt * 1.5);
     c.fillStyle = '#120c06'; c.fillRect(0, 0, W, H);                              // the dark glass
     c.fillStyle = `rgba(120,70,26,${0.42 * warm})`; c.fillRect(0, 0, W, H);       // a little light reaches everywhere
     const flick = 1 + Math.sin(now / 370) * 0.012 + Math.sin(now / 1130) * 0.01;  // barely there, like a filament
     for (const t of TUBES) {
       const R = t.r * W, g = c.createRadialGradient(t.x * W, t.y * H, 0, t.x * W, t.y * H, R);
-      const a = t.k * warm * flick;
+      const a = Math.min(1, t.k * warm * flick * boost);
       g.addColorStop(0, `rgba(255,218,150,${0.95 * a})`);
       g.addColorStop(0.3, `rgba(240,168,78,${0.6 * a})`);
       g.addColorStop(0.7, `rgba(140,72,22,${0.2 * a})`);
@@ -32,5 +34,5 @@
     c.fillStyle = s; c.fillRect(0, 0, W, H);
     return warm;
   }
-  window.TubeGlow = { paint, warming: () => Math.abs(warm - Math.round(warm)) > 0.01 };
+  window.TubeGlow = { paint, warming: () => Math.abs(warm - Math.round(warm)) > 0.01 || Math.abs(boost - Math.round(boost * 4) / 4) > 0.01 };
 })();

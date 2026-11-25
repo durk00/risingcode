@@ -66,7 +66,7 @@
     <li><b>XMAS</b> shows up from mid-November to January 6 for Christmas music.</li>
     <li>Drag the dial, or tap <b>◀ ▶</b>, to change stations. Between stations you'll hear a soft hiss, like a real radio.</li>
     <li>If a station says <b>NO SIGNAL</b>, its stream is down. Turn the dial to the next one.</li>
-    <li>Leave the radio alone for 30 seconds and it fades almost away, so you can see the scene behind it. Touch it once to bring it back; that touch doesn't press anything.</li>
+    <li>Leave the radio alone for 30 seconds and it fades almost away, so you can see the scene behind it, all but the glowing dial. Touch it once to bring it back; that touch doesn't press anything.</li>
     <li>Starting the radio turns the TV off, and starting a movie turns the radio off, so you never hear both.</li>
     <li>Swipe down, or tap the <b>bar</b> in the top right corner, to tuck the radio away. It keeps playing while you use the rest of the app, and when the screen goes dark. Pause it from the lock screen, or come back and tap ⏻.</li>
   </ul>
