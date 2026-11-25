@@ -4,7 +4,7 @@
 //
 // Where the movies come from: the Internet Archive (archive.org), free, no key, no bill, and it
 // lets its films play inside other apps. They're mostly public-domain classics (films whose
-// copyright ran out or was never renewed), so the channels are by decade, 30s to 60s, plus
+// copyright ran out or was never renewed), so the channels are by decade, 30s to 70s (the 70s thin), plus
 // old cartoons and old TV shows; newer movies are still owned and aren't there. Most-watched
 // first. Lists kept on the device for a day.
 //
@@ -18,6 +18,7 @@
     { id: '40s', q: 'collection:feature_films AND year:[1940 TO 1949]' },
     { id: '50s', q: 'collection:feature_films AND year:[1950 TO 1959]' },
     { id: '60s', q: 'collection:feature_films AND year:[1960 TO 1969]' },
+    { id: '70s', q: 'collection:feature_films AND year:[1970 TO 1979]' },   // V87: thin (a few 70s films slipped into the public domain), but real
     { id: 'CARTOONS', q: 'collection:classic_cartoons', wide: true },
     { id: 'OLD TV', q: 'collection:classic_tv', wide: true },
   ];
@@ -51,7 +52,7 @@
 
   const css = document.createElement('style');
   css.textContent = `
-  .tvbody .screen { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #050607; border-radius: 14px; overflow: hidden;
+  .tvbody .screen { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: max(180px, calc(100vh - 500px)); background: #050607; border-radius: 14px; overflow: hidden;
     border: 6px solid #0d0f12; box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 0 2px #3a3f47; }
   .tvbody .screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
   .tvbody .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; background: transparent; }
@@ -65,10 +66,17 @@
     border-radius: 12px; border: 2px solid #ffb84a; background: rgba(20,24,30,0.72); cursor: pointer; align-items: center; justify-content: center; padding: 0; }
   .tvbody .screen:fullscreen .shrink { display: flex; }
   .tvbody .screen:-webkit-full-screen .shrink { display: flex; }
-  .tvbody .title { margin: 12px 2px 12px; min-height: 44px; }
+  .tvbody .titlerow { display: flex; align-items: center; gap: 12px; margin: 10px 2px; }
+  .tvbody .title { flex: 1; min-width: 0; min-height: 44px; }
   .tvbody .title .name { font-size: 20px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.45); }
   .tvbody .title .sub { font-size: 12px; color: #b98a46; margin-top: 3px; letter-spacing: 0.1em; text-transform: uppercase; }
-  .tvbody .full { flex: 1 0 40%; }
+  .tvbody .full { flex: none; height: 52px; padding: 0 16px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
+    font: 800 15px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; cursor: pointer; }
+  /* V87: newer movies live on the free-with-ads services; these open them (their app if it's installed). */
+  .tvbody .out { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tvbody .out span { flex: 1 0 100%; text-align: center; color: #b98a46; font-size: 12px; letter-spacing: 0.1em; }
+  .tvbody .out a { flex: 1 0 90px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px solid #ffb84a;
+    background: #1e2a37; color: #ffb84a; font: 800 17px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; text-decoration: none; }
 `;
   document.head.appendChild(css);
 
@@ -78,7 +86,7 @@
 
   function channelsHtml() {
     return CHANNELS.map(c => `<button type="button" data-ch="${c.id}" class="${c.id === ch.id ? 'on' : ''}${c.wide ? ' wide' : ''}">${c.id}</button>`).join('') +
-      '<button type="button" class="full wide" data-full="1">⛶ FULL SCREEN</button>';
+      '';
   }
   function title(name, sub) { $('.title .name').textContent = name; $('.title .sub').innerHTML = sub || '&nbsp;'; }
   function screenMsg(text) { clearInterval(staticTimer); scr().innerHTML = text ? `<div class="msg">${text}</div>` : ''; }
@@ -136,8 +144,10 @@
 
   function mount(el, o) {
     root = el; opts = o || {};
-    root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div>
+    root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="titlerow"><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div><button type="button" class="full" data-full="1">⛶ FULL SCREEN</button></div>
       <div class="row"><button type="button" class="step" data-tvstep="-1" aria-label="Previous movie">◀</button><div class="bands"></div><button type="button" class="step" data-tvstep="1" aria-label="Next movie">▶</button></div>
+      <div class="out"><span>NEWER MOVIES, FREE WITH ADS · OPENS THEIR APP OR SITE</span>
+        <a href="https://tubitv.com/" target="_blank" rel="noopener">TUBI</a><a href="https://pluto.tv/on-demand" target="_blank" rel="noopener">PLUTO TV</a><a href="https://www.youtube.com/feed/storefront" target="_blank" rel="noopener">YOUTUBE</a></div>
       <div class="hint">◀ ▶ CHANGES THE MOVIE · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
     root.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
