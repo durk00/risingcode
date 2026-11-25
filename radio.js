@@ -24,7 +24,8 @@
     { id: '00s', tags: ['2000s', '00s'] },
     { id: '10s', tags: ['2010s', '10s'] },
     { id: '20s', tags: ['2020s', 'top 40'] },
-    { id: 'XMAS', tags: ['christmas'], season: true },
+    { id: 'XMAS', tags: ['christmas'], season: true, wide: true },
+    { id: 'TALK', talk: true, wide: true },
   ];
   const ENGLISH = ['US', 'GB', 'CA', 'IE', 'AU', 'NZ'];
   const PER_BAND = 14;
@@ -49,7 +50,52 @@
   }
   const playable = (s) => s && s.lastcheckok === 1 && /^https:/.test(s.url_resolved || '') &&
     (s.hls === 1 || /^(MP3|AAC|AAC\+)$/i.test(s.codec || ''));
+  // V83: TALK, local news and talk first. The stations in the iPad's own state (from Menu →
+  // LOCATION, Centre Hall by default), nearest first where the directory knows where a station is,
+  // so in Centre County that means the State College stations before Pittsburgh or Philadelphia.
+  // Then, at the end of the dial, the national pair, one from each side, Fox News and MSNBC
+  // (or Newsmax and CNN if those aren't in the directory). The pair only goes on together, so the
+  // dial never has one side without the other.
+  const STATES = { AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming' };
+  const miles = (a, b, c, d) => { const R = Math.PI / 180, x = (d - b) * R * Math.cos((a + c) / 2 * R), y = (c - a) * R; return 3959 * Math.sqrt(x * x + y * y); };
+  const station = (s, where) => ({ name: s.name.trim().replace(/\s+/g, ' ').slice(0, 48), url: s.url_resolved, cc: s.countrycode || '', kbps: s.bitrate || 0, id: s.stationuuid, where });
+  async function talkStations() {
+    const P = window.Place, st = (P && P.state) || 'PA', lat = P ? P.lat : 40.85, lon = P ? P.lon : -77.69;
+    const key = 'TALK-' + st, c = saved.lists[key];
+    if (c && Date.now() - c.at < 12 * 3600e3 && c.list.length) return c.list;
+    const seen = new Set(), local = [];
+    let reached = false;
+    for (const tag of ['news', 'talk', 'news talk']) {
+      let rows = [];
+      try { rows = await get(`/json/stations/search?countrycode=US&state=${encodeURIComponent(STATES[st] || st)}&tag=${encodeURIComponent(tag)}&tagExact=true&order=votes&reverse=true&hidebroken=true&is_https=true&limit=200`); reached = true; } catch (e) { continue; }
+      for (const s of rows.filter(playable)) {
+        const k = (s.name || '').trim().toLowerCase();
+        if (!k || seen.has(k) || seen.has(s.url_resolved)) continue;
+        seen.add(k); seen.add(s.url_resolved);
+        const d = isFinite(s.geo_lat) && isFinite(s.geo_long) && (s.geo_lat || s.geo_long) ? miles(lat, lon, +s.geo_lat, +s.geo_long) : null;
+        local.push({ s, d });
+      }
+    }
+    if (!reached) throw new Error('directory unreachable');
+    local.sort((a, b) => (a.d === null) - (b.d === null) || (a.d !== null ? a.d - b.d : 0) || (b.s.votes - a.s.votes));
+    const pick = local.slice(0, PER_BAND - 2).map(({ s, d }) => station(s, d !== null && d < 60 ? 'LOCAL · ' + st : (STATES[st] || st).toUpperCase()));
+    const side = async (names) => {
+      for (const n of names) {
+        try {
+          const rows = (await get(`/json/stations/search?name=${encodeURIComponent(n)}&countrycode=US&order=votes&reverse=true&hidebroken=true&is_https=true&limit=20`)).filter(playable);
+          const hit = rows.find(r => r.name.toLowerCase().includes(n.toLowerCase()) && !seen.has(r.url_resolved));
+          if (hit) return hit;
+        } catch (e) {}
+      }
+      return null;
+    };
+    const right = await side(['Fox News', 'Newsmax']), left = await side(['MSNBC', 'CNN']);
+    if (right && left) pick.push(station(right, 'NATIONAL'), station(left, 'NATIONAL'));
+    if (pick.length) { saved.lists[key] = { at: Date.now(), list: pick }; save(); }
+    return pick;
+  }
   async function stations(band) {
+    if (band.talk) return talkStations();
     const c = saved.lists[band.id];
     if (c && Date.now() - c.at < 12 * 3600e3 && c.list.length) return c.list;
     const seen = new Set(), pick = [];
@@ -127,6 +173,7 @@
   #radio .row { display: flex; gap: 10px; align-items: stretch; }
   #radio .row .step { width: 64px; flex: none; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 700 22px ui-monospace, Menlo, monospace; cursor: pointer; }
   #radio .bands { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; }
+  #radio .bands button.wide { flex: 1 0 40%; }   /* V83: XMAS and TALK on their own row, the decades keep full-size buttons */
   #radio .bands button { flex: 1 0 64px; height: 60px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
     font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; cursor: pointer; box-shadow: 0 3px 0 #0a0c0f; }
   #radio .bands button.on { background: #ffb84a; color: #14110c; transform: translateY(2px); box-shadow: 0 1px 0 #0a0c0f; }
@@ -140,13 +187,13 @@
     <div class="lcd"><div class="name">—</div><div class="sub">&nbsp;</div></div>
     <div class="dial"><canvas></canvas></div>
     <div class="row"><button type="button" class="step" data-step="-1" aria-label="Tune down">◀</button><div class="bands"></div><button type="button" class="step" data-step="1" aria-label="Tune up">▶</button></div>
-    <div class="hint">PICK A DECADE · DRAG THE DIAL · SWIPE DOWN OR TAP THE BAR TO MINIMIZE · IT KEEPS PLAYING</div></div>`;
+    <div class="hint">DRAG THE DIAL · SWIPE DOWN OR TAP THE BAR TO MINIMIZE, IT KEEPS PLAYING</div></div>`;
   document.body.appendChild(el);
   const $ = (s) => el.querySelector(s);
   const cv = $('.dial canvas'), dialEl = $('.dial');
 
   function renderBands() {
-    $('.bands').innerHTML = bands().map(b => `<button type="button" data-band="${b.id}" class="${b.id === band.id ? 'on' : ''}">${b.id}</button>`).join('');
+    $('.bands').innerHTML = bands().map(b => `<button type="button" data-band="${b.id}" class="${b.id === band.id ? 'on' : ''}${b.wide ? ' wide' : ''}">${b.id}</button>`).join('');
   }
   function lcd(name, sub) { $('.lcd .name').textContent = name; $('.lcd .sub').innerHTML = sub || '&nbsp;'; }
   function showStation() {
@@ -158,7 +205,7 @@
     if (n.d > gap() * 0.25) return lcd('· · ·', band.id + ' · BETWEEN STATIONS');
     const s = list[n.i];
     const st = !on ? 'OFF · TAP ⏻' : status === 'dead' ? 'NO SIGNAL · TURN THE DIAL' : status === 'buffering' ? 'TUNING IN…' : 'LIVE';
-    lcd(s.name, `${band.id} · ${n.i + 1} OF ${list.length}${s.cc ? ' · ' + s.cc : ''} · ${st}`);
+    lcd(s.name, `${band.id} · ${n.i + 1} OF ${list.length}${s.where ? ' · ' + s.where : s.cc ? ' · ' + s.cc : ''} · ${st}`);
   }
   function drawDial() {
     const r = dialEl.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
