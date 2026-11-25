@@ -357,11 +357,11 @@
 
   // Swipe down on the radio closes it. Touches on the radio never reach the scenes underneath.
   let sy = null, sx = 0;
-  el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; sy = e.target.closest('.dial, button') ? null : p.clientY; sx = p.clientX; e.stopPropagation(); }, { passive: true });
+  el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; sy = e.target.closest('.dial, button, .guide') ? null : p.clientY; sx = p.clientX; e.stopPropagation(); }, { passive: true });
   el.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
   el.addEventListener('touchend', (e) => { const p = e.changedTouches[0]; if (sy !== null && p.clientY - sy > 90 && p.clientY - sy > Math.abs(p.clientX - sx) * 1.5) close(); sy = null; e.stopPropagation(); }, { passive: true });
   for (const t of ['mousedown', 'mouseup', 'click']) el.addEventListener(t, (e) => e.stopPropagation());
-  el.addEventListener('mousedown', (e) => { if (!e.target.closest('.dial, button')) sy = e.clientY; });
+  el.addEventListener('mousedown', (e) => { if (!e.target.closest('.dial, button, .guide')) sy = e.clientY; });
   el.addEventListener('mouseup', (e) => { if (sy !== null && e.clientY - sy > 90) close(); sy = null; });
   document.addEventListener('keydown', (e) => { if (isOpen() && (e.key === 'Escape' || e.key === 'ArrowDown')) { e.stopImmediatePropagation(); close(); } }, true);
   window.addEventListener('resize', () => { if (isOpen()) drawDial(); });
