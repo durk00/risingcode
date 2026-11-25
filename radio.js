@@ -169,7 +169,7 @@
   #radio .lcd { background: #120d05; border: 2px solid #3a2a10; border-radius: 8px; padding: 12px 16px; min-height: 64px; box-shadow: inset 0 0 18px rgba(255,184,74,0.12); }
   #radio .lcd .name { font-size: 24px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.55); }
   #radio .lcd .sub { font-size: 13px; color: #b98a46; margin-top: 4px; letter-spacing: 0.1em; text-transform: uppercase; }
-  #radio .dial { position: relative; height: 92px; margin: 16px 0; border-radius: 8px; background: linear-gradient(#e9dcc0, #d6c6a2); border: 3px solid #0d0f12; cursor: grab; overflow: hidden; }
+  #radio .dial { position: relative; height: 92px; margin: 16px 0; border-radius: 8px; background: #120c06; border: 3px solid #0d0f12; cursor: grab; overflow: hidden; }
   #radio .dial canvas { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; background: transparent; }
   #radio .row { display: flex; gap: 10px; align-items: stretch; }
   #radio .row .step { width: 64px; flex: none; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 700 22px ui-monospace, Menlo, monospace; cursor: pointer; }
@@ -229,6 +229,7 @@
     if (!r.width) return;
     cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
     const c = cv.getContext('2d'), W = cv.width, H = cv.height; c.clearRect(0, 0, W, H);
+    if (window.TubeGlow) TubeGlow.paint(c, W, H, on);                       // V108: lit from behind by the tubes
     c.fillStyle = '#2a2116'; c.font = `700 ${Math.round(11 * dpr)}px ui-monospace, Menlo, monospace`; c.textAlign = 'center';
     for (let i = 0; i <= 50; i++) {                                         // the scale
       const x = W * (0.03 + 0.94 * i / 50), big = i % 5 === 0;
@@ -244,6 +245,8 @@
     c.fillStyle = '#c0420e'; c.fillRect(nx - dpr * 1.5, 0, dpr * 3, H);
   }
   function render() { renderBands(); showStation(); drawDial(); }
+  // V108: keep redrawing while the tubes warm up or cool down, and now and then for the faint flicker.
+  setInterval(() => { if (isOpen() && (window.TubeGlow && (TubeGlow.warming() || on))) drawDial(); }, 120);
 
   // ---- tuning -----------------------------------------------------------------------------
   let settleTimer = null;
