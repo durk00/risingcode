@@ -46,7 +46,7 @@
     const r = daySeed(env.now), list = [];
     const span = Math.max(10, (Math.min(env.W, L.pad.x1) - L.pad.x0));
     const at = () => L.pad.x0 + span * (0.1 + 0.8 * r());
-    if (r() < 0.8) { const n = r() < 0.5 ? 1 : 2; for (let i = 0; i < n; i++) list.push({ kind: 'horse', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#5a3c26', '#2b2420', '#8a6a4a', '#c8c0b4'][(r() * 4) | 0], next: 0 }); }
+    if (r() < 0.8) { const n = r() < 0.5 ? 1 : 2; for (let i = 0; i < n; i++) list.push({ kind: 'horse', x: at(), dir: r() < 0.5 ? 1 : -1, coat: r() < 0.5 ? '#d8d2c8' : ['#5a3c26', '#2b2420', '#8a6a4a'][(r() * 3) | 0], next: 0, head: 0, headTo: 0, headNext: 0 }); }
     if (r() < 0.5) { const n = 1 + ((r() * 2) | 0); for (let i = 0; i < n; i++) list.push({ kind: 'goat', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#e8e2d8', '#6e5a48', '#3a3330'][(r() * 3) | 0], next: 0 }); }
     const hens = 3 + ((r() * 5) | 0); for (let i = 0; i < hens; i++) list.push({ kind: 'hen', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#8a4a26', '#e8e2d8', '#2b2420'][(r() * 3) | 0], next: 0, peck: r() * 6 });
     if (r() < 0.18) list.push({ kind: 'peacock', x: at(), dir: r() < 0.5 ? 1 : -1, next: 0, fan: 0 });
@@ -126,9 +126,11 @@
     const col = shade(a.coat, light); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineWidth = s * 0.07;
     for (const lx of [-0.32, -0.22, 0.25, 0.35]) { ctx.beginPath(); ctx.moveTo(lx * s, -s * 0.5); ctx.lineTo(lx * s, 0); ctx.stroke(); }
     ctx.beginPath(); ctx.ellipse(0, -s * 0.62, s * 0.45, s * 0.18, 0, 0, 6.3); ctx.fill();
-    const graze = Math.sin(t / 400 + a.x) > -0.2, hx = s * 0.55, hy = graze ? -s * 0.12 : -s * 1.0;
-    ctx.lineWidth = s * 0.16; ctx.beginPath(); ctx.moveTo(s * 0.35, -s * 0.7); ctx.lineTo(hx, hy + (graze ? -s * 0.08 : s * 0.1)); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(hx + s * 0.07, hy, s * 0.16, s * 0.07, graze ? 1.2 : 0.5, 0, 6.3); ctx.fill();
+    // V112: grazing, the head is down nearly all the time; now and then it comes up slowly, looks
+    // around a while, and goes slowly back down (a.head: 0 down, 1 up, eased).
+    const u = a.head * a.head * (3 - 2 * a.head), hx = s * 0.55, hy = -s * (0.12 + 0.88 * u);
+    ctx.lineWidth = s * 0.16; ctx.beginPath(); ctx.moveTo(s * 0.35, -s * 0.7); ctx.lineTo(hx, hy + s * (-0.08 + 0.18 * u)); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(hx + s * 0.07, hy, s * 0.16, s * 0.07, 1.2 - 0.7 * u, 0, 6.3); ctx.fill();
     ctx.lineWidth = s * 0.05; ctx.beginPath(); ctx.moveTo(-s * 0.45, -s * 0.66); ctx.quadraticCurveTo(-s * 0.62, -s * 0.5, -s * 0.58, -s * 0.28); ctx.stroke();   // tail
     ctx.restore();
   }
@@ -183,7 +185,16 @@
       if (env.now > a.next) { a.next = +env.now + rnd(20, 120) * 1000 * (a.kind === 'hen' ? 0.2 : 1); a.to = p.x0 + span * (0.08 + 0.84 * Math.random()); }
       if (a.to !== undefined) { const step = (a.kind === 'hen' ? 0.4 : 0.15) * dt * 60; if (Math.abs(a.to - a.x) > step) { a.dir = a.to > a.x ? 1 : -1; a.x += a.dir * step; } }
       const y = p.base - p.h * 0.05;
-      if (a.kind === 'horse') drawHorse(ctx, a, y, S * 0.48, light, t);
+      if (a.kind === 'horse') {
+        const nowMs = +env.now;
+        if (nowMs >= a.headNext) {                                    // down 25-90 s, up 4-12 s
+          if (a.headTo === 0) { a.headTo = 1; a.headNext = nowMs + rnd(4, 12) * 1000 + 2500; }
+          else { a.headTo = 0; a.headNext = nowMs + rnd(25, 90) * 1000 + 4000; }
+        }
+        const rate = a.headTo ? dt / 2.5 : dt / 4;                    // about 2.5 s up, 4 s back down
+        a.head = a.headTo ? Math.min(1, a.head + rate) : Math.max(0, a.head - rate);
+        drawHorse(ctx, a, y, S * 0.48, light, t);
+      }
       else if (a.kind === 'goat') drawGoat(ctx, a, y, S * 0.34, light, t);
       else if (a.kind === 'hen') drawHen(ctx, a, y + S * 0.03, S * 0.15, light, t);
       else drawPeacock(ctx, a, y, S * 0.3, light, t);
@@ -208,6 +219,16 @@
       const ex = x + s * 0.35, ey = y - s * 1.15 - work * s * 0.15;
       ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.14, y - s * 0.95); ctx.stroke();
       ctx.strokeStyle = shade('#8a6a44', light); ctx.lineWidth = s * 0.03; ctx.beginPath(); ctx.moveTo(x + s * 0.1, y - s * 0.85); ctx.lineTo(ex, ey); ctx.stroke();
+    } else if (P.state === 'work' && P.task === 'garden') {            // V112: a hoe in April, a bucket to water in summer, a basket in the fall
+      if (P.tool === 'till') {
+        const hx = x + s * 0.3, hy = y - s * 0.05 + work * s * 0.08;
+        ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.12, y - s * 0.6); ctx.stroke();
+        ctx.strokeStyle = shade('#8a6a44', light); ctx.lineWidth = s * 0.03; ctx.beginPath(); ctx.moveTo(x - s * 0.05, y - s * 0.85); ctx.lineTo(hx, hy); ctx.stroke();
+        ctx.strokeStyle = shade('#5a5e64', light); ctx.lineWidth = s * 0.05; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + s * 0.07, hy + s * 0.02); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.16, y - s * (0.5 + work * 0.06)); ctx.stroke();
+        ctx.fillStyle = shade(P.tool === 'pick' ? '#9a7a4a' : '#6a6e74', light); ctx.fillRect(x + s * 0.12, y - s * 0.5, s * 0.14, s * 0.11);
+      }
     } else if (P.state === 'work' && P.task === 'well') {
       ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.2, y - s * (0.85 + work * 0.1)); ctx.stroke();
     } else {
@@ -223,13 +244,21 @@
     const snowy = load.some(v => v > 0.25);
     const r = Math.random(), hour = env.now.getHours();
     const feeding = hour < 9 || hour >= 15;
-    const task = snowy ? 'panels' : r < (feeding ? 0.55 : 0.35) ? 'paddock' : r < 0.7 ? 'well' : 'panels';
-    person = { x: L.door.x, y: L.door.base, state: 'walk', task, carrying: false, stops: [] };
+    const farmWork = window.Farm ? Farm.work(env) : null;                     // V112: the garden in season
+    const task = snowy ? 'panels' : farmWork && Math.random() < 0.4 ? 'garden' : r < (feeding ? 0.55 : 0.35) ? 'paddock' : r < 0.7 ? 'well' : 'panels';
+    person = { x: L.door.x, y: L.door.base, state: 'walk', task, tool: farmWork, carrying: false, stops: [] };
     if (task === 'panels') {
       const cols = [...Array(8).keys()];
       const order = snowy ? cols.filter(c => load[c] > 0.05 || load[c + 8] > 0.05) : [cols[(Math.random() * 8) | 0], cols[(Math.random() * 8) | 0]];
       person.stops = (order.length ? order : [3]).map(c => ({ x: L.arr.x0 + (c + 0.5) * L.arr.pw, col: c, dwell: snowy ? rnd(70, 140) : rnd(120, 360) }));
     } else if (task === 'well') person.stops = [{ x: L.well.x + L.well.s * 0.5, dwell: rnd(40, 90), fill: true }];
+    else if (task === 'garden') {
+      const g = Farm.garden(env), rows = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5).slice(0, 2 + ((Math.random() * 2) | 0));
+      if (farmWork === 'tend') person.stops.push({ x: L.well.x + L.well.s * 0.5, dwell: rnd(40, 80), fill: true });   // water from the well first
+      for (const ri of rows) person.stops.push({ x: g.x0 + (g.x1 - g.x0) * rnd(0.15, 0.85), y: g.rows[ri] + env.H * 0.004, dwell: rnd(150, 420), empty: farmWork === 'tend' });
+      person.stops.push({ x: L.door.x, y: L.door.base, dwell: 0, home: true });
+      person.target = person.stops.shift(); return;
+    }
     else person.stops = [{ x: L.pad.x0 + rnd(0.1, 0.5) * Math.max(40, env.W - L.pad.x0), dwell: rnd(240, 600) }];
     person.stops.push({ x: L.door.x, dwell: 0, home: true });
     person.target = person.stops.shift();
@@ -238,6 +267,7 @@
     const now = +env.now;
     if (!person) {
       if (env.light < 0.55) return;
+      if (window.Farm && Farm.busy(env)) return;                                 // he's out on the tractor
       if (!nextOuting) nextOuting = now + rnd(2, 25) * 60e3;
       if (preview || now >= nextOuting) { planOuting(env, L); nextOuting = now + rnd(20, 70) * 60e3; }
       return;
@@ -247,9 +277,17 @@
     const groundAt = (x) => env.groundY(Math.max(0, Math.min(env.W - 1, x))) + env.H * 0.025;
     if (P.state === 'walk') {
       const step = env.W / 150 * dt;          // a slow walk: across the yard in a couple of minutes
-      if (Math.abs(P.target.x - P.x) <= step) { P.x = P.target.x; P.state = 'work'; P.until = now + P.target.dwell * 1000; }
-      else P.x += Math.sign(P.target.x - P.x) * step;
-      P.y = groundAt(P.x);
+      const onPath = P.target.y === undefined && Math.abs(P.y - groundAt(P.x)) < 3;   // along the yard: follow the ground
+      if (onPath) {
+        if (Math.abs(P.target.x - P.x) <= step) { P.x = P.target.x; P.state = 'work'; P.until = now + P.target.dwell * 1000; }
+        else P.x += Math.sign(P.target.x - P.x) * step;
+        P.y = groundAt(P.x);
+        return;
+      }
+      const ty = P.target.y !== undefined ? P.target.y : groundAt(P.target.x);        // V112: out into the garden rows and back
+      const dx = P.target.x - P.x, dy = ty - P.y, dist = Math.hypot(dx, dy);
+      if (dist <= step) { P.x = P.target.x; P.y = ty; P.state = 'work'; P.until = now + P.target.dwell * 1000; }
+      else { P.x += dx / dist * step; P.y += dy / dist * step; }
       return;
     }
     // Working: clearing snow takes it off this column of panels over the stay.
@@ -260,6 +298,7 @@
     if (now >= P.until) {
       if (P.target.home) { person = null; return; }
       if (P.target.fill) P.carrying = true;
+      if (P.target.empty) P.carrying = false;                                    // watered the row
       P.target = P.stops.shift() || { x: L.door.x, dwell: 0, home: true }; P.state = 'walk';
     }
   }
