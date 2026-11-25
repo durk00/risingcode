@@ -373,7 +373,7 @@
       { v: data.pop, bars: true, label: 'CHANCE' },
     ], { unit: '%', min: 0, max: 100 });
     strip(m, chartsTop + (sh + gap) * 3, sw, sh, fs, 'WIND AND GUSTS', [
-      { v: data.wind, color: C.line, label: 'WIND', flow: 70, streak: 'rgba(255,240,215,0.85)' },
+      { v: data.wind, color: C.line, label: 'WIND', flow: 70, streak: '#8a4e00' },
       { v: data.gust, color: C.line2, dash: [2, 4], width: 2.6, label: 'GUSTS', nudge: -0.8, flow: 95 },
     ], { unit: ' MPH', min: 0, max: Math.max(20, Math.ceil(Math.max(...data.gust.concat(data.wind).filter(v => v !== null)) / 10) * 10 + 5) });
     const by = chartsTop + (sh + gap) * k - gap + fs * 0.35;
