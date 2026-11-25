@@ -6,7 +6,7 @@
 // lets its films play inside other apps. They're mostly public-domain classics (films whose
 // copyright ran out or was never renewed), so the channels are by decade, 30s to 70s (the 70s thin), plus
 // old cartoons and old TV shows; newer movies are still owned and aren't there. Most-watched
-// first. Lists kept on the device for a day.
+// first. Lists kept on the device for 6 hours; a new order each day (V102).
 //
 // Picking a channel or a movie quiets the radio, so the two never play over each other. Tap ▶ on
 // the picture to start it (the iPad won't start a movie with sound by itself). FULL SCREEN fills
@@ -29,26 +29,50 @@
   saved.idx = saved.idx || {}; saved.lists = saved.lists || {};
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
 
+  // V102: the lineup is refreshed every 6 hours (it was once a day), so added or removed films
+  // show up the same day. And so the guide doesn't open on the same title at number 1 every
+  // day, it takes the 60 most-watched on the channel and deals out 30 of them in a new order
+  // each day: the same order all day long, a different one tomorrow.
+  const POOL = 60, FRESH = 6 * 3600e3;
+  function shuffleForToday(raw, chId) {
+    let h = 2166136261;
+    for (const c of new Date().toDateString() + '|' + chId) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296);
+    const a = raw.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }
+    return a.slice(0, PER);
+  }
+  const dealt = {};                                // today's order per channel, kept so it never reshuffles mid-day
   async function movies(ch) {
+    const raw = await pool(ch), key = new Date().toDateString() + '|' + raw.length + '|' + (raw[0] && raw[0].id);
+    if (!dealt[ch.id] || dealt[ch.id].key !== key) dealt[ch.id] = { key, list: shuffleForToday(raw, ch.id) };
+    return dealt[ch.id].list;
+  }
+  async function pool(ch) {
     const c = saved.lists[ch.id];
-    if (c && Date.now() - c.at < 24 * 3600e3 && c.list.length) return c.list;
-    const q = `(${ch.q}) AND mediatype:movies AND -title:(trailer)`;
-    const url = 'https://archive.org/advancedsearch.php?q=' + encodeURIComponent(q) +
-      '&fl[]=identifier&fl[]=title&fl[]=year&sort[]=downloads+desc&rows=' + (PER + 10) + '&output=json';
-    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
-    const r = await fetch(url, { signal: ctl.signal }); clearTimeout(timer);
-    if (!r.ok) throw new Error('archive ' + r.status);
-    const docs = ((await r.json()).response || {}).docs || [];
-    const seen = new Set(), list = [];
-    for (const d of docs) {
-      const title = String(Array.isArray(d.title) ? d.title[0] : d.title || '').trim();
-      if (!d.identifier || !title || seen.has(title.toLowerCase())) continue;
-      seen.add(title.toLowerCase());
-      list.push({ id: d.identifier, title: title.slice(0, 60), year: String(d.year || '').slice(0, 4) });
-      if (list.length >= PER) break;
+    if (c && Date.now() - c.at < FRESH && c.list.length) return c.list;
+    try {
+      const q = `(${ch.q}) AND mediatype:movies AND -title:(trailer)`;
+      const url = 'https://archive.org/advancedsearch.php?q=' + encodeURIComponent(q) +
+        '&fl[]=identifier&fl[]=title&fl[]=year&sort[]=downloads+desc&rows=' + (POOL + 15) + '&output=json';
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+      const r = await fetch(url, { signal: ctl.signal }); clearTimeout(timer);
+      if (!r.ok) throw new Error('archive ' + r.status);
+      const docs = ((await r.json()).response || {}).docs || [];
+      const seen = new Set(), list = [];
+      for (const d of docs) {
+        const title = String(Array.isArray(d.title) ? d.title[0] : d.title || '').trim();
+        if (!d.identifier || !title || seen.has(title.toLowerCase())) continue;
+        seen.add(title.toLowerCase());
+        list.push({ id: d.identifier, title: title.slice(0, 60), year: String(d.year || '').slice(0, 4) });
+        if (list.length >= POOL) break;
+      }
+      if (list.length) { saved.lists[ch.id] = { at: Date.now(), list }; save(); }
+      return list;
+    } catch (e) {
+      if (c && c.list.length) return c.list;     // offline or the Archive is down: yesterday's lineup beats NO SIGNAL
+      throw e;
     }
-    if (list.length) { saved.lists[ch.id] = { at: Date.now(), list }; save(); }
-    return list;
   }
 
   const css = document.createElement('style');
