@@ -70,9 +70,9 @@ The horses graze the way horses do (V112): head down nearly all the time; every 
 
 `scores.js` adds a third button to the radio set, SCORES, next to RADIO and TV: like flipping the radio over to the ballgame. It shows today's games for the teams you follow in the radio's glowing display, with the score while it's on and when it's final (the team ahead is brighter, not a different color), or the start time before. MY TEAMS lists every team in the NFL, MLB, NBA and NHL, loaded from ESPN's own team list so it stays current; picks are remembered on the device. Scores come from ESPN's public scoreboard (the same source Arena Pulse uses), every minute while a game is on, every 10 minutes otherwise. If ESPN can't be reached it says NO SIGNAL instead of guessing. Since V136 a team you follow with no game today shows its next game (NEXT GAME, with the day and time, and the date if it's more than a week out), so the screen isn't empty on an off day.
 
-## Shield in the menu (V134)
+## Shield in the menu (V134, taken out in V137)
 
-A SHIELD button near the top of the menu, under HOW IT WORKS, opens Shield (https://wandering-shield-guard-pro.base44.app/), William's separate consumer-protection app, in its own tab: check a contractor's license, a car by its VIN, and more. Handy on a phone at a car lot. Close the tab to come back.
+A SHIELD button near the top of the menu, under HOW IT WORKS, opens Shield (https://wandering-shield-guard-pro.base44.app/), William's separate consumer-protection app, in its own tab: check a contractor's license, a car by its VIN, and more. Handy on a phone at a car lot. Close the tab to come back. Taken back out in V137: Shield needs more work first.
 
 ## Radio and TV fit an iPhone (V133)
 
