@@ -1,8 +1,8 @@
 // HOW IT WORKS (Nov 25, 2026, V89): what the app is and how to use every part of it, in plain
 // English, opened from the top of the menu (Menu → HOW IT WORKS). The same words describe the
-// app in the README. The name is Rising Code for now; if it changes, change NAME here.
+// app in the README. The app was Rising Code until V91; it's Outside In now (the name came from Maya).
 (() => {
-  const NAME = 'Rising Code';
+  const NAME = 'Outside In';
   const css = document.createElement('style');
   css.textContent = `
   #howto { position: fixed; inset: 0; z-index: 13; display: none; overflow-y: auto; background: #0b1016; color: #e8eef4;

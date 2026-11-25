@@ -6,12 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Rising Code">
+<meta name="apple-mobile-web-app-title" content="Outside In">
 <!-- V73: the home-screen icon, William's amber code face, cropped to the face (180 by 180; the iPad rounds the corners) -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">   <!-- V91: so a Chromebook or Android fills the whole icon shape with the face, no white ring -->
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
 <meta name="theme-color" content="#000000">
-<title>Rising Code</title>
+<title>Outside In</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -50,7 +51,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V90</div>
+<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V91</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>

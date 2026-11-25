@@ -42,7 +42,7 @@
   el.innerHTML = `<div class="bar"><button type="button" class="back" aria-label="Back">← Back</button><span class="t">g</span>
     <span style="width:90px"></span></div>
     <div class="go"><a class="big" href="${URL_G}" target="_blank" rel="noopener">OPEN g</a>
-      <p>Once g is open, flip between g and Rising Code by swiping sideways along the very bottom edge of the screen.</p></div>`;
+      <p>Once g is open, flip between g and Outside In by swiping sideways along the very bottom edge of the screen.</p></div>`;
   document.body.appendChild(el);
   el.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('.back') && window.GPage.onBack) window.GPage.onBack(); });
   window.GPage = { enabled: true, onBack: null, show(v) { el.classList.toggle('show', !!v); el.setAttribute('aria-hidden', v ? 'false' : 'true'); } };
