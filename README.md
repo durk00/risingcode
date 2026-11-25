@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Calmer location button (V128)
+
+The ALLOW LOCATION button in the menu was an amber outline that looked like a warning, and it showed even when Happy Valley was picked on purpose. Now it's a plain button, and it only shows when "Where this iPad is" is picked and the iPad hasn't given its spot (picking "Where this iPad is" does the asking). And if the iPad never answers, as can happen in a Safari tab, the menu no longer says CHECKING… forever: after 30 seconds it shows Happy Valley, says the iPad didn't answer, and says where in Safari to allow it.
+
 ## Wind that moves (V125, V126)
 
 On the weather station, the WIND AND GUSTS chart along the bottom is in motion: darker amber streaks ride along the wind line (amber since V126, to match the page; darker so they show by brightness, not color) and the gust dots stream left to right, forward in time, the gusts a little faster than the wind. The lines themselves still show the real forecast; only the pattern on them moves.
