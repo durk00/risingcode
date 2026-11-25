@@ -31,7 +31,7 @@
     <div class="tip down"><div class="arrow">↓</div><div class="big">SWIPE DOWN FOR SETTINGS</div><div class="small">sound, night clock, local events, my corner</div></div>
     <div class="tip left"><div class="arrow">←</div><div class="big">SWIPE LEFT</div><div class="small">Christmas → Winter → Weather station → Kitchen</div></div>
     <div class="tip right"><div class="arrow">→</div><div class="big">SWIPE RIGHT</div><div class="small">to go back</div></div>
-    <div class="tip mid"><div class="big">TAP THE SCREEN</div><div class="small">Christmas: sound on, tap again to change it<br>Winter: the three-day forecast</div></div>
+    <div class="tip mid"><div class="big">TAP THE SCREEN</div><div class="small">Christmas: sound on, tap again to change it<br>Winter: the three-day forecast<br>Swipe up from the middle: the radio</div></div>
     <div class="tip go big">TAP ANYWHERE TO START</div>`;
   document.body.appendChild(el);
 
