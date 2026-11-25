@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Scores on the radio set (V135)
+
+`scores.js` adds a third button to the radio set, SCORES, next to RADIO and TV: like flipping the radio over to the ballgame. It shows today's games for the teams you follow in the radio's glowing display, with the score while it's on and when it's final (the team ahead is brighter, not a different color), or the start time before. MY TEAMS lists every team in the NFL, MLB, NBA and NHL, loaded from ESPN's own team list so it stays current; picks are remembered on the device. Scores come from ESPN's public scoreboard (the same source Arena Pulse uses), every minute while a game is on, every 10 minutes otherwise. If ESPN can't be reached it says NO SIGNAL instead of guessing.
+
 ## Shield in the menu (V134)
 
 A SHIELD button near the top of the menu, under HOW IT WORKS, opens Shield (https://wandering-shield-guard-pro.base44.app/), William's separate consumer-protection app, in its own tab: check a contractor's license, a car by its VIN, and more. Handy on a phone at a car lot. Close the tab to come back.
