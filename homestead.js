@@ -37,6 +37,7 @@
     const well = { x: house.x - Math.max(W * 0.06, S * 0.35), base: env.groundY(house.x - W * 0.06) + H * 0.02, s: S * 0.3 };
     const pad = { x0: house.x + house.w + Math.max(W * 0.07, S * 0.45), x1: W + S * 0.5 };
     pad.base = env.groundY(Math.min(W - 1, pad.x0 + 40)) + H * 0.035; pad.h = S * 0.22;
+    pad.far = W + S * 3;                                                         // V117: where the horses' paddock really ends, out of sight
     const door = { x: house.x + house.w * 0.5, base: house.base + H * 0.012 };
     return { S, arr, well, pad, door };
   }
@@ -46,7 +47,12 @@
     const r = daySeed(env.now), list = [];
     const span = Math.max(10, (Math.min(env.W, L.pad.x1) - L.pad.x0));
     const at = () => L.pad.x0 + span * (0.1 + 0.8 * r());
-    if (r() < 0.8) { const n = r() < 0.5 ? 1 : 2; for (let i = 0; i < n; i++) list.push({ kind: 'horse', x: at(), dir: r() < 0.5 ? 1 : -1, coat: r() < 0.5 ? '#d8d2c8' : ['#5a3c26', '#2b2420', '#8a6a4a'][(r() * 3) | 0], next: 0, head: 0, headTo: 0, headNext: 0 }); }
+    // V117: a herd of 2 to 4 horses that has the run of a long paddock, most of it off the right
+    // edge of the picture. Who's in view is random: none, one or two, different ones at different
+    // times, wandering in and out, grazing, heads coming up. They come together at feeding time.
+    { const n = 2 + ((r() * 3) | 0);
+      for (let i = 0; i < n; i++) list.push({ kind: 'horse', x: L.pad.x0 + (L.pad.far - L.pad.x0) * r(), dir: r() < 0.5 ? 1 : -1,
+        coat: i === 0 || r() < 0.3 ? '#d8d2c8' : ['#5a3c26', '#2b2420', '#8a6a4a'][(r() * 3) | 0], next: 0, head: 0, headTo: 0, headNext: 0 }); }
     if (r() < 0.5) { const n = 1 + ((r() * 2) | 0); for (let i = 0; i < n; i++) list.push({ kind: 'goat', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#e8e2d8', '#6e5a48', '#3a3330'][(r() * 3) | 0], next: 0 }); }
     const hens = 3 + ((r() * 5) | 0); for (let i = 0; i < hens; i++) list.push({ kind: 'hen', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#8a4a26', '#e8e2d8', '#2b2420'][(r() * 3) | 0], next: 0, peck: r() * 6 });
     if (r() < 0.18) list.push({ kind: 'peacock', x: at(), dir: r() < 0.5 ? 1 : -1, next: 0, fan: 0 });
@@ -201,12 +207,22 @@
     const dayKey = env.now.toDateString();
     if (!critters || critterDay !== dayKey) { critters = pickCritters(env, L); critterDay = dayKey; }
     const span = Math.max(10, Math.min(W, p.x1) - p.x0);
+    const horses = critters.filter(a => a.kind === 'horse');
+    const feeding = person && person.task === 'paddock' && (person.state === 'work' || person.target && !person.target.home && person.target.x > p.x0) ? (person.state === 'work' ? person : person.target) : null;
     for (const a of critters) {
       const out = a.kind === 'hen' || a.kind === 'peacock' ? env.light > 0.45 : true;   // birds roost by dusk
       if (!out) continue;
       // Each wanders a little now and then, inside the fence.
-      if (env.now > a.next) { a.next = +env.now + rnd(20, 120) * 1000 * (a.kind === 'hen' ? 0.2 : 1); a.to = p.x0 + span * (0.08 + 0.84 * Math.random()); }
+      const horse = a.kind === 'horse';
+      if (horse && feeding) {                                         // feeding time: they come over and stand together near the hay
+        const k = horses.indexOf(a), side = k % 2 ? 1 : -1;
+        a.to = Math.max(p.x0 + S * 0.25, feeding.x + side * S * 0.55 * Math.ceil((k + 1) / 2) - S * 0.1); a.next = +env.now + rnd(30, 90) * 1000;
+      } else if (env.now > a.next) {
+        a.next = +env.now + rnd(20, 120) * 1000 * (a.kind === 'hen' ? 0.2 : 1) * (horse ? rnd(1, 3) : 1);
+        a.to = horse ? p.x0 + S * 0.25 + (p.far - p.x0) * Math.random() : p.x0 + span * (0.08 + 0.84 * Math.random());
+      }
       if (a.to !== undefined) { const step = (a.kind === 'hen' ? 0.4 : 0.15) * dt * 60; if (Math.abs(a.to - a.x) > step) { a.dir = a.to > a.x ? 1 : -1; a.x += a.dir * step; } }
+      if (a.x > W + S) continue;                                      // out of sight down the paddock
       const y = p.base - p.h * 0.05;
       if (a.kind === 'horse') {
         const nowMs = +env.now;
@@ -343,5 +359,5 @@
     drawArray(ctx, env, L); drawWell(ctx, env, L); drawPaddock(ctx, env, L, dt);
   }
   function front(ctx, env) { drawHouseEnd(ctx, env); if (person) drawPerson(ctx, env, layout(env)); }
-  window.Homestead = { back, front, debug: () => ({ person: person && { task: person.task, state: person.state, x: Math.round(person.x) }, snow: load.map(v => +v.toFixed(2)), critters: (critters || []).map(c => c.kind) }) };
+  window.Homestead = { back, front, debug: () => ({ person: person && { task: person.task, state: person.state, x: Math.round(person.x) }, snow: load.map(v => +v.toFixed(2)), critters: (critters || []).map(c => c.kind), horses: (critters || []).filter(c => c.kind === 'horse').map(c => Math.round(c.x)) }) };
 })();
