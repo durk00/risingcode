@@ -490,7 +490,10 @@
     // V77: life around the house (wildlife.js): birds, geese and jets in the sky, behind the
     // trees; deer, a stray dog, a bear at the trash can in the yard, in front of the house.
     const life = window.Wildlife ? wildEnv() : null;
-    sky(); if (life) Wildlife.sky(ctx, life); land(); drawHouse(); snowLayers(); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
+    // V78: the homestead (homestead.js): solar array, well and paddock behind the house line,
+    // and the person who lives here in front of it.
+    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house } : null;
+    sky(); if (life) Wildlife.sky(ctx, life); land(); if (home) Homestead.back(ctx, home); drawHouse(); snowLayers(); if (home) Homestead.front(ctx, home); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;
       arr[i] += ((arr[i - 1] + arr[i + 1]) / 2 - arr[i]) * 0.05;
