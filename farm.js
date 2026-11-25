@@ -103,9 +103,11 @@
     if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, Math.max(L.tl * 0.6, cutX)), H, inPass / L.steps);
   }
   function paintCorn(cv, env, L, w, hv, cutX, left, right) {
-    const { W, H, light } = env, S = L.S, d = w.day;
+    let { W, H, light } = env;
+    const S = L.S, d = w.day;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+    light = Math.max(light, 0.38);                                                   // V122: still there at night, by moonlight and starlight
     if (!stalks || stalkKey !== W + 'x' + H) {
       const r = rnd32('corn'), n = Math.ceil(W / Math.max(2.2, S * 0.011));
       stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.24, keep: r() }));

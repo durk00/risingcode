@@ -408,6 +408,16 @@
     win(x + w * 0.12, top + h * 0.25, w * 0.18, h * 0.3, 0);
     win(x + w * 0.7, top + h * 0.25, w * 0.18, h * 0.3, 1);
     ctx.fillStyle = tone('#3a2a1e', '#4a2f22'); ctx.fillRect(x + w * 0.43, top + h * 0.38, w * 0.14, h * 0.62);   // door
+    { // V122: a plank door with a heavy beam across the middle and a big black knob
+      const dx = x + w * 0.43, dy = top + h * 0.38, dw = w * 0.14, dh = h * 0.62;
+      ctx.strokeStyle = tone('#2a1e15', '#36231a'); ctx.lineWidth = Math.max(1, dw * 0.025);
+      for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(dx + dw * k / 4, dy + 1); ctx.lineTo(dx + dw * k / 4, dy + dh); ctx.stroke(); }   // planks
+      ctx.fillStyle = tone('#2e2117', '#3c271c'); ctx.fillRect(dx - dw * 0.04, dy + dh * 0.44, dw * 1.08, dh * 0.1);   // the beam
+      ctx.fillStyle = tone('#3d2c20', '#5a3a28'); ctx.fillRect(dx - dw * 0.04, dy + dh * 0.44, dw * 1.08, dh * 0.018);  // its top edge catching light
+      const kx = dx + dw * 0.8, ky = dy + dh * 0.62, kr = Math.max(2.5, dw * 0.11);
+      ctx.fillStyle = '#0e0e10'; ctx.beginPath(); ctx.arc(kx, ky, kr, 0, 6.3); ctx.fill();                               // the knob
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(kx - kr * 0.3, ky - kr * 0.3, kr * 0.35, 0, 6.3); ctx.fill();
+    }
     // Chimney smoke, always: soft puffs that rise, spread and drift, whatever the weather.
     if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.24 });
     for (const s of smoke) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15 + (wx.fall !== 'none' ? 0.2 : 0); s.r += 0.12; s.a *= 0.992; }
