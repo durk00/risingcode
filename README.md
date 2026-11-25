@@ -30,6 +30,10 @@ It honors the device's Reduce Motion setting by running slower.
 
 The toot when the radar line catches Santa is the last 0.6 seconds of "fart01" by brassoletto on Freesound (freesound.org, sound 454562).
 
+## Opens on Home (V94)
+
+The app opens on **Home**, the house scene (`winter.js`; the code still calls it Winter), not the screensaver. From Home: one swipe right for the screensaver, one swipe left for the weather station, two for Kitchen, so nothing is more than two swipes away. The labels at the bottom say HOME and SCREENSAVER now instead of WINTER and CODE RAIN. The one exception is Christmas Eve, when it opens on the Christmas display so Santa's radar is up first.
+
 ## Winter scene
 
 Swipe left on the Christmas display for the Winter scene; swipe right to go back (arrow keys on a computer). It's in `winter.js`: a landscape with a house, lit windows and a chimney that always smokes, matched to today's NOAA forecast for Centre Hall, PA (api.weather.gov, refreshed hourly):
