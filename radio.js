@@ -13,7 +13,7 @@
 // The dial: drag the needle (or tap ◀ ▶). Between stations there's a soft, warm hiss made on
 // the iPad itself (filtered noise, kept quiet, never a loud burst); let go and it settles on
 // the nearest station and plays. If a stream is dead it says NO SIGNAL; turn the dial.
-// Closing the radio (swipe down or ✕) leaves it playing over the scenes; ⏻ turns it off.
+// Minimizing the radio (swipe down, or the minimize bar, V82) leaves it playing over the scenes; ⏻ turns it off.
 (() => {
   const KEY = 'risingcode_radio';
   const MIRRORS = ['de1', 'de2', 'fi1', 'nl1', 'at1'].map(s => `https://${s}.api.radio-browser.info`).concat('https://all.api.radio-browser.info');
@@ -116,6 +116,8 @@
   #radio .brand { font-weight: 800; font-style: italic; letter-spacing: 0.22em; font-size: 15px; color: #e8eef4; }
   #radio .stripes { flex: 1; height: 14px; background: linear-gradient(#ffb84a 0 22%, transparent 22% 33%, #d9892a 33% 55%, transparent 55% 66%, #9a5a1c 66% 88%, transparent 88%); }
   #radio .x, #radio .pw { width: 52px; height: 44px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 700 20px ui-monospace, Menlo, monospace; cursor: pointer; }
+  #radio .x { position: relative; }   /* V82: a minimize mark (a bar low in the button), not an X: the radio keeps playing */
+  #radio .x::after { content: ''; position: absolute; left: 50%; bottom: 11px; width: 22px; height: 4px; margin-left: -11px; border-radius: 2px; background: #ffb84a; }
   #radio .pw.on { background: #ffb84a; color: #14110c; }
   #radio .lcd { background: #120d05; border: 2px solid #3a2a10; border-radius: 8px; padding: 12px 16px; min-height: 64px; box-shadow: inset 0 0 18px rgba(255,184,74,0.12); }
   #radio .lcd .name { font-size: 24px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.55); }
@@ -134,11 +136,11 @@
   const el = document.createElement('div');
   el.id = 'radio'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="set">
-    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><span class="brand">RISING FM</span><span class="stripes"></span><button type="button" class="x" aria-label="Close">✕</button></div>
+    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><span class="brand">RISING FM</span><span class="stripes"></span><button type="button" class="x" aria-label="Minimize"></button></div>
     <div class="lcd"><div class="name">—</div><div class="sub">&nbsp;</div></div>
     <div class="dial"><canvas></canvas></div>
     <div class="row"><button type="button" class="step" data-step="-1" aria-label="Tune down">◀</button><div class="bands"></div><button type="button" class="step" data-step="1" aria-label="Tune up">▶</button></div>
-    <div class="hint">PICK A DECADE · DRAG THE DIAL · SWIPE DOWN TO CLOSE, IT KEEPS PLAYING</div></div>`;
+    <div class="hint">PICK A DECADE · DRAG THE DIAL · SWIPE DOWN OR TAP THE BAR TO MINIMIZE · IT KEEPS PLAYING</div></div>`;
   document.body.appendChild(el);
   const $ = (s) => el.querySelector(s);
   const cv = $('.dial canvas'), dialEl = $('.dial');
