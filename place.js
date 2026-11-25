@@ -50,6 +50,7 @@
     get lat() { return cur().lat; },
     get lon() { return cur().lon; },
     get name() { return cur().name; },
+    get state() { return cur().state || ''; },     // V83: for the radio's local talk stations
     label() { const c = cur(); return c.state && c !== HOME ? `${c.name}, ${c.state}` : c.name; },
     mode: () => mode,
     status: () => status,
