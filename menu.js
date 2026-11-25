@@ -143,6 +143,9 @@
       ${window.Saver ? `<h2>SCREENSAVER</h2>
       <p class="help">The screen one swipe right of Home: the Christmas display, code rain, the Earth or the portrait.</p>
       <div class="opts">${Saver.options().map(o => `<button class="opt${o.id === Saver.get() ? ' on' : ''}" data-saver="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
+      ${window.AlertChime ? `<h2>ALERT SOUND</h2>
+      <p class="help">A short chime when a new weather alert comes in. From 10 PM to 7 AM only serious warnings chime.</p>
+      <div class="opts">${[['on', 'On'], ['off', 'Off']].map(([id, n]) => `<button class="opt${(id === 'on') === AlertChime.on() ? ' on' : ''}" data-chime="${id}">${n}</button>`).join('')}</div>` : ''}
       <h2>SOUND</h2>
       <p class="help">What plays on the Christmas display when the radar catches Santa.</p>
       <div class="opts">${names.map((n, i) => `<button class="opt${i === cur ? ' on' : ''}" data-sound="${i}">${n}</button>`).join('')}</div>
@@ -177,6 +180,7 @@
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) { Menu.close(); return; }
     if (b.dataset.howto && window.HowTo) { HowTo.open(); return; }   // V89
+    if (b.dataset.chime && window.AlertChime) { AlertChime.set(b.dataset.chime === 'on'); render(); }   // V103
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
     if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }

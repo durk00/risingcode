@@ -572,6 +572,7 @@
         id: p.id, event: p.event, severity: p.severity, ends: p.ends || p.expires,
         headline: p.headline || p.event, description: p.description || '', instruction: p.instruction || '',
       })).sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0));
+      if (window.AlertChime) AlertChime.check(alerts.filter(a => !dismissed.has(a.id)));   // V103: a chime for a new alert
     } catch (e) { /* keep the last list */ }
   }
   const showing = () => alerts.filter(a => !dismissed.has(a.id));
