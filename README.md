@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Smoke in the wind (V124)
+
+Chris's idea: the chimney smoke reacts to the real wind, from the nearest station's latest reading (speed, gusts and the direction it's coming from), or on a windy-forecast day with no reading, a stiff westerly. In calm air it rises and curls as before. In a breeze it leans downwind; the harder it blows, the flatter it streams off the chimney, the faster it's pushed, the more gusts jostle and tear it, and the sooner it thins out. Wind out of the west pushes it left (east), since the scene looks south. Preview with `?wind`.
+
 ## Door, and the corn at night (V122)
 
 The front door is planks with a heavy beam across the middle and a big round black doorknob. The field corn stays visible at night, dimly, as if by moonlight and starlight, instead of going black.
