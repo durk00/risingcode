@@ -67,6 +67,8 @@
     border-radius: 12px; border: 2px solid #ffb84a; background: rgba(20,24,30,0.72); cursor: pointer; align-items: center; justify-content: center; padding: 0; }
   .tvbody .screen:fullscreen .shrink { display: flex; }
   .tvbody .screen:-webkit-full-screen .shrink { display: flex; }
+  .tvbody .screen.big { position: fixed; inset: 0; z-index: 5; width: 100vw; height: 100vh; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+  .tvbody .screen.big .shrink { display: flex; }
   .tvbody .titlerow { display: flex; align-items: center; gap: 12px; margin: 10px 2px; }
   .tvbody .title { flex: 1; min-width: 0; min-height: 44px; }
   .tvbody .title .name { font-size: 20px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.45); }
@@ -134,9 +136,22 @@
     if (opts.quietRadio) opts.quietRadio();
     idx = (idx + dir + list.length) % list.length; play();
   }
+  // V92: the iPad (as a home-screen app, and older iPads in Safari) won't let a page put one
+  // part of itself full screen; the Chromebook will. So when the real full screen doesn't
+  // happen, the picture is simply stretched over the whole screen instead, which on a
+  // home-screen app looks the same: nothing else showing, the shrink button top right.
+  const realFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
   function full() {
+    const s = $('.screen'), go = s.requestFullscreen || s.webkitRequestFullscreen;
+    let p = null;
+    try { if (go) p = go.call(s); } catch (e) {}
+    const fallback = () => { if (!realFull()) s.classList.add('big'); };
+    if (p && p.then) p.then(() => setTimeout(fallback, 150), fallback); else setTimeout(fallback, 300);
+  }
+  function shrink() {
     const s = $('.screen');
-    try { (s.requestFullscreen || s.webkitRequestFullscreen).call(s); } catch (e) {}
+    if (s.classList.contains('big')) { s.classList.remove('big'); return; }
+    try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
   }
   function power() {
     if (on) { on = false; screenMsg(''); render(); } else pick(ch.id);
@@ -155,7 +170,7 @@
       if (b.dataset.ch) pick(b.dataset.ch);
       else if (b.dataset.tvstep) step(+b.dataset.tvstep);
       else if (b.dataset.full) full();
-      else if (b.classList.contains('shrink')) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e2) {} }
+      else if (b.classList.contains('shrink')) shrink();
     });
     render();
   }
