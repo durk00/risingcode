@@ -620,6 +620,7 @@
     if (slideDir) { slide += slideDir * W * 0.08; if (Math.abs(slide) > W) { const a = list[0]; if (a) { dismissed.add(a.id); try { localStorage.setItem('risingcode_dismissed', JSON.stringify([...dismissed].slice(-50))); } catch (e) {} } slide = 0; slideDir = 0; } }
     const a = showing()[0];
     if (!a) { bannerBox = null; return; }
+    if (W < 700) return phoneBanner(a);              // V130: a phone gets a small one-line tag
     const fs = Math.max(13, Math.min(22, Math.round(Math.min(W, H) / 34)));
     const x = 16 + slide, y = 40, w = W - 32, h = fs * 3.1;
     bannerBox = { x: 16, y, w, h };
@@ -638,6 +639,29 @@
     ctx.fillText((a.event || 'WEATHER ALERT').toUpperCase() + more, x + fs * 3, y + fs * 0.45);
     ctx.font = `500 ${Math.round(fs * 0.72)}px ui-monospace, Menlo, monospace`;
     ctx.fillText([window.AlertChime && AlertChime.updated(a) ? 'UPDATED' : '', endsText(a.ends), 'TAP FOR DETAILS', 'SWIPE TO DISMISS'].filter(Boolean).join(' · '), x + fs * 3, y + fs * 1.75);
+    ctx.restore();
+  }
+  // V130: on a phone the full banner covered too much. Just the alert's name and when it ends,
+  // in one short line ("WIND ADVISORY · 7 PM"); tap it for everything else, swipe it away as before.
+  function phoneBanner(a) {
+    const fs = 13, h = fs * 2, y = 40;
+    let ends = '';
+    if (a.ends) { const d = new Date(a.ends), today = d.toDateString() === new Date().toDateString();
+      ends = d.toLocaleString(undefined, today ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase().replace(':00', ''); }
+    const more = showing().length > 1 ? ` +${showing().length - 1}` : '';
+    const text = [(a.event || 'WEATHER ALERT').toUpperCase() + more, window.AlertChime && AlertChime.updated(a) ? 'UPDATED' : '', ends].filter(Boolean).join(' · ');
+    ctx.save();
+    ctx.font = `800 ${fs}px ui-monospace, Menlo, monospace`;
+    const w = Math.min(W - 32, ctx.measureText(text).width + fs * 3.2), x = 16 + slide;
+    bannerBox = { x: 16, y, w, h };
+    ctx.globalAlpha = 1 - Math.min(0.9, Math.abs(slide) / W);
+    ctx.fillStyle = `rgba(200,24,36,${0.85 + 0.15 * Math.sin(t / 15)})`; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, h / 2); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke();
+    const tx = x + fs * 1.1, ty = y + h / 2, tr = fs * 0.55;
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(tx, ty - tr); ctx.lineTo(tx + tr * 1.05, ty + tr * 0.8); ctx.lineTo(tx - tr * 1.05, ty + tr * 0.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgb(200,24,36)'; ctx.fillRect(tx - tr * 0.1, ty - tr * 0.4, tr * 0.2, tr * 0.65); ctx.fillRect(tx - tr * 0.1, ty + tr * 0.4, tr * 0.2, tr * 0.2);
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + fs * 2.1, y + h / 2 + 1);
     ctx.restore();
   }
   // The details page: the whole alert. It stays open (even if you swipe to another screen and
