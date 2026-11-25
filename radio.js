@@ -190,13 +190,46 @@
     hiss(Math.min(1, n.d / (gap() * 0.25)) * 0.6);
     if (playing === s.url) return showStation();
     stopStream(); playing = s.url; status = 'buffering';
-    player.src = s.url;
+    player.src = s.url; current = s; retries = 0; mediaInfo(s);
     const p = player.play(); if (p && p.catch) p.catch(() => { if (playing === s.url) { status = 'dead'; hiss(0.35); showStation(); } });
     saved.pos[band.id] = pos; save(); showStation();
   }
-  player.addEventListener('playing', () => { status = 'live'; hiss(0); showStation(); });
+  player.addEventListener('playing', () => { status = 'live'; retries = 0; hiss(0); showStation(); try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} });
+
+  // V81: the radio plays until it's turned off, wherever you are in the app (any scene, Kitchen,
+  // the night clock) and when the iPad's screen goes dark. For that, the station is announced to
+  // the iPad as what's playing (Media Session): its name shows on the lock screen with pause and
+  // next/previous station buttons, which iPadOS treats as music to keep going. If the iPad cuts it
+  // off anyway (a call, another app taking the sound), it picks back up when you come back, as
+  // long as the radio is still on. A stream that drops on its own is retried a few times before
+  // it says NO SIGNAL.
+  let current = null, retries = 0, retryTimer = null;
+  function mediaInfo(s) {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: 'RISING FM · ' + band.id, album: 'Rising Code radio' }); } catch (e) {}
+  }
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch (e) {} };
+    h('play', () => { if (!on) { on = true; saved.on = true; save(); } if (current && playing) player.play().catch(() => {}); else tuneIn(); showStation(); });
+    h('pause', () => { powerOff(); try { ms.playbackState = 'paused'; } catch (e) {} });
+    h('stop', () => { powerOff(); try { ms.playbackState = 'none'; } catch (e) {} });
+    h('nexttrack', () => stepTo(1));
+    h('previoustrack', () => stepTo(-1));
+  }
+  function retry() {
+    if (!on || !playing || !current) return;
+    if (!player.paused && player.readyState >= 3) return;                 // still playing from its buffer: leave it
+    if (retries >= 3) { status = 'dead'; showStation(); return; }
+    retries++; clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => { if (!on || !current || playing !== current.url) return; player.src = current.url; player.play().catch(() => {}); }, 2500 * retries);
+  }
+  player.addEventListener('stalled', retry);
+  player.addEventListener('ended', retry);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && on && playing && player.paused) player.play().catch(retry);
+  });
   player.addEventListener('waiting', () => { if (playing) { status = 'buffering'; showStation(); } });
-  player.addEventListener('error', () => { if (playing) { status = 'dead'; hiss(0.35); showStation(); } });
+  player.addEventListener('error', () => { if (playing) { if (current && retries < 3 && status === 'live') return retry(); status = 'dead'; hiss(0.35); showStation(); } });
 
   function settle() {                                                      // glide onto the nearest station
     clearTimeout(settleTimer);
@@ -234,21 +267,24 @@
   const endDrag = () => { if (!dragging) return; dragging = false; settle(); };
   dialEl.addEventListener('pointerup', endDrag); dialEl.addEventListener('pointercancel', endDrag);
 
+  function stepTo(dir) {
+    if (!list.length) return;
+    const idx = list.map((_, j) => j);
+    const i = dir > 0 ? (idx.find(j => slot(j) > pos + 0.001) ?? list.length - 1) : ([...idx].reverse().find(j => slot(j) < pos - 0.001) ?? 0);
+    if (!on) { on = true; saved.on = true; save(); }
+    const from = pos, to = slot(i); let k = 0;
+    clearTimeout(settleTimer); stopStream();
+    const glide = () => { k += 0.12; pos = from + (to - from) * Math.min(1, k); drawDial(); hiss(Math.sin(Math.min(1, k) * Math.PI) * 0.8); showStation(); if (k < 1) settleTimer = setTimeout(glide, 30); else tuneIn(); };
+    glide();
+  }
+  function powerOff() { on = false; saved.on = false; save(); stopStream(); hiss(0); status = ''; showStation(); }
   el.addEventListener('click', (e) => {
     wake();
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) return close();
-    if (b.classList.contains('pw')) { on = !on; saved.on = on; save(); if (on) { if (!list.length && !loading) pickBand(band.id); else tuneIn(); } else { stopStream(); hiss(0); status = ''; } return showStation(); }
+    if (b.classList.contains('pw')) { on = !on; saved.on = on; save(); if (on) { if (!list.length && !loading) pickBand(band.id); else tuneIn(); } else powerOff(); return showStation(); }
     if (b.dataset.band) { if (!on) { on = true; saved.on = true; save(); } return pickBand(b.dataset.band); }
-    if (b.dataset.step && list.length) {
-      const dir = +b.dataset.step, idx = list.map((_, j) => j);
-      const i = dir > 0 ? (idx.find(j => slot(j) > pos + 0.001) ?? list.length - 1) : ([...idx].reverse().find(j => slot(j) < pos - 0.001) ?? 0);
-      if (!on) { on = true; saved.on = true; save(); }
-      const from = pos, to = slot(i); let k = 0;
-      clearTimeout(settleTimer); stopStream();
-      const glide = () => { k += 0.12; pos = from + (to - from) * Math.min(1, k); drawDial(); hiss(Math.sin(Math.min(1, k) * Math.PI) * 0.8); showStation(); if (k < 1) settleTimer = setTimeout(glide, 30); else tuneIn(); };
-      glide();
-    }
+    if (b.dataset.step) stepTo(+b.dataset.step);
   });
 
   // Swipe down on the radio closes it. Touches on the radio never reach the scenes underneath.
