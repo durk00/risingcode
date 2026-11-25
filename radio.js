@@ -25,11 +25,12 @@
     { id: '10s', tags: ['2010s', '10s'] },
     { id: '20s', tags: ['2020s', 'top 40'] },
     { id: 'XMAS', tags: ['christmas'], season: true, wide: true },
-    { id: 'TALK', talk: true, wide: true },
+    { id: 'TALK', label: 'NEWS/TALK', talk: true, wide: true }   // V84: labeled NEWS/TALK, since it's both,
   ];
   const ENGLISH = ['US', 'GB', 'CA', 'IE', 'AU', 'NZ'];
   const PER_BAND = 14;
   const inSeason = (d = new Date()) => { const m = d.getMonth(), day = d.getDate(); return (m === 10 && day >= 15) || m === 11 || (m === 0 && day <= 6); };
+  const label = (b) => b.label || b.id;
   const bands = () => BANDS.filter(b => !b.season || inSeason());
 
   let saved = {};
@@ -193,19 +194,19 @@
   const cv = $('.dial canvas'), dialEl = $('.dial');
 
   function renderBands() {
-    $('.bands').innerHTML = bands().map(b => `<button type="button" data-band="${b.id}" class="${b.id === band.id ? 'on' : ''}${b.wide ? ' wide' : ''}">${b.id}</button>`).join('');
+    $('.bands').innerHTML = bands().map(b => `<button type="button" data-band="${b.id}" class="${b.id === band.id ? 'on' : ''}${b.wide ? ' wide' : ''}">${label(b)}</button>`).join('');
   }
   function lcd(name, sub) { $('.lcd .name').textContent = name; $('.lcd .sub').innerHTML = sub || '&nbsp;'; }
   function showStation() {
     $('.pw').classList.toggle('on', on);
-    if (loading) return lcd('TUNING ' + band.id + '…', 'FINDING STATIONS');
+    if (loading) return lcd('TUNING ' + label(band) + '…', 'FINDING STATIONS');
     if (status === 'nodir') return lcd('NO SIGNAL', 'CAN\'T REACH THE STATION LIST · CHECK WI-FI');
-    if (!list.length) return lcd('NO STATIONS', 'NOTHING PLAYABLE ON ' + band.id + ' RIGHT NOW');
+    if (!list.length) return lcd('NO STATIONS', 'NOTHING PLAYABLE ON ' + label(band) + ' RIGHT NOW');
     const n = nearest();
-    if (n.d > gap() * 0.25) return lcd('· · ·', band.id + ' · BETWEEN STATIONS');
+    if (n.d > gap() * 0.25) return lcd('· · ·', label(band) + ' · BETWEEN STATIONS');
     const s = list[n.i];
     const st = !on ? 'OFF · TAP ⏻' : status === 'dead' ? 'NO SIGNAL · TURN THE DIAL' : status === 'buffering' ? 'TUNING IN…' : 'LIVE';
-    lcd(s.name, `${band.id} · ${n.i + 1} OF ${list.length}${s.where ? ' · ' + s.where : s.cc ? ' · ' + s.cc : ''} · ${st}`);
+    lcd(s.name, `${label(band)} · ${n.i + 1} OF ${list.length}${s.where ? ' · ' + s.where : s.cc ? ' · ' + s.cc : ''} · ${st}`);
   }
   function drawDial() {
     const r = dialEl.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -255,7 +256,7 @@
   let current = null, retries = 0, retryTimer = null;
   function mediaInfo(s) {
     if (!('mediaSession' in navigator)) return;
-    try { navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: 'RISING FM · ' + band.id, album: 'Rising Code radio' }); } catch (e) {}
+    try { navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: 'RISING FM · ' + label(band), album: 'Rising Code radio' }); } catch (e) {}
   }
   if ('mediaSession' in navigator) {
     const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch (e) {} };
