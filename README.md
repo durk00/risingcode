@@ -66,6 +66,10 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Small alert tag on phones (V130)
+
+On a phone, the full-width alert banner covered too much of the screen. Now a phone shows a small red tag at the top left with just the alert's name and when it ends, like WIND ADVISORY · 7 PM (the day too if it isn't today). Tap it for the whole alert, swipe it away as before. The iPad and Chromebook keep the full banner.
+
 ## Calmer location button (V128, V129)
 
 The ALLOW LOCATION button in the menu was an amber outline that looked like a warning, and it showed even when Happy Valley was picked on purpose. Now it's a plain button. It shows whenever the app isn't using where the iPad is, Happy Valley picked included, so anyone can tap it and say yes (V128 briefly hid it on Happy Valley; V129 put it back). And if the iPad never answers, as can happen in a Safari tab, the menu no longer says CHECKING… forever: after 30 seconds it shows Happy Valley, says the iPad didn't answer, and says where in Safari to allow it.
