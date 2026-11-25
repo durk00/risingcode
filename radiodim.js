@@ -27,6 +27,7 @@
   function wake(e) {
     if (el.classList.contains('dim')) {
       el.classList.remove('dim');
+      if (e && e.target && e.target.closest && e.target.closest('.pw')) { arm(); return; }   // V110: ⏻ always works, even on the waking touch
       if (e && e.cancelable) e.preventDefault();      // the waking touch doesn't press anything
       if (e) e.stopPropagation();
       swallowClick = Date.now();
