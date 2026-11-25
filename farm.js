@@ -9,11 +9,10 @@
 //   - FIELD CORN behind the place, all the way across: feed corn for the horses and the other
 //     stock, not sweet corn. Planted early May, knee-high by July 4th, tasseled and taller than
 //     a man by late July, then it turns tan in September and stands in the field drying through
-//     the fall, the way the fields around Happy Valley do. Harvest comes in early December,
-//     on its own day each year: the tractor goes out after daybreak and works across the field,
-//     one tractor length at a time, about every 45 minutes, not a smooth crawl. Behind it is
-//     stubble. It quits before the sun goes down. Stubble through the winter, until it's worked
-//     under in late April.
+//     the fall, the way the fields around Happy Valley do. Harvest (V119) starts November 25th and
+//     goes slowly, sunup to sundown, in passes back and forth, one tractor length an hour, about
+//     200 working hours in all, and not in rain, snow or wind. Stubble behind; stubble through the
+//     winter, until it's worked under in late April.
 // Dates are for central Pennsylvania and move a few days earlier for each degree further south
 // (later further north). Preview any day with ?farm=2026-07-20 (and &farmhour=10 for a time).
 (() => {
@@ -41,41 +40,38 @@
   // Day-of-year marks (non-leap; close enough for a picture).
   const D = { apr1: 91, apr20: 110, apr28: 118, may5: 125, may15: 135, jul4: 185, jul25: 206, jul31: 212, aug10: 222, sep1: 244, sep20: 263, oct15: 288, nov1: 305 };
 
-  // The corn harvest: a day in early December, its own each year, worked from 8 to 4 in steps.
-  const HARVEST_START = 8, HARVEST_END = 16, STEP_MIN = 45;
-  function harvestDay(year) { const r = rnd32('harvest' + year); return 336 + Math.floor(r() * 9); }   // Dec 2 to Dec 10
-  // How many tractor-lengths are cut, and whether the tractor is out right now.
-  // V118: weather decides. He only works the field from 8 to 4, and not while it's raining or
-  // snowing or the wind is up (a wind advisory, or wind in today's forecast): that time doesn't
-  // count, so a windy week pushes the harvest back. Hours the app wasn't open count as worked.
-  // Kept on the device. A ?farm= preview date uses the plain schedule instead.
+  // The corn harvest (V119): it starts November 25th and goes very slowly, sunup to sundown. He
+  // works the field in passes, back and forth across it, one tractor length an hour, so you have
+  // to look away for an hour to see he's moved. Each pass thins the standing corn a little, with
+  // stubble where it's been cut; the whole field takes about 200 hours of working daylight, three
+  // weeks or more, well past December 7th. He doesn't work while it's raining or snowing or the
+  // wind is up (a wind alert, or wind in today's forecast): that time doesn't count. Hours the app
+  // wasn't open count as worked if the sun was up. Kept on the device. A ?farm= preview date
+  // assumes good weather.
+  const STEP_MIN = 60, WORK_HOURS = 200;
+  const harvestDay = () => 329;                                                     // November 25th
   const KEY = 'risingcode_harvest';
   let hs = null;
   try { hs = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  const workMin = (a, b) => {                                                       // minutes of 8-to-4 between two times
-    let m = 0, d = new Date(a); d.setHours(0, 0, 0, 0);
-    for (; +d < b; d.setDate(d.getDate() + 1)) {
-      const s0 = Math.max(a, +d + HARVEST_START * 36e5), s1 = Math.min(b, +d + HARVEST_END * 36e5);
-      if (s1 > s0) m += (s1 - s0) / 6e4;
-    }
-    return m;
+  const sunUp = (t) => {                                                            // is the sun up (a little above the horizon)?
+    if (window.SkyPath) { const P = window.Place; return SkyPath.sun(t, P ? P.lat : 40.85, P ? P.lon : -77.69).alt > 2; }
+    const h = new Date(t).getHours(); return h >= 7 && h < 17;
   };
+  const workMin = (a, b) => { let m = 0; for (let t = a; t < b; t += 6e5) if (sunUp(t)) m += Math.min(10, (b - t) / 6e4); return m; };
+  const passesFor = (steps) => Math.max(4, Math.ceil(WORK_HOURS * 60 / STEP_MIN / steps));
   function harvest(w, steps, env) {
-    const hd = harvestDay(w.year), stepsPerDay = Math.floor((HARVEST_END - HARVEST_START) * 60 / STEP_MIN);
-    if (w.day < hd) return { done: w.day < D.apr28 ? -1 : 0, out: false };       // -1: last year's stubble (January to April)
-    const inHours = w.hour >= HARVEST_START && w.hour < HARVEST_END;
-    if (pDate || !env) {                                                            // previews: the plain schedule
-      const today = w.hour < HARVEST_START ? 0 : Math.min(stepsPerDay, Math.floor((w.hour - HARVEST_START) * 60 / STEP_MIN) + 1);
-      const done = Math.min(steps, (w.day - hd) * stepsPerDay + today);
-      return { done, out: done < steps && inHours };
-    }
-    if (env.ready === false) return { done: hs && hs.year === w.year ? Math.min(steps, hs.credit > 0 ? Math.floor(hs.credit / STEP_MIN) + 1 : 0) : 0, out: false };   // weather not in yet
-    const bad = env.fall !== 'none' || !!env.windy, now = +w.now;
-    const shift = w.day - (Math.floor((w.now - new Date(w.year, 0, 1)) / 864e5) + 1), start = new Date(w.year, 0, hd - shift);   // midnight of harvest day
-    if (!hs || hs.year !== w.year) hs = { year: w.year, credit: 0, last: +start };
-    if (now > hs.last) { if (!bad) hs.credit += workMin(hs.last, now); hs.last = now; try { localStorage.setItem(KEY, JSON.stringify(hs)); } catch (e) {} }
-    const done = Math.min(steps, hs.credit > 0 ? Math.floor(hs.credit / STEP_MIN) + 1 : 0);
-    return { done, out: done < steps && inHours && !bad, held: bad && inHours && done < steps };
+    const hd = harvestDay(), total = steps * passesFor(steps);
+    if (w.day < hd) return { done: w.day < D.apr28 ? -1 : 0, total, out: false };   // -1: last year's stubble (January to April)
+    const now = +w.now, up = sunUp(now);
+    const shift = w.day - (Math.floor((w.now - new Date(w.year, 0, 1)) / 864e5) + 1), start = +new Date(w.year, 0, hd - shift);   // midnight, the first day
+    const stepsFrom = (credit) => Math.min(total, credit > 0 ? Math.floor(credit / STEP_MIN) + 1 : 0);
+    if (pDate || !env) { const done = stepsFrom(workMin(start, now)); return { done, total, out: done < total && up }; }
+    if (env.ready === false) return { done: hs && hs.year === w.year ? stepsFrom(hs.credit) : 0, total, out: false };   // weather not in yet
+    const bad = env.fall !== 'none' || !!env.windy;
+    if (!hs || hs.year !== w.year || hs.v !== 2) hs = { v: 2, year: w.year, credit: 0, last: start };
+    if (now > hs.last + 6e4) { if (!bad) hs.credit += workMin(hs.last, now); hs.last = now; try { localStorage.setItem(KEY, JSON.stringify(hs)); } catch (e) {} }
+    const done = stepsFrom(hs.credit);
+    return { done, total, out: done < total && up && !bad, held: bad && up && done < total };
   }
 
   function layout(env) {
@@ -96,19 +92,22 @@
   function cornField(ctx, env, L, w) {
     const { W, H, light } = env, S = L.S;
     const d = w.day, hv = harvest(w, L.steps, env);
-    const cutX = hv.done < 0 ? W + 1 : hv.done * L.tl;                              // everything left of this is cut
-    const key = [W, H, d, Math.round(light * 24), Math.round(cutX)].join(':');
-    if (!pic || picKey !== key) { pic = pic || document.createElement('canvas'); paintCorn(pic, env, L, w, hv, cutX); picKey = key; }
+    // Which pass he's on, and how far across it; everything left of cutX is cut this pass.
+    const passes = hv.total / L.steps, pass = hv.done < 0 ? passes : Math.floor(hv.done / L.steps), inPass = hv.done < 0 ? 0 : hv.done % L.steps;
+    const cutX = hv.done >= hv.total ? 0 : inPass * L.tl;
+    const left = 1 - Math.min(passes, pass + 1) / passes, right = 1 - Math.min(passes, pass) / passes;   // share of the corn still standing
+    const key = [W, H, d, Math.round(light * 24), Math.round(cutX), pass].join(':');
+    if (!pic || picKey !== key) { pic = pic || document.createElement('canvas'); paintCorn(pic, env, L, w, hv, cutX, left, right); picKey = key; }
     ctx.drawImage(pic, 0, 0, W, H);
-    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, cutX), H, Math.min(1, hv.done / Math.max(1, L.steps)));
+    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, Math.max(L.tl * 0.6, cutX)), H, inPass / L.steps);
   }
-  function paintCorn(cv, env, L, w, hv, cutX) {
+  function paintCorn(cv, env, L, w, hv, cutX, left, right) {
     const { W, H, light } = env, S = L.S, d = w.day;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
     if (!stalks || stalkKey !== W + 'x' + H) {
       const r = rnd32('corn'), n = Math.ceil(W / Math.max(2.2, S * 0.011));
-      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.24 }));
+      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.24, keep: r() }));
       stalks.sort((a, b) => a.rank - b.rank);                                         // back rank first
       stalkKey = W + 'x' + H;
     }
@@ -117,30 +116,32 @@
     const fullH = S * 0.5 * (1 - 0.28 * wither);                                     // taller than a man; it slumps as it dies
     const col = mixHex(mixHex('#4f8a34', '#c4a86c', tan), '#7a6648', wither);
     const back = mixHex(mixHex('#2f5a22', '#8f7a50', tan), '#4e4130', wither);
-    const stubbleSeason = hv.done < 0 || (d >= harvestDay(w.year) && hv.done > 0);
+    const share = (x) => hv.done < 0 ? 0 : x < cutX ? left : right;                  // V119: how much is still standing here
+    const stubbleSeason = hv.done < 0 || hv.done > 0;
     const worked = d >= D.apr28 && d < D.may5;                                         // stubble plowed under, nothing up yet
-    const standing = (x) => !(stubbleSeason && x < cutX) && grow > 0;
+    const standing = (x, s) => grow > 0 && (!stubbleSeason || (s ? s.keep < share(x) : share(x) > 0.05));
     ctx.lineCap = 'round';
     // The solid backing, wherever corn is standing, with a ragged top.
     if (grow > 0.15) {
       const r = rnd32('cornback'), top = fullH * (0.08 + 0.92 * grow) * 0.72;
       ctx.fillStyle = shade(back, light);
+      const alphaAt = (x) => Math.min(1, share(x) / 0.35);                         // the wall thins out over the last few passes
       let open = false;
       for (let x = 0; x <= W + 6; x += 6) {
         const gy = env.groundY(Math.min(W - 1, x)) - H * 0.014;
-        if (standing(x)) {
+        if (standing(x) && (!open || Math.abs(alphaAt(x) - ctx.globalAlpha) < 0.01)) {
           const y = gy - top * (0.85 + r() * 0.3);
-          if (!open) { ctx.beginPath(); ctx.moveTo(x, gy + 2); open = true; }
+          if (!open) { ctx.globalAlpha = stubbleSeason ? alphaAt(x) : 1; ctx.beginPath(); ctx.moveTo(x, gy + 2); open = true; }
           ctx.lineTo(x, y);
-        } else if (open) { ctx.lineTo(x, env.groundY(Math.min(W - 1, x)) + 2); ctx.closePath(); ctx.fill(); open = false; }
+        } else if (open) { ctx.lineTo(x, env.groundY(Math.min(W - 1, x)) + 2); ctx.closePath(); ctx.fill(); open = false; if (standing(x)) x -= 6; }
       }
-      if (open) { ctx.lineTo(W, env.groundY(W - 1) + 2); ctx.lineTo(0, env.groundY(0) + 2); ctx.closePath(); ctx.fill(); }
+      if (open) { ctx.lineTo(W, env.groundY(W - 1) + 2); ctx.closePath(); ctx.fill(); }
+      ctx.globalAlpha = 1;
     }
     for (const s of stalks) {
       const gy = env.groundY(Math.min(W - 1, s.x)) - H * (0.016 - s.rank * 0.006);
-      if (!standing(s.x)) {
-        if (worked || grow > 0 && !stubbleSeason) continue;
-        if (!stubbleSeason) continue;
+      if (!standing(s.x, s)) {
+        if (worked || !stubbleSeason) continue;
         if (s.rank !== 2 && s.x % 3 > 1) continue;                                     // stubble: short, sparser
         ctx.strokeStyle = shade('#9c8658', light); ctx.lineWidth = Math.max(1, S * 0.007);
         ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x + s.lean * 6, gy - S * 0.022); ctx.stroke();
@@ -264,8 +265,8 @@
     work: (env) => { const d = when(env).day; return d >= D.apr1 && d < D.apr28 ? 'till' : d >= D.may15 && d < D.sep20 ? 'tend' : d >= D.sep20 && d < D.oct15 ? 'pick' : null; },
     // While the tractor is out, he's on it, so he isn't walking around the yard too.
     // Mid-October until harvest he goes out now and then to feel the ears and see if they're dry enough.
-    cornCheck: (env) => { const w = when(env); return w.day >= D.oct15 && w.day < harvestDay(w.year); },
+    cornCheck: (env) => { const w = when(env); return w.day >= D.oct15 && w.day < harvestDay(); },
     busy: (env) => harvest(when(env), layout(env).steps, env).out,
-    debug: (env) => { const w = when(env); return { day: w.day, hour: +w.hour.toFixed(2), harvestDay: harvestDay(w.year), harvest: harvest(w, layout(env).steps, env), work: window.Farm.work(env) }; },
+    debug: (env) => { const w = when(env); return { day: w.day, hour: +w.hour.toFixed(2), harvestDay: harvestDay(), harvest: harvest(w, layout(env).steps, env), work: window.Farm.work(env) }; },
   };
 })();
