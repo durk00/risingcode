@@ -51,13 +51,30 @@
   }
   // The first touch after opening unlocks sound; a chime that was waiting plays then.
   const unlock = () => {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // play even with the iPad on silent, like a video
     const c = ctx(); if (!c) return;
+    // Older iPads only truly turn sound on if something plays during the touch itself (V105).
+    try { const blip = c.createBufferSource(); blip.buffer = c.createBuffer(1, 1, 22050); blip.connect(c.destination); blip.start(0); } catch (e) {}
     const go = () => { if (pending) { const n = pending; pending = 0; play(n); } };
     if (c.state !== 'running') { try { c.resume().then(go, () => {}); } catch (e) {} } else go();
   };
   for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, unlock, { capture: true, passive: true });
 
+  // V105: UPDATED. NOAA often re-sends the same alert with new wording. That doesn't chime, but
+  // the banner says UPDATED until the alert page has been opened again.
+  let texts = {};
+  try { texts = JSON.parse(localStorage.getItem('risingcode_alerttext') || '{}') || {}; } catch (e) {}
+  const hash = (a) => { let h = 5381; for (const ch of (a.headline || '') + '|' + (a.description || '') + '|' + (a.instruction || '')) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0; return h.toString(36); };
+  const saveTexts = () => { const keys = Object.keys(texts); if (keys.length > 60) keys.slice(0, keys.length - 60).forEach(k => delete texts[k]); try { localStorage.setItem('risingcode_alerttext', JSON.stringify(texts)); } catch (e) {} };
+  function track(list) {
+    for (const a of list || []) {
+      const k = keyOf(a), h = hash(a);
+      if (!texts[k]) texts[k] = { h, read: h }; else texts[k].h = h;
+    }
+    saveTexts();
+  }
   function check(list) {
+    track(list);
     let times = 0;
     for (const a of list || []) {
       const k = keyOf(a);
@@ -72,6 +89,8 @@
   }
   window.AlertChime = {
     check,
+    updated: (a) => { const t = texts[keyOf(a)]; return !!t && t.h !== t.read; },
+    read: (a) => { const t = texts[keyOf(a)]; if (t && t.read !== t.h) { t.read = t.h; saveTexts(); } },
     on: () => on,
     set(v) { on = !!v; try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {} if (on) play(1); },   // turning it on plays a sample
   };
