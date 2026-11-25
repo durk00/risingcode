@@ -45,18 +45,37 @@
   const HARVEST_START = 8, HARVEST_END = 16, STEP_MIN = 45;
   function harvestDay(year) { const r = rnd32('harvest' + year); return 336 + Math.floor(r() * 9); }   // Dec 2 to Dec 10
   // How many tractor-lengths are cut, and whether the tractor is out right now.
-  function harvest(w, steps) {
-    const hd = harvestDay(w.year);
-    const stepsPerDay = Math.floor((HARVEST_END - HARVEST_START) * 60 / STEP_MIN);
-    let done;
-    if (w.day < hd) done = w.day < D.apr28 && w.day >= 1 ? -1 : 0;                 // -1: last year's stubble (Jan to April)
-    else {
-      const before = (w.day - hd) * stepsPerDay;
-      const today = w.hour < HARVEST_START ? 0 : Math.min(stepsPerDay, Math.floor((w.hour - HARVEST_START) * 60 / STEP_MIN) + 1);
-      done = Math.min(steps, before + today);
+  // V118: weather decides. He only works the field from 8 to 4, and not while it's raining or
+  // snowing or the wind is up (a wind advisory, or wind in today's forecast): that time doesn't
+  // count, so a windy week pushes the harvest back. Hours the app wasn't open count as worked.
+  // Kept on the device. A ?farm= preview date uses the plain schedule instead.
+  const KEY = 'risingcode_harvest';
+  let hs = null;
+  try { hs = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  const workMin = (a, b) => {                                                       // minutes of 8-to-4 between two times
+    let m = 0, d = new Date(a); d.setHours(0, 0, 0, 0);
+    for (; +d < b; d.setDate(d.getDate() + 1)) {
+      const s0 = Math.max(a, +d + HARVEST_START * 36e5), s1 = Math.min(b, +d + HARVEST_END * 36e5);
+      if (s1 > s0) m += (s1 - s0) / 6e4;
     }
-    const out = done >= 0 && done < steps && w.day >= hd && w.hour >= HARVEST_START && w.hour < HARVEST_END;
-    return { done, out };
+    return m;
+  };
+  function harvest(w, steps, env) {
+    const hd = harvestDay(w.year), stepsPerDay = Math.floor((HARVEST_END - HARVEST_START) * 60 / STEP_MIN);
+    if (w.day < hd) return { done: w.day < D.apr28 ? -1 : 0, out: false };       // -1: last year's stubble (January to April)
+    const inHours = w.hour >= HARVEST_START && w.hour < HARVEST_END;
+    if (pDate || !env) {                                                            // previews: the plain schedule
+      const today = w.hour < HARVEST_START ? 0 : Math.min(stepsPerDay, Math.floor((w.hour - HARVEST_START) * 60 / STEP_MIN) + 1);
+      const done = Math.min(steps, (w.day - hd) * stepsPerDay + today);
+      return { done, out: done < steps && inHours };
+    }
+    if (env.ready === false) return { done: hs && hs.year === w.year ? Math.min(steps, hs.credit > 0 ? Math.floor(hs.credit / STEP_MIN) + 1 : 0) : 0, out: false };   // weather not in yet
+    const bad = env.fall !== 'none' || !!env.windy, now = +w.now;
+    const shift = w.day - (Math.floor((w.now - new Date(w.year, 0, 1)) / 864e5) + 1), start = new Date(w.year, 0, hd - shift);   // midnight of harvest day
+    if (!hs || hs.year !== w.year) hs = { year: w.year, credit: 0, last: +start };
+    if (now > hs.last) { if (!bad) hs.credit += workMin(hs.last, now); hs.last = now; try { localStorage.setItem(KEY, JSON.stringify(hs)); } catch (e) {} }
+    const done = Math.min(steps, hs.credit > 0 ? Math.floor(hs.credit / STEP_MIN) + 1 : 0);
+    return { done, out: done < steps && inHours && !bad, held: bad && inHours && done < steps };
   }
 
   function layout(env) {
@@ -76,12 +95,12 @@
   let stalks = null, stalkKey = '', pic = null, picKey = '';
   function cornField(ctx, env, L, w) {
     const { W, H, light } = env, S = L.S;
-    const d = w.day, hv = harvest(w, L.steps);
+    const d = w.day, hv = harvest(w, L.steps, env);
     const cutX = hv.done < 0 ? W + 1 : hv.done * L.tl;                              // everything left of this is cut
     const key = [W, H, d, Math.round(light * 24), Math.round(cutX)].join(':');
     if (!pic || picKey !== key) { pic = pic || document.createElement('canvas'); paintCorn(pic, env, L, w, hv, cutX); picKey = key; }
     ctx.drawImage(pic, 0, 0, W, H);
-    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, cutX), H);
+    if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, cutX), H, Math.min(1, hv.done / Math.max(1, L.steps)));
   }
   function paintCorn(cv, env, L, w, hv, cutX) {
     const { W, H, light } = env, S = L.S, d = w.day;
@@ -149,18 +168,52 @@
       }
     }
   }
-  // A small tractor pulling a one-row picker, the man in the red coat driving.
-  function tractor(ctx, env, L, x, H) {
-    const S = L.S, light = env.light, gy = env.groundY(Math.max(0, Math.min(env.W - 1, x))) - H * 0.004, u = L.tl / 1.0;
-    ctx.save(); ctx.translate(x, gy);
-    ctx.fillStyle = shade('#8a8f94', light); ctx.fillRect(-u * 0.95, -u * 0.22, u * 0.35, u * 0.16);             // the picker, behind
-    ctx.fillStyle = shade('#a2312a', light); ctx.fillRect(-u * 0.55, -u * 0.3, u * 0.55, u * 0.18);              // tractor body
-    ctx.fillRect(-u * 0.5, -u * 0.48, u * 0.2, u * 0.2);                                                        // cab seat back
-    ctx.fillStyle = shade('#2a2a2a', light); ctx.fillRect(-u * 0.08, -u * 0.42, u * 0.035, u * 0.14);           // exhaust stack
-    ctx.beginPath(); ctx.arc(-u * 0.42, -u * 0.13, u * 0.13, 0, 6.3); ctx.fill();                               // big back wheel
-    ctx.beginPath(); ctx.arc(-u * 0.06, -u * 0.07, u * 0.07, 0, 6.3); ctx.fill();                               // front wheel
-    ctx.fillStyle = shade('#7a2e26', light); ctx.fillRect(-u * 0.33, -u * 0.47, u * 0.07, u * 0.13);           // the driver's red coat
-    ctx.fillStyle = shade('#d8b090', light); ctx.beginPath(); ctx.arc(-u * 0.295, -u * 0.52, u * 0.035, 0, 6.3); ctx.fill();
+  // V118: the tractor, an old red one, with him up on the seat at the wheel, pulling an open
+  // wagon behind. The ears go into the wagon as he goes, so it fills up across the field.
+  function tractor(ctx, env, L, x, H, fill) {
+    const S = L.S, light = env.light, gy = env.groundY(Math.max(0, Math.min(env.W - 1, x))) - H * 0.004, u = L.tl;
+    const red = shade('#a8352c', light), dark = shade('#1e1c1a', light), hub = shade('#c8a040', light, 0.35), steel = shade('#7c8086', light);
+    ctx.save(); ctx.translate(x, gy); ctx.lineCap = 'round';
+    // The wagon: an open box on four wheels, a tongue up to the hitch.
+    const wx0 = -u * 1.02, wx1 = -u * 0.5, wTop = -u * 0.3, wBot = -u * 0.12;
+    ctx.strokeStyle = steel; ctx.lineWidth = Math.max(1.5, u * 0.02); ctx.beginPath(); ctx.moveTo(wx1, wBot + u * 0.01); ctx.lineTo(-u * 0.4, -u * 0.12); ctx.stroke();
+    if (fill > 0.02) {                                                                // the load of ears, heaped up as it fills
+      ctx.fillStyle = shade('#d6b45a', light, 0.3); ctx.beginPath(); ctx.moveTo(wx0 + u * 0.02, wTop + u * 0.02);
+      const crest = wTop - u * 0.09 * fill;
+      for (let k = 0; k <= 8; k++) { const xx = wx0 + (wx1 - wx0) * k / 8; ctx.lineTo(xx, crest + Math.sin(k * 1.7) * u * 0.012 + Math.abs(k - 4) * u * 0.006 * fill); }
+      ctx.lineTo(wx1 - u * 0.02, wTop + u * 0.02); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shade('#b8923e', light, 0.3);
+      for (let k = 0; k < 12 * fill; k++) { ctx.beginPath(); ctx.ellipse(wx0 + (wx1 - wx0) * ((k * 0.37) % 1), crest + u * 0.02 + (k % 3) * u * 0.012, u * 0.018, u * 0.008, (k % 5) * 0.6, 0, 6.3); ctx.fill(); }
+    }
+    ctx.fillStyle = shade('#7a5a3c', light); ctx.fillRect(wx0, wTop, wx1 - wx0, wBot - wTop);            // wooden sides
+    ctx.strokeStyle = shade('#5a4028', light); ctx.lineWidth = 1;
+    for (let k = 1; k < 3; k++) { const yy = wTop + (wBot - wTop) * k / 3; ctx.beginPath(); ctx.moveTo(wx0, yy); ctx.lineTo(wx1, yy); ctx.stroke(); }
+    ctx.fillStyle = dark;
+    for (const wxp of [wx0 + u * 0.09, wx1 - u * 0.09]) { ctx.beginPath(); ctx.arc(wxp, -u * 0.07, u * 0.07, 0, 6.3); ctx.fill(); ctx.fillStyle = hub; ctx.beginPath(); ctx.arc(wxp, -u * 0.07, u * 0.025, 0, 6.3); ctx.fill(); ctx.fillStyle = dark; }
+    // The tractor: big back wheel, the seat over it, the hood and grille out front, a small front wheel.
+    ctx.fillStyle = red;
+    ctx.fillRect(-u * 0.3, -u * 0.36, u * 0.36, u * 0.13);                                                // hood
+    ctx.beginPath(); ctx.moveTo(u * 0.06, -u * 0.36); ctx.lineTo(u * 0.1, -u * 0.33); ctx.lineTo(u * 0.1, -u * 0.2); ctx.lineTo(u * 0.06, -u * 0.18); ctx.fill();   // grille end
+    ctx.fillRect(-u * 0.34, -u * 0.26, u * 0.14, u * 0.1);                                                // body under the seat
+    ctx.fillStyle = shade('#2a2422', light); for (let k = 0; k < 3; k++) ctx.fillRect(u * 0.075, -u * (0.32 - k * 0.045), u * 0.02, u * 0.025);   // grille slots
+    ctx.fillStyle = steel; ctx.fillRect(-u * 0.02, -u * 0.47, u * 0.025, u * 0.12);                       // exhaust stack
+    ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(-u * 0.29, -u * 0.15, u * 0.15, 0, 6.3); ctx.fill();   // back wheel
+    ctx.strokeStyle = shade('#3a3632', light); ctx.lineWidth = Math.max(1, u * 0.012);
+    for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; ctx.beginPath(); ctx.moveTo(-u * 0.29 + Math.cos(a) * u * 0.12, -u * 0.15 + Math.sin(a) * u * 0.12); ctx.lineTo(-u * 0.29 + Math.cos(a) * u * 0.15, -u * 0.15 + Math.sin(a) * u * 0.15); ctx.stroke(); }   // tread lugs
+    ctx.fillStyle = hub; ctx.beginPath(); ctx.arc(-u * 0.29, -u * 0.15, u * 0.06, 0, 6.3); ctx.fill();
+    ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(u * 0.03, -u * 0.07, u * 0.07, 0, 6.3); ctx.fill();    // front wheel
+    ctx.fillStyle = hub; ctx.beginPath(); ctx.arc(u * 0.03, -u * 0.07, u * 0.025, 0, 6.3); ctx.fill();
+    ctx.fillStyle = shade('#2a2422', light); ctx.fillRect(-u * 0.33, -u * 0.31, u * 0.11, u * 0.025);     // the seat
+    ctx.strokeStyle = steel; ctx.lineWidth = Math.max(1.2, u * 0.014);                                     // steering column and wheel
+    ctx.beginPath(); ctx.moveTo(-u * 0.12, -u * 0.36); ctx.lineTo(-u * 0.17, -u * 0.43); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(-u * 0.18, -u * 0.44, u * 0.035, u * 0.012, -0.5, 0, 6.3); ctx.stroke();
+    // Him, sitting: jeans along the seat, the red coat, arms out to the wheel, his hat.
+    ctx.strokeStyle = shade('#2e3a4e', light); ctx.lineWidth = Math.max(1.5, u * 0.03);
+    ctx.beginPath(); ctx.moveTo(-u * 0.3, -u * 0.33); ctx.lineTo(-u * 0.21, -u * 0.34); ctx.lineTo(-u * 0.19, -u * 0.27); ctx.stroke();
+    ctx.fillStyle = shade('#7a2e26', light); ctx.fillRect(-u * 0.32, -u * 0.47, u * 0.06, u * 0.14);
+    ctx.strokeStyle = shade('#7a2e26', light); ctx.lineWidth = Math.max(1.2, u * 0.022); ctx.beginPath(); ctx.moveTo(-u * 0.28, -u * 0.44); ctx.lineTo(-u * 0.19, -u * 0.43); ctx.stroke();
+    ctx.fillStyle = shade('#d8b090', light); ctx.beginPath(); ctx.arc(-u * 0.29, -u * 0.51, u * 0.028, 0, 6.3); ctx.fill();
+    ctx.fillStyle = shade('#3a4a5e', light); ctx.fillRect(-u * 0.32, -u * 0.55, u * 0.06, u * 0.018);
     ctx.restore();
   }
 
@@ -210,7 +263,9 @@
     garden: (env) => layout(env).g,
     work: (env) => { const d = when(env).day; return d >= D.apr1 && d < D.apr28 ? 'till' : d >= D.may15 && d < D.sep20 ? 'tend' : d >= D.sep20 && d < D.oct15 ? 'pick' : null; },
     // While the tractor is out, he's on it, so he isn't walking around the yard too.
-    busy: (env) => harvest(when(env), layout(env).steps).out,
-    debug: (env) => { const w = when(env); return { day: w.day, hour: +w.hour.toFixed(2), harvestDay: harvestDay(w.year), harvest: harvest(w, layout(env).steps), work: window.Farm.work(env) }; },
+    // Mid-October until harvest he goes out now and then to feel the ears and see if they're dry enough.
+    cornCheck: (env) => { const w = when(env); return w.day >= D.oct15 && w.day < harvestDay(w.year); },
+    busy: (env) => harvest(when(env), layout(env).steps, env).out,
+    debug: (env) => { const w = when(env); return { day: w.day, hour: +w.hour.toFixed(2), harvestDay: harvestDay(w.year), harvest: harvest(w, layout(env).steps, env), work: window.Farm.work(env) }; },
   };
 })();

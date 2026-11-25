@@ -374,6 +374,9 @@
     L.v += (L.to - L.v) * 0.08;
     return L.v;
   }
+  // V118: windy today? A wind alert of any kind, or wind in today's forecast words. (The farm won't
+  // harvest in it.)
+  function windyNow() { return alerts.some(a => /wind/i.test(a.event || '')) || (days[0] && /wind|breez|gust/i.test(days[0].words || '')); }
   function drawHouse() {
     const { x, w, h, top, peak, eave, chimney: ch } = house;
     ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
@@ -505,7 +508,7 @@
     const life = window.Wildlife ? wildEnv() : null;
     // V78: the homestead (homestead.js): solar array, well and paddock behind the house line,
     // and the person who lives here in front of it.
-    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house } : null;
+    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house, windy: windyNow(), ready: alertsChecked } : null;
     sky(); if (life) Wildlife.sky(ctx, life); land(); if (home && window.Farm) Farm.back(ctx, home); if (home) Homestead.back(ctx, home); drawHouse(); snowLayers(); if (home) Homestead.front(ctx, home); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;
@@ -568,6 +571,7 @@
   const SEV = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1, Unknown: 0 };
   let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, closeBox = null, slide = 0, slideDir = 0;
   try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]')); } catch (e) {}
+  let alertsChecked = false;                     // V118: the farm waits to know about wind before counting work time
   async function loadAlerts() {
     if (/[?&]alert\b/.test(q)) {
       const until = new Date(Date.now() + 30 * 3600e3).toISOString();
@@ -575,7 +579,7 @@
         headline: 'Winter Storm Warning issued for your county (preview)',
         description: 'Heavy snow expected. Total snow accumulations of 8 to 12 inches. Winds gusting as high as 35 mph. (This is a preview, not a real alert.)',
         instruction: 'If you must travel, keep an extra flashlight, food, and water in your vehicle in case of an emergency.' }];
-      return;
+      alertsChecked = true; return;
     }
     try {
       const at = LAT + ',' + LON;
@@ -587,6 +591,7 @@
       })).sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0));
       if (window.AlertChime) AlertChime.check(alerts.filter(a => !dismissed.has(a.id)));   // V103: a chime for a new alert
     } catch (e) { /* keep the last list */ }
+    alertsChecked = true;
   }
   const showing = () => alerts.filter(a => !dismissed.has(a.id));
   const endsText = (iso) => {

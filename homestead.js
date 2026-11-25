@@ -268,6 +268,9 @@
         ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.16, y - s * (0.5 + work * 0.06)); ctx.stroke();
         ctx.fillStyle = shade(P.tool === 'pick' ? '#9a7a4a' : '#6a6e74', light); ctx.fillRect(x + s * 0.12, y - s * 0.5, s * 0.14, s * 0.11);
       }
+    } else if (P.state === 'work' && P.task === 'corn') {             // reaching back into the corn to feel an ear
+      ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x - s * 0.1, y - s * (0.95 + work * 0.03)); ctx.stroke();
+      ctx.fillStyle = shade('#c8a858', light); ctx.beginPath(); ctx.ellipse(x - s * 0.12, y - s * 0.98, s * 0.025, s * 0.06, 0.4, 0, 6.3); ctx.fill();
     } else if (P.state === 'work' && P.task === 'well') {
       ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.2, y - s * (0.85 + work * 0.1)); ctx.stroke();
     } else {
@@ -284,13 +287,15 @@
     const r = Math.random(), hour = env.now.getHours();
     const feeding = hour < 9 || hour >= 15;
     const farmWork = window.Farm ? Farm.work(env) : null;                     // V112: the garden in season
-    const task = snowy ? 'panels' : farmWork && Math.random() < 0.4 ? 'garden' : r < (feeding ? 0.55 : 0.35) ? 'paddock' : r < 0.7 ? 'well' : 'panels';
+    const checkCorn = window.Farm && Farm.cornCheck(env) && Math.random() < 0.3;   // V118: out to feel the corn
+    const task = snowy ? 'panels' : checkCorn ? 'corn' : farmWork && Math.random() < 0.4 ? 'garden' : r < (feeding ? 0.55 : 0.35) ? 'paddock' : r < 0.7 ? 'well' : 'panels';
     person = { x: L.door.x, y: L.door.base, state: 'walk', task, tool: farmWork, carrying: false, stops: [] };
     if (task === 'panels') {
       const cols = [...Array(8).keys()];
       const order = snowy ? cols.filter(c => load[c] > 0.05 || load[c + 8] > 0.05) : [cols[(Math.random() * 8) | 0], cols[(Math.random() * 8) | 0]];
       person.stops = (order.length ? order : [3]).map(c => ({ x: L.arr.x0 + (c + 0.5) * L.arr.pw, col: c, dwell: snowy ? rnd(70, 140) : rnd(120, 360) }));
     } else if (task === 'well') person.stops = [{ x: L.well.x + L.well.s * 0.5, dwell: rnd(40, 90), fill: true }];
+    else if (task === 'corn') person.stops = [{ x: L.arr.x1 + (L.well.x - L.well.s * 0.6 - L.arr.x1) * rnd(0.3, 0.7), dwell: rnd(90, 240) }];
     else if (task === 'garden') {
       const g = Farm.garden(env), rows = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5).slice(0, 2 + ((Math.random() * 2) | 0));
       if (farmWork === 'tend') person.stops.push({ x: L.well.x + L.well.s * 0.5, dwell: rnd(40, 80), fill: true });   // water from the well first
