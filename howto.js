@@ -81,6 +81,7 @@
 
   <h2>THE MENU</h2>
   <ul>
+    <li><b>SHIELD</b>: opens Shield, a separate free app for checking before you buy or hire: a contractor's license, a car by its VIN, and more. It opens in its own tab; close the tab to come back.</li>
     <li><b>SCREENSAVER</b>: which screensaver is one swipe right of Home.</li>
     <li><b>ALERT SOUND</b>: the chime for a new weather alert, On or Off. From 10 PM to 7 AM only serious warnings make a sound, and a tornado warning always sounds the emergency tone.</li>
     <li><b>SOUND</b>: what plays when the Christmas radar catches Santa: a toot, Jingle Bells or icicles. Pick <b>SILENT</b> to turn the sound off.</li>

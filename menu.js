@@ -124,6 +124,7 @@
   // Tapping it asks the iPad again. If the iPad still says no (it remembers a no), it says where to
   // turn it on. Hidden once the app knows where the iPad is.
   let askedHere = false;
+  const SHIELD_URL = 'https://wandering-shield-guard-pro.base44.app/';   // V134
   function allowHtml() {
     const P = window.Place; if (!P) return '';
     const st = P.status(), m = P.mode();
@@ -143,6 +144,7 @@
     el.innerHTML = `<div class="wrap">
       <header><h1>MENU</h1><button class="x" aria-label="Close menu">✕</button></header>
       ${window.HowTo ? `<div class="opts"><button class="opt" data-howto="1">HOW IT WORKS<small>WHAT EVERYTHING DOES, IN PLAIN ENGLISH</small></button></div>` : ''}
+      <div class="opts"><button class="opt" data-shield="1">SHIELD<small>CHECK A CONTRACTOR OR A CAR BEFORE YOU HIRE OR BUY · OPENS IN ITS OWN TAB</small></button></div>
       ${window.Saver ? `<h2>SCREENSAVER</h2>
       <p class="help">The screen one swipe right of Home: the Christmas display, code rain, the Earth or the portrait.</p>
       <div class="opts">${Saver.options().map(o => `<button class="opt${o.id === Saver.get() ? ' on' : ''}" data-saver="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
@@ -183,6 +185,7 @@
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) { Menu.close(); return; }
     if (b.dataset.howto && window.HowTo) { HowTo.open(); return; }   // V89
+    if (b.dataset.shield) { window.open(SHIELD_URL, '_blank', 'noopener'); return; }   // V134: William's consumer-protection app
     if (b.dataset.chime && window.AlertChime) { AlertChime.set(b.dataset.chime === 'on'); render(); }   // V103
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
