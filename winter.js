@@ -3,7 +3,7 @@
 // swipe). A landscape drawn in code: rolling hills, pine trees, and a house with
 // lit windows and a chimney whose smoke never stops.
 //
-// V26: THE SCENE MATCHES TODAY'S NOAA FORECAST for Centre Hall, PA (the National
+// V26: THE SCENE MATCHES TODAY'S NOAA FORECAST for Happy Valley, PA (the National
 // Weather Service, api.weather.gov), refreshed every hour. The sky and the ground
 // both follow it:
 //   day or night   from the forecast period that's on now (sun by day; moon and
@@ -24,7 +24,7 @@
 // Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
 // rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
 (() => {
-  // V66: the place comes from place.js (where this iPad is, or Centre Hall, PA); when it
+  // V66: the place comes from place.js (where this iPad is, or Happy Valley, PA); when it
   // changes, the forecast, alerts and daylight are fetched again for the new place.
   let LAT = window.Place ? Place.lat : 40.8473, LON = window.Place ? Place.lon : -77.6858;
   const placeName = () => (window.Place ? Place.name : 'HAPPY VALLEY');
@@ -50,7 +50,7 @@
   // to close it. (Taps here make no sound; sounds belong to the Christmas display.)
   let days = [], panelOpen = false, panelA = 0;
 
-  // DAWN AND DUSK (V46): daylight follows the real sunrise and sunset for Centre Hall, worked
+  // DAWN AND DUSK (V46): daylight follows the real sunrise and sunset for Happy Valley, worked
   // out on the device for each day of the year, not the forecast's 6-to-6 periods. The sky
   // brightens over the half hour before sunrise to the half hour after, and dims the same
   // way at sunset, so the scene changes in real time as it does outside.
@@ -546,7 +546,7 @@
     ctx.restore();
   }
 
-  // WEATHER ALERTS (V29): NOAA's active alerts for Centre Hall (api.weather.gov/alerts),
+  // WEATHER ALERTS (V29): NOAA's active alerts for Happy Valley (api.weather.gov/alerts),
   // checked every 10 minutes. When there is one, a red banner shows across the top:
   // the alert's name and when it ends. Tap the banner for the details page; swipe it
   // sideways to dismiss it. A dismissed alert stays away on this device; a new or
@@ -559,7 +559,7 @@
     if (/[?&]alert\b/.test(q)) {
       const until = new Date(Date.now() + 30 * 3600e3).toISOString();
       alerts = [{ id: 'preview-alert', event: 'Winter Storm Warning', severity: 'Severe', ends: until,
-        headline: 'Winter Storm Warning issued for Centre County (preview)',
+        headline: 'Winter Storm Warning issued for your county (preview)',
         description: 'Heavy snow expected. Total snow accumulations of 8 to 12 inches. Winds gusting as high as 35 mph. (This is a preview, not a real alert.)',
         instruction: 'If you must travel, keep an extra flashlight, food, and water in your vehicle in case of an emergency.' }];
       return;

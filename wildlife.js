@@ -1,5 +1,5 @@
 // LIFE AROUND THE HOUSE (Nov 24, 2026, V77): what really goes on outside a house in the woods
-// of Penns Valley, at the times it really happens, on the Winter scene.
+// of Happy Valley, at the times it really happens, on the Winter scene.
 //
 // The timing follows the Pennsylvania Game Commission:
 //   - DEER are most active at dawn and dusk; some move at night, few at midday. Activity

@@ -2,7 +2,7 @@
 // (outdoor temperature with feels-like and today's high/low, a wind compass, humidity and
 // dew point, pressure with its trend, rain chance, cloud cover, sunrise and sunset).
 // A third scene for Rising Code, one more swipe left past
-// Winter (swipe right to go back). The detailed NOAA weather for Centre Hall, PA:
+// Winter (swipe right to go back). The detailed NOAA weather for Happy Valley, PA:
 //
 //   RIGHT NOW   the latest reading from the nearest NOAA weather station:
 //               temperature, conditions, humidity, dew point, wind and gusts,
@@ -147,7 +147,7 @@
     if (t >= 80 && rh !== null) return -42.379 + 2.04901523 * t + 10.14333127 * rh - 0.22475541 * t * rh - 0.00683783 * t * t - 0.05481717 * rh * rh + 0.00122874 * t * t * rh + 0.00085282 * t * rh * rh - 0.00000199 * t * t * rh * rh;
     return t;
   }
-  // Sunrise and sunset for Centre Hall, worked out on the device (the standard almanac method).
+  // Sunrise and sunset for Happy Valley, worked out on the device (the standard almanac method).
   function sunTime(rise) {
     const rad = Math.PI / 180, d = new Date(), N = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), lh = LON / 15;
     const t = N + ((rise ? 6 : 18) - lh) / 24, M = 0.9856 * t - 3.289;

@@ -5,9 +5,9 @@
 //             tapping the Christmas display: toot, Jingle Bells, icicles, silent)
 //   SCREENSAVER (V49) Christmas display or plain code rain, or Auto by the season (index.html)
 //   NIGHT CLOCK (V42) the hours the dim night clock covers the screen (nightclock.js)
-//   LOCATION (V66) where this iPad is, or Centre Hall, PA (place.js)
-//   AROUND PENNS VALLEY (V33) upcoming Penns Valley events, each with its source named
-//             and linked. Only the YMCA of Centre County's Penns Valley calendar
+//   LOCATION (V66) where this iPad is, or Happy Valley, PA (place.js)
+//   AROUND HAPPY VALLEY (V33) upcoming local events, each with its source named
+//             and linked. Only the YMCA of Centre County's local events calendar
 //             (its public Events API, which a browser may read) works from this page; no
 //             local news feed does (see README). Fetched when the menu opens, kept 15 min.
 //   MY CORNER the personal wildcard: one thing picked for this household's own
