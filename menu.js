@@ -46,6 +46,7 @@
     border: 2px solid #243241; font: 600 16px ui-monospace, monospace; cursor: pointer; min-height: 56px; }
   /* The picked one stands out by brightness and a check mark, not by color alone. */
   #menu .opt.on { border-color: #ffffff; background: #1e2a37; }
+  #menu .allow { width: 100%; margin: 0 0 12px; border-color: #ffb84a; color: #ffb84a; text-align: center; font-weight: 800; letter-spacing: 0.1em; }
   #menu .opt.on::before { content: "✓ "; }
   #menu .opt small { display: block; color: #93a4b4; font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
   #menu .ev { display: block; padding: 12px 16px; margin-bottom: 8px; border-radius: 10px; background: #121a23; border: 2px solid #243241; color: #e8eef4; text-decoration: none; }
@@ -119,6 +120,20 @@
       : verse.state === 'error' ? '<p class="help">Couldn’t load the words right now; look it up by the reference below.</p>' : '<p class="help">Loading…</p>';
     return `<div class="verse"><p class="src">${esc(v.label)}</p>${body}<p class="vref">${esc(v.ref)} · KING JAMES VERSION</p></div>`;
   }
+  // V100: ALLOW LOCATION, right in the menu, for anyone who missed or said no to the iPad's question.
+  // Tapping it asks the iPad again. If the iPad still says no (it remembers a no), it says where to
+  // turn it on. Hidden once the app knows where the iPad is.
+  let askedHere = false;
+  function allowHtml() {
+    const P = window.Place; if (!P) return '';
+    const st = P.status(), m = P.mode();
+    if ((m === 'here' && st === 'ok') || st === 'outside') return '';
+    if (m === 'here' && st === 'checking') return '<p class="help">Asking the iPad…</p>';
+    const no = askedHere && m === 'here' && st === 'denied';
+    return `<button class="opt allow" data-allowloc="1">ALLOW LOCATION<small>USE WHERE THIS iPAD IS FOR THE WEATHER, THE SKY AND THE RADIO</small></button>` +
+      (no ? '<p class="help">The iPad still says no. Turn it on in Settings → Privacy &amp; Security → Location Services → Safari Websites → While Using the App, then tap ALLOW LOCATION again.</p>' : '');
+  }
+  if (window.Place) Place.onChange(() => { if (open) render(); });
   function render() {
     const names = sound ? sound.names : [];
     const cur = sound ? sound.get() : -1;
@@ -135,7 +150,7 @@
       <p class="help">During these hours the screen becomes a big, dim clock. Tap it to wake the app for 5 minutes.</p>
       <div class="opts">${NightClock.options().map(o => `<button class="opt${o.id === NightClock.get() ? ' on' : ''}" data-night="${o.id}">${o.name}</button>`).join('')}</div>` : ''}
       ${window.Place ? `<h2>LOCATION</h2>
-      <p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
+      ${allowHtml()}<p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
       <div class="opts">${Place.options().map(o => `<button class="opt${o.id === Place.mode() ? ' on' : ''}" data-place="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       ${localHtml()}
       <h2>MY CORNER</h2>
@@ -165,6 +180,7 @@
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
     if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }
+    if (b.dataset.allowloc && window.Place) { askedHere = true; Place.set('here'); render(); return; }
     if (b.dataset.place && window.Place) { Place.set(b.dataset.place); render(); }
     if (b.dataset.wild) { wild = b.dataset.wild; try { localStorage.setItem('risingcode_wildcard', wild); } catch (e2) {} render(); }
   });
