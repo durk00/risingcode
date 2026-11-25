@@ -112,7 +112,7 @@ In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by def
 
 ## First-time guide
 
-In `firstrun.js`. The first time the app opens on a device, a one-time guide shows an arrow pointing down to the settings menu, arrows for swiping between screens, and what a tap does. One tap closes it for good on that device. Preview with `?intro`.
+In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW IT WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
 
 ## Verses for the week
 
