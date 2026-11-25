@@ -22,7 +22,7 @@
 (() => {
   // V66: the same place as Winter (place.js); a change of place fetches everything again.
   let LAT = window.Place ? Place.lat : 40.8473, LON = window.Place ? Place.lon : -77.6858;
-  const placeName = () => (window.Place ? Place.name : 'CENTRE HALL');
+  const placeName = () => (window.Place ? Place.name : 'HAPPY VALLEY');
   const HOURS = 72;
   const DRY_RH = 50, DRY_POP = 20;               // the drying-hours rule
   const sample = /[?&]details-sample\b/.test(location.search);

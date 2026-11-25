@@ -27,7 +27,7 @@
   // V66: the place comes from place.js (where this iPad is, or Centre Hall, PA); when it
   // changes, the forecast, alerts and daylight are fetched again for the new place.
   let LAT = window.Place ? Place.lat : 40.8473, LON = window.Place ? Place.lon : -77.6858;
-  const placeName = () => (window.Place ? Place.name : 'CENTRE HALL');
+  const placeName = () => (window.Place ? Place.name : 'HAPPY VALLEY');
   const RATE_MODERATE = 0.1, RATE_HEAVY = 0.5;   // snow, inches per hour
   const LOOKAHEAD_HRS = 48;                      // how far ahead upcoming snow is previewed
   const GATHER_HRS = 12;                         // clouds start gathering this long before it

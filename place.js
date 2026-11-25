@@ -11,7 +11,7 @@
 // "Centre Hall, PA".
 (() => {
   const KEY = 'risingcode_place';
-  const HOME = { lat: 40.8473, lon: -77.6858, name: 'CENTRE HALL', state: 'PA' };
+  const HOME = { lat: 40.8473, lon: -77.6858, name: 'HAPPY VALLEY', state: 'PA' };   // V96: shown as Happy Valley
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
   let mode = saved.mode === 'home' ? 'home' : 'here';
@@ -58,7 +58,7 @@
     onChange(f) { listeners.push(f); },
     options: () => [
       { id: 'here', name: 'Where this iPad is', note: mode === 'here' ? ({ ok: here ? `NOW: ${here.name}${here.state ? ', ' + here.state : ''}` : 'CHECKING…', checking: 'CHECKING…', denied: 'LOCATION NOT ALLOWED · USING CENTRE HALL', outside: 'OUTSIDE THE US · USING CENTRE HALL', unavailable: 'CAN’T TELL · USING CENTRE HALL' }[status] || '') : 'US ONLY' },
-      { id: 'home', name: 'Centre Hall, PA', note: 'ALWAYS' },
+      { id: 'home', name: 'Happy Valley, PA', note: 'ALWAYS' },
     ],
   };
   if (mode === 'here') locate();
