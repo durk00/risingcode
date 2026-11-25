@@ -52,8 +52,8 @@
   const playable = (s) => s && s.lastcheckok === 1 && /^https:/.test(s.url_resolved || '') &&
     (s.hls === 1 || /^(MP3|AAC|AAC\+)$/i.test(s.codec || ''));
   // V83: TALK, local news and talk first. The stations in the iPad's own state (from Menu →
-  // LOCATION, Centre Hall by default), nearest first where the directory knows where a station is,
-  // so in Centre County that means the State College stations before Pittsburgh or Philadelphia.
+  // LOCATION, Happy Valley by default), nearest first where the directory knows where a station is,
+  // so around Happy Valley that means the State College stations before Pittsburgh or Philadelphia.
   // Then, at the end of the dial, the national pair, one from each side, Fox News and MSNBC
   // (or Newsmax and CNN if those aren't in the directory). The pair only goes on together, so the
   // dial never has one side without the other.

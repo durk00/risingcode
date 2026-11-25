@@ -2,7 +2,7 @@
 // enough that you only notice it when you look back later.
 //
 //   - A SOLAR ARRAY of 16 panels (two rows of eight) on gravel, left of the house, tilted 40
-//     degrees (about right for Centre Hall's latitude) and facing south. The scene looks south,
+//     degrees (about right for central Pennsylvania's latitude) and facing south. The scene looks south,
 //     so, as in real life, you see the backs of the panels: silver frames on their legs. Snow
 //     that falls on them sits on top and slides off in the sun; somebody comes out and clears
 //     it, one panel at a time.

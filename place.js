@@ -1,5 +1,5 @@
 // WHERE THIS iPAD IS (Nov 24, 2026, V66): so the weather, the alerts and the daylight are right
-// for whoever is using the app anywhere in the US, not just Centre Hall.
+// for whoever is using the app anywhere in the US, not just Happy Valley.
 //
 // The first time, the iPad asks its own question: "Allow location?". If they allow it:
 //   - the spot is rounded to about half a mile and kept on this device; it is only ever sent
@@ -7,8 +7,8 @@
 //   - NOAA names the nearest town, and the screens say it ("NOAA · FRESNO")
 //   - it's checked again each time the app starts, in case the iPad has moved
 // If they say no, the spot is outside the US (NOAA only covers the US), or anything fails,
-// it stays on Centre Hall, PA. Menu → LOCATION switches between "Where this iPad is" and
-// "Centre Hall, PA".
+// it stays on Happy Valley, PA. Menu → LOCATION switches between "Where this iPad is" and
+// "Happy Valley, PA".
 (() => {
   const KEY = 'risingcode_place';
   const HOME = { lat: 40.8473, lon: -77.6858, name: 'HAPPY VALLEY', state: 'PA' };   // V96: shown as Happy Valley
@@ -57,7 +57,7 @@
     set(m) { mode = m === 'home' ? 'home' : 'here'; save(); changed(); if (mode === 'here') locate(); },
     onChange(f) { listeners.push(f); },
     options: () => [
-      { id: 'here', name: 'Where this iPad is', note: mode === 'here' ? ({ ok: here ? `NOW: ${here.name}${here.state ? ', ' + here.state : ''}` : 'CHECKING…', checking: 'CHECKING…', denied: 'LOCATION NOT ALLOWED · USING CENTRE HALL', outside: 'OUTSIDE THE US · USING CENTRE HALL', unavailable: 'CAN’T TELL · USING CENTRE HALL' }[status] || '') : 'US ONLY' },
+      { id: 'here', name: 'Where this iPad is', note: mode === 'here' ? ({ ok: here ? `NOW: ${here.name}${here.state ? ', ' + here.state : ''}` : 'CHECKING…', checking: 'CHECKING…', denied: 'LOCATION NOT ALLOWED · USING HAPPY VALLEY', outside: 'OUTSIDE THE US · USING HAPPY VALLEY', unavailable: 'CAN’T TELL · USING HAPPY VALLEY' }[status] || '') : 'US ONLY' },
       { id: 'home', name: 'Happy Valley, PA', note: 'ALWAYS' },
     ],
   };
