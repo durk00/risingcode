@@ -86,11 +86,11 @@
     if (open) render();
   }
   function localHtml() {
-    const head = '<h2>AROUND PENNS VALLEY</h2>';
+    const head = '<h2>AROUND HAPPY VALLEY</h2>';   // V96: Happy Valley, not the exact place
     const src = `<p class="src">Source: <a href="${EVENTS_SOURCE.url}" target="_blank" rel="noopener">${EVENTS_SOURCE.name}</a> events calendar. Local news isn't available here yet.</p>`;
     if (local.state === 'loading' || local.state === 'idle') return head + '<p class="help">Loading events…</p>' + src;
     if (local.state === 'error') return head + '<p class="help">Couldn’t load events right now. It will try again the next time the menu opens.</p>' + src;
-    if (!local.items.length) return head + '<p class="help">No upcoming Penns Valley events are listed.</p>' + src;
+    if (!local.items.length) return head + '<p class="help">No upcoming local events are listed.</p>' + src;
     return head + local.items.map((e) => `<a class="ev" href="${esc(e.url)}" target="_blank" rel="noopener"><b>${esc(e.title)}</b><span>${esc(e.when)}${e.where ? ' · ' + esc(e.where) : ''}</span></a>`).join('') + src;
   }
 

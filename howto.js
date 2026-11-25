@@ -71,8 +71,8 @@
     <li><b>SCREENSAVER</b>: which screensaver is one swipe right of Home.</li>
     <li><b>SOUND</b>: what plays when the Christmas radar catches Santa: a toot, Jingle Bells or icicles. Pick <b>SILENT</b> to turn the sound off.</li>
     <li><b>NIGHT CLOCK</b>: overnight, the screen turns into a big, dim clock with the date and the moon's phase. Pick the hours: <b>9 PM – 6 AM</b> (the usual), <b>10 PM – 6 AM</b> or <b>11 PM – 7 AM</b>, or pick <b>Off</b> to turn it off. While it's showing, tap the clock to use the app for 5 minutes.</li>
-    <li><b>LOCATION</b>: whose weather to show, where this iPad is or Centre Hall, PA. Your spot stays on the iPad and only goes to NOAA. It works anywhere in the US.</li>
-    <li><b>AROUND PENNS VALLEY</b>: upcoming local events.</li>
+    <li><b>LOCATION</b>: whose weather to show, where this iPad is or Happy Valley, PA. Your spot stays on the iPad and only goes to NOAA. It works anywhere in the US.</li>
+    <li><b>AROUND HAPPY VALLEY</b>: upcoming local events.</li>
     <li><b>MY CORNER</b>: one thing just for your household, like verses for the week, picked for the season of the Church year.</li>
   </ul>
   <p>Tap <b>✕</b> to close the menu, or scroll to the bottom and give it a good swipe up.</p>
