@@ -14,6 +14,9 @@
     { id: 'mlb', name: 'MLB', path: 'baseball/mlb' },
     { id: 'nba', name: 'NBA', path: 'basketball/nba' },
     { id: 'nhl', name: 'NHL', path: 'hockey/nhl' },
+    // V138: college. The scoreboard is asked for all of Division I (FBS for football), not just the Top 25.
+    { id: 'cfb', name: 'NCAA FOOTBALL', path: 'football/college-football', sb: '?groups=80&limit=300', many: true },
+    { id: 'cbb', name: 'NCAA BASKETBALL', path: 'basketball/mens-college-basketball', sb: '?groups=50&limit=500', many: true },
   ];
   const API = 'https://site.api.espn.com/apis/site/v2/sports/';
   let mine = [];
@@ -38,7 +41,10 @@
   #radio .srow { display: flex; gap: 8px; margin-top: 12px; }
   #radio .srow button, #radio .spick .lg button, #radio .spick .tm button { border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 800 15px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; cursor: pointer; }
   #radio .srow button { flex: 1; height: 48px; }
-  #radio .spick .lg { display: flex; gap: 6px; margin: 10px 0 8px; }
+  #radio .spick .lg { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 8px; }
+  #radio .spick .lg button { flex: 1 0 18%; }
+  #radio .spick .lg button.wide { flex: 1 0 40%; }
+  #radio .spick .find { width: 100%; box-sizing: border-box; height: 40px; margin: 0 0 8px; padding: 0 12px; border-radius: 10px; border: 2px solid #3a2a10; background: #0c0904; color: #ffcf7a; font: 700 15px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; }
   #radio .spick .lg button { flex: 1; height: 40px; }
   #radio .spick .lg button.on, #radio .spick .tm button.on { background: #ffb84a; color: #14110c; }
   #radio .spick .tm { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-height: min(46vh, 420px); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
@@ -82,7 +88,7 @@
     if (teams[lg]) return draw();
     try {
       const L = LEAGUES.find(l => l.id === lg);
-      const d = await getJSON(API + L.path + '/teams');
+      const d = await getJSON(API + L.path + '/teams' + (L.many ? '?limit=1000' : ''));
       const list = (((d.sports || [])[0] || {}).leagues || [])[0];
       teams[lg] = ((list && list.teams) || []).map(x => x.team).filter(Boolean)
         .map(t => ({ key: lg + ':' + t.id, name: t.displayName || t.name, short: t.shortDisplayName || t.name }))
@@ -99,7 +105,7 @@
     try {
       const out = [];
       await Promise.all(lgs.map(async (L) => {
-        const d = await getJSON(API + L.path + '/scoreboard');
+        const d = await getJSON(API + L.path + '/scoreboard' + (L.sb || ''));
         for (const e of d.events || []) {
           const c = (e.competitions || [])[0] || {}, cs = c.competitors || [];
           if (!cs.some(x => x.team && mine.includes(L.id + ':' + x.team.id))) continue;
@@ -142,10 +148,12 @@
     if (picking) {
       const lg = teams[pickLeague];
       view.innerHTML = `<div class="spick"><div class="smsg" style="padding-top:2px">MY TEAMS: TAP THE TEAMS YOU FOLLOW${mine.length ? ` · ${mine.length} PICKED` : ''}</div>
-        <div class="lg">${LEAGUES.map(l => `<button type="button" data-slg="${l.id}" class="${l.id === pickLeague ? 'on' : ''}">${l.name}</button>`).join('')}</div>
+        <div class="lg">${LEAGUES.map(l => `<button type="button" data-slg="${l.id}" class="${l.id === pickLeague ? 'on' : ''}${l.many ? ' wide' : ''}">${l.name}</button>`).join('')}</div>
+        ${lg && LEAGUES.find(l => l.id === pickLeague).many ? `<input class="find" type="search" placeholder="TYPE TO FIND A SCHOOL" value="${esc(find)}" autocomplete="off">` : ''}
         ${lg ? `<div class="tm guide">${lg.map(t => `<button type="button" data-steam="${esc(t.key)}" class="${mine.includes(t.key) ? 'on' : ''}">${mine.includes(t.key) ? '✓ ' : ''}${esc(t.name)}</button>`).join('')}</div>`
           : `<div class="smsg">${err ? 'CAN’T REACH ESPN FOR THE TEAM LIST · CHECK WI-FI' : 'LOADING TEAMS…'}</div>`}</div>`;
       body.querySelector('[data-steams]').textContent = mine.length ? 'DONE' : 'MY TEAMS';
+      filter();
       return;
     }
     body.querySelector('[data-steams]').textContent = 'MY TEAMS';
@@ -162,13 +170,21 @@
     }).join('')}</div>${err ? '<div class="smsg">COULDN’T UPDATE · SHOWING THE LAST SCORES</div>' : ''}`;
   }
 
+  // V138: the college lists run to hundreds of schools, so there's a box to type part of a name.
+  let find = '';
+  function filter() {
+    const q = find.trim().toLowerCase();
+    body.querySelectorAll('.tm button').forEach(b => { b.style.display = !q || b.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+  }
+  body.addEventListener('input', (e) => { if (e.target.classList.contains('find')) { find = e.target.value; filter(); } });
+  body.addEventListener('keydown', (e) => e.stopPropagation());   // typing never changes screens or closes the set
   tab.addEventListener('click', (e) => { e.stopPropagation(); show(); });
   body.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     e.stopPropagation();
     if (b.dataset.steams) { picking = !picking; if (picking) loadTeams(pickLeague); else { games = null; draw(); load(); } draw(); return; }
     if (b.dataset.srefresh) { if (picking) { picking = false; games = null; } draw(); load(); return; }
-    if (b.dataset.slg) { pickLeague = b.dataset.slg; draw(); loadTeams(pickLeague); return; }
+    if (b.dataset.slg) { pickLeague = b.dataset.slg; find = ''; draw(); loadTeams(pickLeague); return; }
     if (b.dataset.steam) {
       const k = b.dataset.steam, i = mine.indexOf(k);
       if (i >= 0) mine.splice(i, 1); else mine.push(k);
