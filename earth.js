@@ -1,5 +1,6 @@
 // EARTH (Nov 24, 2026): a screensaver choice. The globe drawn in rising code, after an idea
 // William got from Grok, with Claude's own touches:
+//   - V76: it turns in real time, once a day, seen from a spot fixed against the sun
 //   - real continents (a 2-degree land map built in), oceans blue, land green, ice white
 //   - the code RISES, like the rest of Rising Code, clipped to the sphere
 //   - the real day and night: the sunlit half is bright and the night half dim, with the
@@ -89,7 +90,12 @@
   }
 
   function draw() {
-    t++; spin -= 0.0005;                          // one turn in about 7 minutes, eastward like the real thing
+    // V76: THE EARTH TURNS IN REAL TIME. The view is fixed against the sun, like a camera
+    // parked in space: the middle of the globe is always where it's about 4 in the afternoon,
+    // so the day side fills the left and the evening and night, with the city lights, come
+    // round on the right. The planet turns under it once a day, eastward, as the real one
+    // does: in two hours it has turned 30 degrees. (It used to turn once every 7 minutes.)
+    t++; spin = faced !== null ? faced : realSpin();
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.42, sun = sunNow();
     for (const s of stars) {
@@ -149,7 +155,15 @@
     start(c) { ctx = c; },
     resize,
     draw() { if (ctx && W) draw(); },
-    face(lonDeg) { spin = lonDeg * Math.PI / 180; },   // for checking: turn a given longitude toward the viewer
+    face(lonDeg) { faced = lonDeg * Math.PI / 180; spin = faced; },   // for checking: hold a given longitude toward the viewer
+    realTime() { faced = null; },
   };
-  spin = (window.Place ? Place.lon : HOME.lon) * Math.PI / 180;               // starts with North America in view (V51: no hometown marker)
+  // The longitude facing the viewer right now: 60 degrees east of where the sun is overhead,
+  // which is where it's about 4 PM. The sun's longitude comes from the clock, as in sunNow().
+  let faced = null;
+  function realSpin(d = new Date()) {
+    const subsolar = -15 * (d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600 - 12);
+    return (subsolar + 60) * Math.PI / 180;
+  }
+  spin = realSpin();
 })();
