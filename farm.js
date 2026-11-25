@@ -89,15 +89,15 @@
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
     if (!stalks || stalkKey !== W + 'x' + H) {
       const r = rnd32('corn'), n = Math.ceil(W / Math.max(2.2, S * 0.011));
-      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.12 }));
+      stalks = Array.from({ length: n }, (_, i) => ({ x: (i + r()) * W / n, h: 0.8 + r() * 0.35, lean: (r() - 0.5) * 0.16, rank: (r() * 3) | 0, bend: r() < 0.5 ? -1 : 1, broke: r() < 0.24 }));
       stalks.sort((a, b) => a.rank - b.rank);                                         // back rank first
       stalkKey = W + 'x' + H;
     }
     const grow = d < D.may5 ? 0 : d < D.jul25 ? ramp(d, D.may5, D.jul25) : 1;
-    const tan = ramp(d, D.sep1, D.oct15), wither = ramp(d, D.oct15, D.nov1 + 35);
-    const fullH = S * 0.5 * (1 - 0.18 * wither);                                     // taller than a man; it slumps as it dies
-    const col = mixHex(mixHex('#4f8a34', '#c4a86c', tan), '#8c7754', wither);
-    const back = mixHex(mixHex('#2f5a22', '#8f7a50', tan), '#5e4f38', wither);
+    const tan = ramp(d, D.sep1, D.oct15), wither = ramp(d, D.oct15 - 5, D.nov1 + 14);                  // V114: fully dead by mid-November
+    const fullH = S * 0.5 * (1 - 0.28 * wither);                                     // taller than a man; it slumps as it dies
+    const col = mixHex(mixHex('#4f8a34', '#c4a86c', tan), '#7a6648', wither);
+    const back = mixHex(mixHex('#2f5a22', '#8f7a50', tan), '#4e4130', wither);
     const stubbleSeason = hv.done < 0 || (d >= harvestDay(w.year) && hv.done > 0);
     const worked = d >= D.apr28 && d < D.may5;                                         // stubble plowed under, nothing up yet
     const standing = (x) => !(stubbleSeason && x < cutX) && grow > 0;
@@ -127,17 +127,17 @@
         ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x + s.lean * 6, gy - S * 0.022); ctx.stroke();
         continue;
       }
-      const h = fullH * s.h * (0.08 + 0.92 * grow) * (s.broke ? 1 - 0.45 * wither : 1);
+      const h = fullH * s.h * (0.08 + 0.92 * grow) * (s.broke ? 1 - 0.5 * wither : 1);
       const shadeK = 0.82 + s.rank * 0.09;                                             // front rank a little lighter
       const c = shade(mixHex('#000000', col, shadeK), light);
       // The stalk: straight while alive; leaning, and bent over at the top as it dies.
-      const tipDx = s.lean * h + s.bend * wither * h * (s.broke ? 0.55 : 0.28), tipDy = h * (1 - wither * (s.broke ? 0.45 : 0.12));
+      const tipDx = s.lean * h + s.bend * wither * h * (s.broke ? 0.75 : 0.42), tipDy = h * (1 - wither * (s.broke ? 0.6 : 0.2));
       const midX = s.x + s.lean * h * 0.5, midY = gy - h * 0.6;
       const tx = s.x + tipDx, ty = gy - tipDy;
       ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.2, S * (0.006 + 0.007 * grow));
       ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.quadraticCurveTo(midX, midY, tx, ty); ctx.stroke();
       ctx.lineWidth = Math.max(1, S * 0.005);                                          // leaves: out and up while green, hanging once dead
-      for (let k = 1; k <= 4; k++) {
+      for (let k = 1; k <= 4 - Math.round(wither * 1.4); k++) {                          // dead leaves fall off too
         const f = k / 5, lx = s.x + (midX - s.x) * f * 1.6, ly = gy - h * f * 0.9, sgn = (k + s.rank) % 2 ? 1 : -1, len = h * (0.3 - 0.08 * wither);
         const droop = 0.1 + tan * 0.3 + wither * 0.7;
         ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx + sgn * len * (0.6 - wither * 0.25), ly - len * (0.25 - wither * 0.25), lx + sgn * len * (0.9 - wither * 0.45), ly + len * droop); ctx.stroke();
