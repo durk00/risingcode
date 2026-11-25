@@ -26,6 +26,7 @@
     --tan: #c99a68;      /* reindeer */
     --antler: #9a6a42;   /* antlers and harness, darker brown */
     --halo: #ffe7a3;     /* the star's warm glow */    /* red streams: darker than the green, so the two differ in brightness too */
+    --amber: #ffa21f;    /* V95: rich amber streams, drawn bolder than the rest */
     --frost: #dff4ff;    /* pale streams and the bright leading glyph */
     --hint: #8fa9b8;     /* the fading tap hint */
     --mono: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Osaka", ui-monospace, monospace;
@@ -51,7 +52,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V94</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V95</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -92,6 +93,7 @@
     tan: css.getPropertyValue('--tan').trim(),
     antler: css.getPropertyValue('--antler').trim(),
     frost: css.getPropertyValue('--frost').trim(),
+    amber: css.getPropertyValue('--amber').trim(),
     mono: css.getPropertyValue('--mono').trim(),
   };
 
@@ -106,10 +108,10 @@
   let W, H, size, cols, rows, streams = [];
 
   function colorFor(x) {
-    // Blue and green mixed all the way across, with a little white. Red belongs to the tree.
+    // Blue, green and (V95) rich amber mixed all the way across, with a little white. Red belongs to the tree.
     const r = Math.random();
     if (r < 0.1) return C.frost;
-    return r < 0.55 ? C.ice : C.leaf;
+    return r < 0.42 ? C.ice : r < 0.76 ? C.leaf : C.amber;
   }
 
   function makeStream(col, scatter) {
@@ -131,7 +133,7 @@
 
   // A different color from the one it has now: blue or green mostly, white now and then.
   function nextColor(current) {
-    const options = [C.ice, C.ice, C.leaf, C.leaf, C.frost].filter(c => c !== current);
+    const options = [C.ice, C.ice, C.leaf, C.leaf, C.amber, C.amber, C.frost].filter(c => c !== current);
     return options[(Math.random() * options.length) | 0];
   }
 
@@ -294,6 +296,8 @@
     for (const s of streams) {
       const x = s.col * size + size / 2;
       const headRow = Math.floor(s.head);
+      const thick = s.color === C.amber;           // V95: amber streams are drawn heavier, a thicker, richer line
+      if (thick) ctx.font = `800 ${size}px ${C.mono}`;
       // The trail hangs BELOW the head, because the stream is rising.
       for (let k = s.len - 1; k >= 0; k--) {
         const row = headRow + k;
@@ -313,6 +317,7 @@
         ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
+      if (thick) ctx.font = `${size}px ${C.mono}`;
       // Move up; now and then a glyph changes.
       s.head -= s.speed * tempo;
       if (Math.random() < 0.04) s.cells[(Math.random() * 60) | 0] = pick();
