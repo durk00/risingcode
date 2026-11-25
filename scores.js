@@ -59,7 +59,7 @@
   const body = document.createElement('div'); body.className = 'scoresbody';
   body.innerHTML = `<div class="lcd"><div class="sview"></div></div>
     <div class="srow"><button type="button" data-steams="1">MY TEAMS</button><button type="button" data-srefresh="1">⟳ REFRESH</button></div>
-    <div class="hint">TODAY'S GAMES FOR YOUR TEAMS · FROM ESPN · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
+    <div class="hint">YOUR TEAMS: TODAY'S GAMES, OR THE NEXT ONE · FROM ESPN · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
   set.appendChild(body);
   const view = body.querySelector('.sview');
 
@@ -105,10 +105,27 @@
           if (!cs.some(x => x.team && mine.includes(L.id + ':' + x.team.id))) continue;
           const side = (h) => { const x = cs.find(y => y.homeAway === h) || {}; return { name: (x.team && (x.team.shortDisplayName || x.team.name)) || '', score: x.score, win: x.winner }; };
           const st = (e.status && e.status.type) || {};
-          out.push({ lg: L.name, date: e.date, state: st.state || '', detail: st.shortDetail || st.detail || '', away: side('away'), home: side('home') });
+          out.push({ lg: L.name, date: e.date, state: st.state || '', detail: st.shortDetail || st.detail || '', away: side('away'), home: side('home'),
+            keys: cs.filter(x => x.team).map(x => L.id + ':' + x.team.id) });
         }
       }));
-      out.sort((a, b) => (a.state === 'in' ? 0 : 1) - (b.state === 'in' ? 0 : 1) || Date.parse(a.date) - Date.parse(b.date));
+      // V136: a team you follow with no game today shows its next game instead of nothing.
+      const playing = new Set(out.flatMap(g => g.keys));
+      await Promise.all(mine.filter(k => !playing.has(k)).map(async (k) => {
+        const [lg, id] = k.split(':'), L = LEAGUES.find(l => l.id === lg); if (!L) return;
+        try {
+          const d = await getJSON(API + L.path + '/teams/' + id + '/schedule');
+          const now = Date.now() - 4 * 3600e3;
+          const e = (d.events || []).filter(x => Date.parse(x.date) > now).sort((a, b) => Date.parse(a.date) - Date.parse(b.date))[0];
+          if (!e) return;
+          const cs = ((e.competitions || [])[0] || {}).competitors || [];
+          const side = (h) => { const x = cs.find(y => y.homeAway === h) || {}; return { name: (x.team && (x.team.shortDisplayName || x.team.name || x.team.displayName)) || '' }; };
+          out.push({ lg: L.name, date: e.date, state: 'pre', next: true, detail: '', away: side('away'), home: side('home'), keys: [k] });
+        } catch (e2) { /* leave it off */ }
+      }));
+      const seen = new Set();
+      for (let i = out.length - 1; i >= 0; i--) { const id = out[i].date + out[i].away.name + out[i].home.name; if (seen.has(id)) out.splice(i, 1); else seen.add(id); }
+      out.sort((a, b) => (a.state === 'in' ? 0 : 1) - (b.state === 'in' ? 0 : 1) || (a.next ? 1 : 0) - (b.next ? 1 : 0) || Date.parse(a.date) - Date.parse(b.date));
       games = out; err = false;
     } catch (e) { err = true; }
     draw();
@@ -117,7 +134,8 @@
 
   function when(iso) {
     const d = new Date(iso), today = d.toDateString() === new Date().toDateString();
-    return d.toLocaleString(undefined, today ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase();
+    const far = d - Date.now() > 6 * 86400e3;   // more than a week out: the date too
+    return d.toLocaleString(undefined, today ? { hour: 'numeric', minute: '2-digit' } : far ? { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase();
   }
 
   function draw() {
@@ -134,13 +152,13 @@
     if (!mine.length) { view.innerHTML = '<div class="smsg">NO TEAMS PICKED YET. TAP MY TEAMS.</div>'; return; }
     if (err && !games) { view.innerHTML = '<div class="smsg">NO SIGNAL · CAN’T REACH ESPN FOR SCORES · CHECK WI-FI</div>'; return; }
     if (!games) { view.innerHTML = '<div class="smsg">TUNING IN…</div>'; return; }
-    if (!games.length) { view.innerHTML = '<div class="smsg">NO GAMES TODAY FOR YOUR TEAMS.</div>'; return; }
+    if (!games.length) { view.innerHTML = '<div class="smsg">NO GAMES TODAY FOR YOUR TEAMS, AND NO NEXT GAME LISTED YET (OFF-SEASON).</div>'; return; }
     view.innerHTML = `<div class="sgames guide">${games.map(g => {
       const pre = g.state === 'pre', live = g.state === 'in', fin = g.state === 'post';
       const a = +g.away.score, h = +g.home.score, aLead = !pre && (fin ? g.away.win : a > h), hLead = !pre && (fin ? g.home.win : h > a);
       return `<div class="sgame"><div class="t ${aLead ? 'lead' : ''}">${esc(g.away.name)}</div><div class="n ${aLead ? 'lead' : ''}">${pre ? '' : esc(g.away.score)}</div>
         <div class="t ${hLead ? 'lead' : ''}">@ ${esc(g.home.name)}</div><div class="n ${hLead ? 'lead' : ''}">${pre ? '' : esc(g.home.score)}</div>
-        <div class="st ${live ? 'live' : ''}">${esc(g.lg)} · ${pre ? esc(when(g.date)) : esc(g.detail.toUpperCase())}</div></div>`;
+        <div class="st ${live ? 'live' : ''}">${esc(g.lg)} · ${g.next ? 'NEXT GAME · ' : ''}${pre ? esc(when(g.date)) : esc(g.detail.toUpperCase())}</div></div>`;
     }).join('')}</div>${err ? '<div class="smsg">COULDN’T UPDATE · SHOWING THE LAST SCORES</div>' : ''}`;
   }
 

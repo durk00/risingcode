@@ -79,7 +79,7 @@
     <li>For newer movies, <b>TUBI, PLUTO TV</b> and <b>YOUTUBE</b> open those free services (with ads) in their own app or website. Close them and you're back here.</li>
   </ul>
 
-  <p><b>SCORES</b>, the third button on the set, shows today's games for the teams you follow: the score while it's on and when it's final, the start time before. The team that's ahead is brighter. Tap <b>MY TEAMS</b>, pick a league (NFL, MLB, NBA, NHL), and tap every team you follow; tap <b>DONE</b> when you're finished. Scores come from ESPN and update every minute while a game is on.</p>
+  <p><b>SCORES</b>, the third button on the set, shows today's games for the teams you follow: the score while it's on and when it's final, the start time before. A team with no game today shows its next game. The team that's ahead is brighter. Tap <b>MY TEAMS</b>, pick a league (NFL, MLB, NBA, NHL), and tap every team you follow; tap <b>DONE</b> when you're finished. Scores come from ESPN and update every minute while a game is on.</p>
 
   <h2>THE MENU</h2>
   <ul>
