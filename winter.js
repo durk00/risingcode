@@ -142,7 +142,7 @@
       // V58: read through WxNow, which checks the last several readings of the nearest stations
       // and builds the words from the measurements when NOAA leaves them blank.
       let observed = '';
-      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) observed = now.words; }
+      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) { observed = now.words; windObs = windFrom(now.o); } }
       catch (e) { /* the forecast alone still drives the scene */ }
       const obsHeavy = /heavy/i.test(observed), obsLight = /light|drizzle|flurr/i.test(observed);
       if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky; chance = false; }
@@ -383,6 +383,18 @@
   // V118: windy today? A wind alert of any kind, or wind in today's forecast words. (The farm won't
   // harvest in it.)
   function windyNow() { return alerts.some(a => /wind/i.test(a.event || '')) || (days[0] && /wind|breez|gust/i.test(days[0].words || '')); }
+  // V124: the wind for the smoke: the latest station reading (mph, gusts, direction it's from),
+  // or on a windy day with no reading, a stiff westerly.
+  let windObs = null, gustT = 0;
+  function windFrom(o) {
+    const kmh = (v) => v && typeof v.value === 'number' ? v.value * 0.621 : null;
+    return { mph: kmh(o.windSpeed) || 0, gust: kmh(o.windGust), dir: o.windDirection && typeof o.windDirection.value === 'number' ? o.windDirection.value : null, at: Date.now() };
+  }
+  function windNow() {
+    if (/[?&]wind\b/.test(q)) return { mph: 25, gust: 40, dir: 280 };              // preview with ?wind
+    if (windObs && Date.now() - windObs.at < 3 * 3600e3 && windObs.mph > 0) return windObs;
+    return windyNow() ? { mph: 22, gust: 35, dir: 280 } : (windObs || { mph: 0, gust: null, dir: null });
+  }
   function drawHouse() {
     const { x, w, h, top, peak, eave, chimney: ch } = house;
     ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
@@ -419,8 +431,21 @@
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(kx - kr * 0.3, ky - kr * 0.3, kr * 0.35, 0, 6.3); ctx.fill();
     }
     // Chimney smoke, always: soft puffs that rise, spread and drift, whatever the weather.
-    if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.24 });
-    for (const s of smoke) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15 + (wx.fall !== 'none' ? 0.2 : 0); s.r += 0.12; s.a *= 0.992; }
+    { const m = windNow().mph, windy = m > 6;                                       // in wind: puffs come thicker and smaller so the plume stays one streak
+      if (t % (windy ? 2 : 6) === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * (windy ? 0.42 : 0.5), a: windy ? 0.15 : 0.24 }); }
+    // V124: the wind gets at the smoke (Chris's idea). From the station's real wind speed, gusts and
+    // direction (or a windy day's forecast): the harder it blows, the lower the smoke stays, the
+    // faster it's pushed downwind, the more gusts tear and jostle it, and the sooner it thins out.
+    const wnd = windNow(), mph = wnd.mph, push = wnd.dir === null ? 1 : Math.sin(wnd.dir * Math.PI / 180) < 0 ? -1 : 1;   // from the west: blows left (east)
+    if (mph > 6 && Math.random() < 0.02 + mph / 900) gustT = t + 20 + Math.random() * 40;                      // a gust now and then
+    const gusting = t < gustT ? 1 + (wnd.gust || mph * 1.5) / Math.max(1, mph) * 0.6 : 1;
+    for (const s of smoke) {
+      if (mph <= 6) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15 + (wx.fall !== 'none' ? 0.2 : 0); s.r += 0.12; s.a *= 0.992; continue; }
+      const k = Math.min(1, (mph - 6) / 24);                                           // 0 at a light breeze, 1 at 30 mph
+      s.y -= 0.45 * (1 - 0.75 * k) + Math.sin((t + s.x) / 9) * 0.12 * k * gusting;   // pressed down, bobbing in the gusts
+      s.x += push * (0.25 + mph * 0.06 * gusting) + (Math.random() - 0.5) * k * 1.2 * gusting;
+      s.r += 0.12 + 0.1 * k; s.a *= 0.992 - 0.01 * k * gusting;                         // torn apart and thinned out sooner
+    }
     smoke = smoke.filter(s => s.a > 0.01 && s.y > -50);
     const sc = tone('#bec8d4', '#e6eaee');
     for (const s of smoke) { ctx.globalAlpha = s.a * (light > 0.5 ? 1.6 : 1); ctx.fillStyle = sc; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill(); }
