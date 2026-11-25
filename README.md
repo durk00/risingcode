@@ -18,7 +18,7 @@ The home-screen icon is William's amber code face (`apple-touch-icon.png` for th
 
 Everything is in `index.html`:
 
-- **Colors:** the `--ice` (blue), `--leaf` (green), `--ember` (red, used only by the tree), `--frost` (white) and `--halo` (the star's glow) values at the top of the style block.
+- **Colors:** the `--ice` (blue), `--leaf` (green), `--amber` (rich amber, V95: about a quarter of the streams, drawn in a heavier weight so they read thicker), `--ember` (red, used only by the tree), `--frost` (white) and `--halo` (the star's glow) values at the top of the style block.
 - **Tree:** `buildTree()` sets its size and position; the star pulses in `draw()`.
 - **Color mix:** `colorFor()` and `nextColor()`: mostly blue and green, white now and then.
 - **Speed:** the `speed:` line in `makeStream()` sets each column's base speed. `nextPhase()` drifts the whole field between slow and fast at random, with an occasional short rush.
