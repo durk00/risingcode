@@ -469,6 +469,13 @@
   }
 
   // ---- the frame -------------------------------------------------------------
+  function wildEnv() {
+    const now = new Date(), near = (d) => Math.abs(now - d) < 90 * 60e3;
+    return { W, H, t, now, light, cover, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4),
+      dawnDusk: !previewTime && (near(sunAt(true, now)) || near(sunAt(false, now))),
+      surfaceY: (x) => groundY(x) - (depth[Math.max(0, Math.min(depth.length - 1, Math.round(x / COL)))] || 0),
+      house, houseH: house.h };
+  }
   function draw() {
     t++;
     const first = t < 3;
@@ -480,7 +487,10 @@
     // otherwise any snow melts slowly away to bare ground.
     if (wx.snowToday) { const floor = H * 0.008; for (let i = 0; i < depth.length; i++) if (depth[i] < floor) depth[i] = first ? floor : depth[i] + 0.02; }
     else { for (let i = 0; i < depth.length; i++) depth[i] = Math.max(0, depth[i] - (first ? 99 : 0.02)); for (let i = 0; i < roofDepth.length; i++) roofDepth[i] = Math.max(0, roofDepth[i] - (first ? 99 : 0.02)); }
-    sky(); land(); drawHouse(); snowLayers(); precipitation(); fogLayer();
+    // V77: life around the house (wildlife.js): birds, geese and jets in the sky, behind the
+    // trees; deer, a stray dog, a bear at the trash can in the yard, in front of the house.
+    const life = window.Wildlife ? wildEnv() : null;
+    sky(); if (life) Wildlife.sky(ctx, life); land(); drawHouse(); snowLayers(); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;
       arr[i] += ((arr[i - 1] + arr[i + 1]) / 2 - arr[i]) * 0.05;
