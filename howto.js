@@ -71,7 +71,8 @@
   <p><b>The TV</b> plays full-length classic movies from the Internet Archive, free.</p>
   <ul>
     <li>Pick a channel: <b>30s, 40s, 50s, 60s, 70s, CARTOONS</b> or <b>OLD TV</b> (old TV shows). Newer movies are still owned by the studios, so these are the classics that are free to show.</li>
-    <li><b>◀ ▶</b> changes the movie. Tap <b>▶</b> on the picture to start it.</li>
+    <li><b>☰ TV GUIDE</b> shows every movie on a channel. Pick a channel at the top, scroll with your finger, and tap a movie to watch it. <b>✕</b> closes the guide. Or use <b>◀ ▶</b> to flip to the next movie.</li>
+    <li>Tap <b>▶</b> on the picture to start the movie.</li>
     <li><b>FULL SCREEN</b> fills the screen. The button with the arrows pointing in, top right, brings it back.</li>
     <li>For newer movies, <b>TUBI, PLUTO TV</b> and <b>YOUTUBE</b> open those free services (with ads) in their own app or website. Close them and you're back here.</li>
     <li>Starting a movie turns the radio off, so the two never play over each other.</li>

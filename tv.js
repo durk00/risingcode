@@ -131,6 +131,16 @@
     loading = false; idx = Math.min(saved.idx[ch.id] || 0, Math.max(0, list.length - 1));
     play();
   }
+  // V101: for the TV GUIDE (tvguide.js): tune straight to one movie on one channel.
+  async function choose(id, i) {
+    ch = CHANNELS.find(c => c.id === id) || ch; saved.ch = ch.id; save();
+    on = true; if (opts.quietRadio) opts.quietRadio(); if (opts.lit) opts.lit();
+    loading = true; err = false; render();
+    try { list = await movies(ch); } catch (e) { err = true; list = []; }
+    if (ch.id !== id) return;
+    loading = false; idx = Math.max(0, Math.min(i, list.length - 1));
+    play();
+  }
   function step(dir) {
     if (!list.length) return on ? null : pick(ch.id);
     if (opts.quietRadio) opts.quietRadio();
@@ -160,19 +170,22 @@
 
   function mount(el, o) {
     root = el; opts = o || {};
-    root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="titlerow"><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div><button type="button" class="full" data-full="1">⛶ FULL SCREEN</button></div>
+    root.innerHTML = `<div class="screen"><div class="pic"></div><button type="button" class="shrink" aria-label="Back to the TV"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#ffb84a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v8H4M20 4v8h8M12 28v-8H4M20 28v-8h8"/></svg></button></div><div class="titlerow"><div class="title"><div class="name">TV OFF</div><div class="sub">&nbsp;</div></div><button type="button" class="full" data-guide="1">☰ TV GUIDE</button><button type="button" class="full" data-full="1">⛶ FULL SCREEN</button></div>
       <div class="row"><button type="button" class="step" data-tvstep="-1" aria-label="Previous movie">◀</button><div class="bands"></div><button type="button" class="step" data-tvstep="1" aria-label="Next movie">▶</button></div>
       <div class="out"><span>NEWER MOVIES, FREE WITH ADS · OPENS THEIR APP OR SITE</span>
         <a href="https://tubitv.com/" target="_blank" rel="noopener">TUBI</a><a href="https://pluto.tv/on-demand" target="_blank" rel="noopener">PLUTO TV</a><a href="https://www.youtube.com/feed/storefront?bp=ogUCKAY%3D" target="_blank" rel="noopener">YOUTUBE</a></div>
-      <div class="hint">◀ ▶ CHANGES THE MOVIE · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
+      <div class="hint">☰ TV GUIDE OR ◀ ▶ PICKS THE MOVIE · SWIPE DOWN OR TAP THE BAR TO MINIMIZE</div>`;
     root.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.ch) pick(b.dataset.ch);
       else if (b.dataset.tvstep) step(+b.dataset.tvstep);
       else if (b.dataset.full) full();
       else if (b.classList.contains('shrink')) shrink();
+      else if (b.dataset.guide && window.TVGuide) TVGuide.open(root);
     });
     render();
   }
-  window.TV = { mount, power, isOn: () => on, show: () => render() };
+  window.TV = { mount, power, isOn: () => on, show: () => render(),
+    channels: () => CHANNELS.map(c => c.id), movies: (id) => movies(CHANNELS.find(c => c.id === id) || ch), choose,
+    current: () => ({ ch: ch.id, id: on && list[idx] ? list[idx].id : null }) };
 })();
