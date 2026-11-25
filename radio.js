@@ -272,7 +272,7 @@
   let current = null, retries = 0, retryTimer = null;
   function mediaInfo(s) {
     if (!('mediaSession' in navigator)) return;
-    try { navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: 'RISING FM · ' + label(band), album: 'Rising Code radio' }); } catch (e) {}
+    try { navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: 'RISING FM · ' + label(band), album: 'Outside In radio' }); } catch (e) {}
   }
   if ('mediaSession' in navigator) {
     const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch (e) {} };

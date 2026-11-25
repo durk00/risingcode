@@ -1,8 +1,10 @@
-# Rising Code
+# Outside In
 
-Rising Code is a window. It shows what is really happening outside your house right now: the sky, the weather, the sun and the moon where they actually are, the animals that come by when they really would. Add a radio, a TV and a kitchen, and it's a quiet corner to step back from the noise of the day. There is no news feed, no notifications, no ads and no account. Everything it shows is real, and when a reading is old, it says so. Made for an iPad; works in any modern browser.
+(Called Rising Code until V91; the name Outside In came from Maya. The address is now durk00.github.io/outsidein.)
 
-Full plain-English instructions are in the app: Menu → **HOW IT WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set once at the top of `howto.js` (and in the page title and icon name) so it can be changed later without touching the address.
+Outside In is a window. It shows what is really happening outside your house right now: the sky, the weather, the sun and the moon where they actually are, the animals that come by when they really would. Add a radio, a TV and a kitchen, and it's a quiet corner to step back from the noise of the day. There is no news feed, no notifications, no ads and no account. Everything it shows is real, and when a reading is old, it says so. Made for an iPad; works in any modern browser.
+
+Full plain-English instructions are in the app: Menu → **HOW IT WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set at the top of `howto.js` and in `index.html` (the page title and the home-screen name).
 
 ## Use it on an iPad
 
@@ -10,7 +12,7 @@ Full plain-English instructions are in the app: Menu → **HOW IT WORKS** (`howt
 2. Tap **Share → Add to Home Screen**. Opened from the home screen it runs full screen, with no browser bars.
 3. Tap once to go full screen when running in Safari. It asks the iPad to keep the screen awake while it's showing; if the screen still dims, set **Settings → Display & Brightness → Auto-Lock** to Never while it runs.
 
-The home-screen icon is William's amber code face (`apple-touch-icon.png`, V73). The iPad only takes an icon when the app is added, so after a change: delete the old icon, add it again from Safari, and redo the settings (the new icon starts with fresh storage; tap MENU 5 times for the g page).
+The home-screen icon is William's amber code face (`apple-touch-icon.png` for the iPad, V73). Since V91 there's also `manifest.webmanifest` with 192 and 512 px versions (`icon-192.png`, `icon-512.png`, cut square from the original picture) marked as maskable, so a Chromebook or Android phone fills its round or rounded icon with the face edge to edge instead of putting a small picture on a white circle. An icon only updates when the app is installed again: remove it and add it again.
 
 ## Adjusting it
 
@@ -58,7 +60,7 @@ On the Winter scene the sun and the moon move across the sky where they really a
 
 ## g (V69)
 
-William's own AI, g (go-grow-gain.base44.app), as a page of this app, one swipe left past Kitchen (`gpage.js`), so he can chat with g without leaving the screensaver. It only appears on an iPad where it was turned on: open the app once with `?g=on` at the end of the address (`?g=off` removes it). An app added to the home screen keeps its own storage, separate from Safari, so from inside the app: tap the word MENU at the top of the menu 5 times quickly to turn g on or off on that iPad (V71). g's chat stays behind g's own sign-in. Base44 won't let g be shown inside another page, and iPadOS won't let a link open a web app saved to the home screen, so since V72 the page is a launcher: ← Back, a big **OPEN g** button (opens g in Safari), and a reminder that swiping sideways along the bottom edge of the screen flips between g's home-screen app and Rising Code once both are open.
+William's own AI, g (go-grow-gain.base44.app), as a page of this app, one swipe left past Kitchen (`gpage.js`), so he can chat with g without leaving the screensaver. It only appears on an iPad where it was turned on: open the app once with `?g=on` at the end of the address (`?g=off` removes it). An app added to the home screen keeps its own storage, separate from Safari, so from inside the app: tap the word MENU at the top of the menu 5 times quickly to turn g on or off on that iPad (V71). g's chat stays behind g's own sign-in. Base44 won't let g be shown inside another page, and iPadOS won't let a link open a web app saved to the home screen, so since V72 the page is a launcher: ← Back, a big **OPEN g** button (opens g in Safari), and a reminder that swiping sideways along the bottom edge of the screen flips between g's home-screen app and Outside In once both are open.
 
 ## Life around the house (V77)
 
