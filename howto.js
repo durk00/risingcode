@@ -47,7 +47,7 @@
     <li>News and talk stations near you on the radio.</li>
   </ul>
   <p>Your spot is rounded to about half a mile, stays on the iPad, and is only sent to NOAA, the government weather service, to get your weather. Nothing else gets it. It works anywhere in the US.</p>
-  <p>If you say no, the app still works, but it shows Happy Valley, PA instead of where you are. To change your mind later: on the iPad go to <b>Settings</b>, <b>Privacy &amp; Security</b>, <b>Location Services</b>, <b>Safari Websites</b>, and pick <b>While Using the App</b>. Then open the menu, and under <b>LOCATION</b> tap <b>Where this iPad is</b>.</p>
+  <p>If you say no, the app still works, but it shows Happy Valley, PA instead of where you are. Missed it or changed your mind? Open the menu and tap <b>ALLOW LOCATION</b> under LOCATION. If the iPad still won't allow it, the menu tells you where to turn it on in the iPad's Settings.</p>
 
   <h2>THE SCREENS</h2>
   <p><b>Home.</b> Where the app opens. A house in the Pennsylvania woods under your real sky. The sun and moon rise on the left and set on the right at their real times, and the moon shows its real phase. Rain and snow fall when they are falling where you are, and snow piles up and melts. Deer come by at dawn and dusk, a bear in the warm months, geese in their seasons, a jet now and then. There's a homestead too: solar panels that collect snow, a well, a paddock with animals, and someone who lives there going about the chores. <b>Tap</b> for the three-day forecast; tap again to close it. A <b>red banner</b> across the top is a real weather alert: tap it to read it, swipe it sideways to put it away.</p>
