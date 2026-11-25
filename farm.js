@@ -9,7 +9,7 @@
 //   - FIELD CORN behind the place, all the way across: feed corn for the horses and the other
 //     stock, not sweet corn. Planted early May, knee-high by July 4th, tasseled and taller than
 //     a man by late July, then it turns tan in September and stands in the field drying through
-//     the fall, the way the fields around Happy Valley do. Harvest (V119) starts November 25th and
+//     the fall, the way the fields around Happy Valley do. Harvest starts December 7th (V120) and
 //     goes slowly, sunup to sundown, in passes back and forth, one tractor length an hour, about
 //     200 working hours in all, and not in rain, snow or wind. Stubble behind; stubble through the
 //     winter, until it's worked under in late April.
@@ -40,16 +40,16 @@
   // Day-of-year marks (non-leap; close enough for a picture).
   const D = { apr1: 91, apr20: 110, apr28: 118, may5: 125, may15: 135, jul4: 185, jul25: 206, jul31: 212, aug10: 222, sep1: 244, sep20: 263, oct15: 288, nov1: 305 };
 
-  // The corn harvest (V119): it starts November 25th and goes very slowly, sunup to sundown. He
+  // The corn harvest (V119): it starts December 7th (V120; he leaves it to dry first) and goes very slowly, sunup to sundown. He
   // works the field in passes, back and forth across it, one tractor length an hour, so you have
   // to look away for an hour to see he's moved. Each pass thins the standing corn a little, with
   // stubble where it's been cut; the whole field takes about 200 hours of working daylight, three
-  // weeks or more, well past December 7th. He doesn't work while it's raining or snowing or the
+  // weeks or more, into the new year. He doesn't work while it's raining or snowing or the
   // wind is up (a wind alert, or wind in today's forecast): that time doesn't count. Hours the app
   // wasn't open count as worked if the sun was up. Kept on the device. A ?farm= preview date
   // assumes good weather.
   const STEP_MIN = 60, WORK_HOURS = 200;
-  const harvestDay = () => 329;                                                     // November 25th
+  const harvestDay = () => 341;                                                     // V120: December 7th, after the corn's had time to dry
   const KEY = 'risingcode_harvest';
   let hs = null;
   try { hs = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
@@ -68,7 +68,8 @@
     if (pDate || !env) { const done = stepsFrom(workMin(start, now)); return { done, total, out: done < total && up }; }
     if (env.ready === false) return { done: hs && hs.year === w.year ? stepsFrom(hs.credit) : 0, total, out: false };   // weather not in yet
     const bad = env.fall !== 'none' || !!env.windy;
-    if (!hs || hs.year !== w.year || hs.v !== 2) hs = { v: 2, year: w.year, credit: 0, last: start };
+    if (!hs || hs.year !== w.year || hs.v !== 3) hs = { v: 3, year: w.year, credit: 0, last: start };
+    if (hs.last < start) hs.last = start;                                              // nothing counts before the first day
     if (now > hs.last + 6e4) { if (!bad) hs.credit += workMin(hs.last, now); hs.last = now; try { localStorage.setItem(KEY, JSON.stringify(hs)); } catch (e) {} }
     const done = stepsFrom(hs.credit);
     return { done, total, out: done < total && up && !bad, held: bad && up && done < total };
