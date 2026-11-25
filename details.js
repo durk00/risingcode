@@ -82,32 +82,49 @@
       const daily = (series) => { for (const v of (series && series.values) || []) { const st = new Date(v.validTime.split('/')[0]); const mid = new Date(+st + hoursOf(v.validTime.split('/')[1]) * 1800e3); if (mid.toDateString() === today) return cToF(v.value); } return null; };
       d.hi = daily(g.maxTemperature); d.lo = daily(g.minTemperature);
       // RIGHT NOW (V38): the nearest station sometimes has no recent reading, or blanks
-      // for some values. Try the nearest few and take the first with a temperature from
-      // the last 3 hours; fill any blanks from this hour of the forecast; and if no
+      // for some values. Fill any blanks from this hour of the forecast; and if no
       // station has anything, show this hour of the forecast so the top is never empty.
+      // V74 (Nov 24, 9 PM): Details showed 36° from the State College airport at 6:53 PM
+      // while it was 25° at the house: a reading over 2 hours old on a clear night, when the
+      // temperature falls fast. Now a station reading must be under 90 minutes old; of the
+      // nearest five stations, the nearest one with a fresh reading is used (or a farther
+      // one if it is a good deal newer). If none is fresh, this hour of NOAA's forecast for
+      // this exact spot is shown, and the screen says how old the newest reading was.
+      const FRESH = 90 * 60e3;
       const hour = { temp: d.temp[0], rh: d.rh[0], dew: d.dew[0], wind: d.wind[0], gust: d.gust[0] };
-      for (const st of (stations.features || []).slice(0, 5)) {
+      const val = (x) => (x && x.value !== null && x.value !== undefined ? x.value : null);
+      const cands = [];
+      let newestAny = null;
+      for (const [rank, st] of (stations.features || []).slice(0, 5).entries()) {
         try {
           // The last several readings (V39), so pressure can show which way it's heading.
           const list = ((await (await fetch(`https://api.weather.gov/stations/${st.properties.stationIdentifier}/observations?limit=8`)).json()).features || []).map(f => f.properties);
           const o = list.find(x => x && x.temperature && x.temperature.value !== null);
-          const when = new Date(o.timestamp);
-          const pNow = o.barometricPressure && o.barometricPressure.value;
-          const old = list.find(x => x && x.barometricPressure && x.barometricPressure.value && new Date(o.timestamp) - new Date(x.timestamp) >= 2.5 * 3600e3);
-          const dp = pNow && old ? (pNow - old.barometricPressure.value) / 3386.39 : null;
-          const trend = dp === null ? '' : dp > 0.02 ? 'RISING' : dp < -0.02 ? 'FALLING' : 'STEADY';
-          if (!o || o.temperature.value === null || Date.now() - when > 3 * 3600e3) continue;
-          const val = (x) => (x && x.value !== null && x.value !== undefined ? x.value : null);
-          d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when,
-            temp: cToF(val(o.temperature)), words: window.WxNow ? WxNow.describe(o) : (o.textDescription || ''),   // V58: built from the cloud layers when NOAA leaves the words blank
-            rh: val(o.relativeHumidity) ?? hour.rh, dew: val(o.dewpoint) !== null ? cToF(val(o.dewpoint)) : hour.dew,
-            wind: val(o.windSpeed) !== null ? kmhToMph(val(o.windSpeed)) : hour.wind, gust: val(o.windGust) !== null ? kmhToMph(val(o.windGust)) : hour.gust,
-            dir: compass(val(o.windDirection)), deg: val(o.windDirection), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null, trend };
-          break;
+          if (!o) continue;
+          const when = new Date(o.timestamp), age = Date.now() - when;
+          if (!newestAny || when > newestAny) newestAny = when;
+          if (!(age <= FRESH)) continue;
+          cands.push({ rank, st, o, list, when, age });
+          if (rank === 0 && age <= 60 * 60e3) break;     // the nearest station is fresh: no need to look further
         } catch (e) { /* try the next station */ }
       }
+      if (cands.length) {
+        const newest = Math.min(...cands.map(c => c.age));
+        const pick = cands.find(c => c.age <= newest + 30 * 60e3);   // nearest, unless a farther one is over half an hour newer
+        const { st, o, list, when } = pick;
+        const pNow = o.barometricPressure && o.barometricPressure.value;
+        const old = list.find(x => x && x.barometricPressure && x.barometricPressure.value && new Date(o.timestamp) - new Date(x.timestamp) >= 2.5 * 3600e3);
+        const dp = pNow && old ? (pNow - old.barometricPressure.value) / 3386.39 : null;
+        const trend = dp === null ? '' : dp > 0.02 ? 'RISING' : dp < -0.02 ? 'FALLING' : 'STEADY';
+        d.now = { station: (st.properties.name || st.properties.stationIdentifier).toUpperCase(), when, fromStation: true,
+          temp: cToF(val(o.temperature)), words: window.WxNow ? WxNow.describe(o) : (o.textDescription || ''),   // V58: built from the cloud layers when NOAA leaves the words blank
+          rh: val(o.relativeHumidity) ?? hour.rh, dew: val(o.dewpoint) !== null ? cToF(val(o.dewpoint)) : hour.dew,
+          wind: val(o.windSpeed) !== null ? kmhToMph(val(o.windSpeed)) : hour.wind, gust: val(o.windGust) !== null ? kmhToMph(val(o.windGust)) : hour.gust,
+          dir: compass(val(o.windDirection)), deg: val(o.windDirection), pressure: val(o.barometricPressure) ? val(o.barometricPressure) / 3386.39 : null, trend };
+      }
       if (!d.now && hour.temp !== null) {
-        d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', deg: null, pressure: null, trend: '' };
+        d.now = { station: 'NOAA FORECAST FOR THIS HOUR', when: new Date(t0), temp: hour.temp, words: '', rh: hour.rh, dew: hour.dew, wind: hour.wind, gust: hour.gust, dir: '', deg: null, pressure: null, trend: '',
+          staleFrom: newestAny };   // V74: the newest station reading, too old to show
       }
       if (at !== LAT + ',' + LON) return;
       data = d; status = 'ok';
@@ -320,7 +337,11 @@
     if (!data) { ctx.textAlign = 'left'; ctx.fillStyle = C.dim; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA forecast unavailable right now.' : 'Loading…', m, m * 0.6 + fs * 2.4); return; }
     const n = data.now;
     ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.72); ctx.textAlign = 'right';
-    if (n) ctx.fillText(`READING: ${n.station} · ${clock(n.when)}`, W - m, m * 0.6 + fs * (narrow ? 2.8 : 1.5));
+    // V74: how old the reading is, worked out as the screen is drawn; or, on the forecast,
+    // how old the newest station reading was.
+    const ago = (t) => { const mins = Math.max(0, Math.round((Date.now() - t) / 60e3)); return mins < 60 ? `${mins} MIN AGO` : `${Math.floor(mins / 60)} HR ${mins % 60} MIN AGO`; };
+    if (n) ctx.fillText(n.fromStation ? `READING: ${n.station} · ${clock(n.when)} · ${ago(n.when)}`
+      : n.staleFrom ? `${n.station} · NEWEST STATION READING ${clock(n.staleFrom)} WAS TOO OLD` : `READING: ${n.station} · ${clock(n.when)}`, W - m, m * 0.6 + fs * (narrow ? 2.8 : 1.5));
     const top = m * 0.6 + fs * (narrow ? 4.1 : 2.8), sw = W - m * 2;
     const consoleH = Math.min(H * 0.45, sw * 0.42);
     consoleTiles(m, top, sw, consoleH, fs);
