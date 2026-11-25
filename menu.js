@@ -127,13 +127,13 @@
   function allowHtml() {
     const P = window.Place; if (!P) return '';
     const st = P.status(), m = P.mode();
-    // V128: only when "Where this iPad is" is picked and the iPad hasn't given its spot. Picking
-    // Happy Valley on purpose shows no button; tapping "Where this iPad is" does the asking.
-    if (m !== 'here' || st === 'ok' || st === 'outside') return '';
-    if (st === 'checking') return '<p class="help">Asking the iPad…</p>';
+    // V129: shown whenever the app isn't using where the iPad is, so anyone can say yes to location
+    // (V128 hid it on Happy Valley; William wants it there to invite people to allow it).
+    if ((m === 'here' && st === 'ok') || st === 'outside') return '';
+    if (m === 'here' && st === 'checking') return '<p class="help">Asking the iPad…</p>';
     const no = askedHere && m === 'here' && st === 'denied';
     return `<button class="opt allow" data-allowloc="1">ALLOW LOCATION<small>USE WHERE THIS iPAD IS FOR THE WEATHER, THE SKY AND THE RADIO</small></button>` +
-      (st === 'unavailable' ? '<p class="help">The iPad didn’t answer, so it’s showing Happy Valley. In Safari, open the page menu beside the address bar (it may show <b>aA</b>), then Website Settings → Location → Allow, and tap ALLOW LOCATION again.</p>' : '') +
+      (m === 'here' && st === 'unavailable' ? '<p class="help">The iPad didn’t answer, so it’s showing Happy Valley. In Safari, open the page menu beside the address bar (it may show <b>aA</b>), then Website Settings → Location → Allow, and tap ALLOW LOCATION again.</p>' : '') +
       (no ? '<p class="help">The iPad still says no. Turn it on in Settings → Privacy &amp; Security → Location Services → Safari Websites → While Using the App, then tap ALLOW LOCATION again.</p>' : '');
   }
   if (window.Place) Place.onChange(() => { if (open) render(); });
