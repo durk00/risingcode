@@ -311,9 +311,16 @@
         s.v.forEach((v, i) => { if (v) ctx.fillRect(X(i) - cw / HOURS * 0.4, Y(v), cw / HOURS * 0.8, Y(lo) - Y(v)); });
       } else {
         ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2.2; ctx.setLineDash(s.dash || []);
+        const flowT = performance.now() / 1000;
+        if (s.flow) ctx.lineDashOffset = -flowT * s.flow;                              // V125: the dots stream along like the wind
         ctx.beginPath(); let on = false;
         s.v.forEach((v, i) => { if (v === null || isNaN(v)) { on = false; return; } if (on) ctx.lineTo(X(i), Y(v)); else { ctx.moveTo(X(i), Y(v)); on = true; } });
-        ctx.stroke(); ctx.setLineDash([]);
+        ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+        if (s.streak) {                                                                  // V125: bright streaks riding along a solid line
+          ctx.save(); ctx.strokeStyle = s.streak; ctx.lineWidth = (s.width || 2.2) + 0.6; ctx.lineCap = 'round';
+          ctx.setLineDash([fs * 0.6, fs * 1.8]); ctx.lineDashOffset = -flowT * (s.flow || 60);
+          ctx.stroke(); ctx.restore();
+        }
       }
       // Label at the right end, with the value there.
       const lastI = s.v.map((v, i) => v === null ? -1 : i).filter(i => i >= 0).pop();
@@ -366,8 +373,8 @@
       { v: data.pop, bars: true, label: 'CHANCE' },
     ], { unit: '%', min: 0, max: 100 });
     strip(m, chartsTop + (sh + gap) * 3, sw, sh, fs, 'WIND AND GUSTS', [
-      { v: data.wind, color: C.line, label: 'WIND' },
-      { v: data.gust, color: C.line2, dash: [2, 4], width: 2.6, label: 'GUSTS', nudge: -0.8 },
+      { v: data.wind, color: C.line, label: 'WIND', flow: 70, streak: 'rgba(255,240,215,0.85)' },
+      { v: data.gust, color: C.line2, dash: [2, 4], width: 2.6, label: 'GUSTS', nudge: -0.8, flow: 95 },
     ], { unit: ' MPH', min: 0, max: Math.max(20, Math.ceil(Math.max(...data.gust.concat(data.wind).filter(v => v !== null)) / 10) * 10 + 5) });
     const by = chartsTop + (sh + gap) * k - gap + fs * 0.35;
     ctx.textBaseline = 'top'; ctx.textAlign = 'center';
