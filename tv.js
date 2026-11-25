@@ -187,6 +187,7 @@
     if (s.classList.contains('big')) { s.classList.remove('big'); return; }
     try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
   }
+  function off() { if (on) { on = false; screenMsg(''); render(); } }   // V107: the radio turns the TV off when it starts playing
   function power() {
     if (on) { on = false; screenMsg(''); render(); } else pick(ch.id);
     return on;
@@ -209,7 +210,7 @@
     });
     render();
   }
-  window.TV = { mount, power, isOn: () => on, show: () => render(),
+  window.TV = { mount, power, off, isOn: () => on, show: () => render(),
     channels: () => CHANNELS.map(c => c.id), movies: (id) => movies(CHANNELS.find(c => c.id === id) || ch), choose,
     current: () => ({ ch: ch.id, id: on && list[idx] ? list[idx].id : null }) };
 })();

@@ -256,6 +256,7 @@
     hiss(Math.min(1, n.d / (gap() * 0.25)) * 0.6);
     if (playing === s.url) return showStation();
     stopStream(); playing = s.url; status = 'buffering';
+    if (window.TV && TV.isOn()) TV.off();             // V107: never the TV and the radio at once
     player.src = s.url; current = s; retries = 0; mediaInfo(s);
     const p = player.play(); if (p && p.catch) p.catch(() => { if (playing === s.url) { status = 'dead'; hiss(0.35); showStation(); } });
     saved.pos[band.id] = pos; save(); showStation();
