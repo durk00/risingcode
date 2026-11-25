@@ -178,27 +178,43 @@
   #radio .bands button { flex: 1 0 64px; height: 60px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
     font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; cursor: pointer; box-shadow: 0 3px 0 #0a0c0f; }
   #radio .bands button.on { background: #ffb84a; color: #14110c; transform: translateY(2px); box-shadow: 0 1px 0 #0a0c0f; }
+  /* V85: RADIO and TV, one set. */
+  #radio .tab { height: 44px; padding: 0 18px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a;
+    font: 800 17px ui-monospace, Menlo, monospace; letter-spacing: 0.14em; cursor: pointer; }
+  #radio .tab.on { background: #ffb84a; color: #14110c; }
+  #radio.tv .radiobody, #radio:not(.tv) .tvbody { display: none; }
   #radio .hint { text-align: center; color: #7d8a97; font-size: 12px; letter-spacing: 0.1em; margin-top: 14px; }
 `;
   document.head.appendChild(css);
   const el = document.createElement('div');
   el.id = 'radio'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="set">
-    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><span class="brand">RISING FM</span><span class="stripes"></span><button type="button" class="x" aria-label="Minimize"></button></div>
-    <div class="lcd"><div class="name">—</div><div class="sub">&nbsp;</div></div>
+    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><button type="button" class="tab" data-mode="radio">RADIO</button><button type="button" class="tab" data-mode="tv">TV</button><span class="stripes"></span><button type="button" class="x" aria-label="Minimize"></button></div>
+    <div class="radiobody"><div class="lcd"><div class="name">—</div><div class="sub">&nbsp;</div></div>
     <div class="dial"><canvas></canvas></div>
     <div class="row"><button type="button" class="step" data-step="-1" aria-label="Tune down">◀</button><div class="bands"></div><button type="button" class="step" data-step="1" aria-label="Tune up">▶</button></div>
-    <div class="hint">DRAG THE DIAL · SWIPE DOWN OR TAP THE BAR TO MINIMIZE, IT KEEPS PLAYING</div></div>`;
+    <div class="hint">DRAG THE DIAL · SWIPE DOWN OR TAP THE BAR TO MINIMIZE, IT KEEPS PLAYING</div></div>
+    <div class="tvbody"></div></div>`;
   document.body.appendChild(el);
   const $ = (s) => el.querySelector(s);
   const cv = $('.dial canvas'), dialEl = $('.dial');
+  // V85: the TV half (tv.js). Picking a movie quiets the radio.
+  let mode = saved.mode === 'tv' && window.TV ? 'tv' : 'radio';
+  if (window.TV) TV.mount($('.tvbody'), { quietRadio: () => { if (on) powerOff(); }, lit: () => $('.pw').classList.add('on') });
+  else el.querySelector('.tab[data-mode="tv"]').style.display = 'none';
+  function setMode(m) {
+    mode = m === 'tv' && window.TV ? 'tv' : 'radio'; saved.mode = mode; save();
+    el.classList.toggle('tv', mode === 'tv');
+    el.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
+    if (mode === 'tv') { TV.show(); $('.pw').classList.toggle('on', TV.isOn()); } else render();
+  }
 
   function renderBands() {
     $('.bands').innerHTML = bands().map(b => `<button type="button" data-band="${b.id}" class="${b.id === band.id ? 'on' : ''}${b.wide ? ' wide' : ''}">${label(b)}</button>`).join('');
   }
   function lcd(name, sub) { $('.lcd .name').textContent = name; $('.lcd .sub').innerHTML = sub || '&nbsp;'; }
   function showStation() {
-    $('.pw').classList.toggle('on', on);
+    $('.pw').classList.toggle('on', mode === 'tv' ? TV.isOn() : on);
     if (loading) return lcd('TUNING ' + label(band) + '…', 'FINDING STATIONS');
     if (status === 'nodir') return lcd('NO SIGNAL', 'CAN\'T REACH THE STATION LIST · CHECK WI-FI');
     if (!list.length) return lcd('NO STATIONS', 'NOTHING PLAYABLE ON ' + label(band) + ' RIGHT NOW');
@@ -332,6 +348,8 @@
     wake();
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) return close();
+    if (b.dataset.mode) return setMode(b.dataset.mode);
+    if (b.classList.contains('pw') && mode === 'tv') { $('.pw').classList.toggle('on', TV.power()); return; }
     if (b.classList.contains('pw')) { on = !on; saved.on = on; save(); if (on) { if (!list.length && !loading) pickBand(band.id); else tuneIn(); } else powerOff(); return showStation(); }
     if (b.dataset.band) { if (!on) { on = true; saved.on = true; save(); } return pickBand(b.dataset.band); }
     if (b.dataset.step) stepTo(+b.dataset.step);
@@ -352,7 +370,8 @@
   function open() {
     wake();
     el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
-    if (!list.length && !loading) pickBand(band.id); else render();
+    setMode(mode);
+    if (mode === 'radio' && !list.length && !loading) pickBand(band.id);
   }
   function close() { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); clearTimeout(settleTimer); if (!playing) hiss(0); }
   window.Radio = { open, close, isOpen };
