@@ -39,11 +39,11 @@
   </ul>
 
   <h2>THE SCREENS</h2>
-  <p><b>1. The screensaver.</b> The first screen. Pick which one in the menu under SCREENSAVER: the Christmas display (from late November into January; on Christmas Eve a radar tracks Santa, and a tap turns the sound on), plain rising code, the Earth, or the portrait. The Earth turns in real time with the real line between day and night, city lights on the night side, and Starcloud-1, the first data center in space, passing over on its real orbit.</p>
-  <p><b>2. Outside.</b> One swipe left. A house in the Pennsylvania woods under your real sky. The sun and moon rise on the left and set on the right at their real times, and the moon shows its real phase. Rain and snow fall when they are falling where you are, and snow piles up and melts. Deer come by at dawn and dusk, a bear in the warm months, geese in their seasons, a jet now and then. There's a homestead too: solar panels that collect snow, a well, a paddock with animals, and someone who lives there going about the chores. <b>Tap</b> for the three-day forecast; tap again to close it. A <b>red banner</b> across the top is a real weather alert: tap it to read it, swipe it sideways to put it away.</p>
-  <p><b>3. Weather station.</b> Two swipes left. The details, like a weather station in your kitchen: temperature, wind, humidity, pressure, rain chances, sunrise and sunset, and the next three days hour by hour. It uses the nearest station with a fresh reading and tells you how many minutes old it is.</p>
-  <p><b>4. Kitchen.</b> Three swipes left. Type what you have on hand, separated by commas, and tap <b>Find meals</b> for ideas, each with what you'd still need and how to make it.</p>
-  <p>Swipe right to go back the way you came.</p>
+  <p><b>Home.</b> Where the app opens. A house in the Pennsylvania woods under your real sky. The sun and moon rise on the left and set on the right at their real times, and the moon shows its real phase. Rain and snow fall when they are falling where you are, and snow piles up and melts. Deer come by at dawn and dusk, a bear in the warm months, geese in their seasons, a jet now and then. There's a homestead too: solar panels that collect snow, a well, a paddock with animals, and someone who lives there going about the chores. <b>Tap</b> for the three-day forecast; tap again to close it. A <b>red banner</b> across the top is a real weather alert: tap it to read it, swipe it sideways to put it away.</p>
+  <p><b>The screensaver.</b> One swipe right of Home. Pick which one in the menu under SCREENSAVER: the Christmas display (from late November into January; on Christmas Eve a radar tracks Santa, and a tap turns the sound on), plain rising code, the Earth, or the portrait. The Earth turns in real time with the real line between day and night, city lights on the night side, and Starcloud-1, the first data center in space, passing over on its real orbit.</p>
+  <p><b>Weather station.</b> One swipe left of Home. The details, like a weather station in your kitchen: temperature, wind, humidity, pressure, rain chances, sunrise and sunset, and the next three days hour by hour. It uses the nearest station with a fresh reading and tells you how many minutes old it is.</p>
+  <p><b>Kitchen.</b> Two swipes left of Home. Type what you have on hand, separated by commas, and tap <b>Find meals</b> for ideas, each with what you'd still need and how to make it.</p>
+  <p>Swipe the other way to come back to Home. On Christmas Eve the app opens on the Christmas display instead, so Santa's radar is the first thing you see.</p>
 
   <h2>RADIO AND TV</h2>
   <p>Swipe up from the middle of any screen. Two buttons along the top switch between <b>RADIO</b> and <b>TV</b>.</p>
@@ -68,7 +68,7 @@
 
   <h2>THE MENU</h2>
   <ul>
-    <li><b>SCREENSAVER</b>: which first screen you see.</li>
+    <li><b>SCREENSAVER</b>: which screensaver is one swipe right of Home.</li>
     <li><b>SOUND</b>: what plays when the Christmas radar catches Santa: a toot, Jingle Bells or icicles. Pick <b>SILENT</b> to turn the sound off.</li>
     <li><b>NIGHT CLOCK</b>: overnight, the screen turns into a big, dim clock with the date and the moon's phase. Pick the hours: <b>9 PM – 6 AM</b> (the usual), <b>10 PM – 6 AM</b> or <b>11 PM – 7 AM</b>, or pick <b>Off</b> to turn it off. While it's showing, tap the clock to use the app for 5 minutes.</li>
     <li><b>LOCATION</b>: whose weather to show, where this iPad is or Centre Hall, PA. Your spot stays on the iPad and only goes to NOAA. It works anywhere in the US.</li>

@@ -115,7 +115,7 @@
       <header><h1>MENU</h1><button class="x" aria-label="Close menu">✕</button></header>
       ${window.HowTo ? `<div class="opts"><button class="opt" data-howto="1">HOW IT WORKS<small>WHAT EVERYTHING DOES, IN PLAIN ENGLISH</small></button></div>` : ''}
       ${window.Saver ? `<h2>SCREENSAVER</h2>
-      <p class="help">The first screen: the Christmas display, or plain code rain with no holiday.</p>
+      <p class="help">The screen one swipe right of Home: the Christmas display, code rain, the Earth or the portrait.</p>
       <div class="opts">${Saver.options().map(o => `<button class="opt${o.id === Saver.get() ? ' on' : ''}" data-saver="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       <h2>SOUND</h2>
       <p class="help">What plays on the Christmas display when the radar catches Santa.</p>

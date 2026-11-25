@@ -51,7 +51,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">TAP FOR SOUND · SWIPE LEFT FOR WINTER · DOWN FOR MENU · V93</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V94</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -233,15 +233,17 @@
   // remembers which one was showing.
   const SCENES = ['christmas', 'winter', 'details', 'kitchen'];
   if (window.GPage && GPage.enabled) SCENES.push('g');           // V69: g, one more swipe left past Kitchen, on William's iPad   // V34: Kitchen, one more swipe left past Details   // V30: Details, one more swipe left past Winter
-  let scene = 'christmas';
-  try { if (SCENES.includes(localStorage.getItem('risingcode_scene'))) scene = localStorage.getItem('risingcode_scene'); } catch (e) {}
+  // V94: the app always opens on Home (the house), not the screensaver. The one exception is
+  // Christmas Eve, when it opens on the Christmas display so Santa's radar is the first thing up.
+  const eveNow = (() => { const d = new Date(); return /[?&]eve\b/.test(location.search) || (d.getMonth() === 11 && d.getDate() === 24); })();
+  let scene = eveNow ? 'christmas' : 'winter';
   function setScene(next) {
     if (next === scene || !SCENES.includes(next)) return;
     scene = next;
     if (window.Kitchen) Kitchen.show(scene === 'kitchen');
     if (window.GPage) GPage.show(scene === 'g');
     try { localStorage.setItem('risingcode_scene', scene); } catch (e) {}
-    showLabel({ christmas: (isHoliday() ? 'CHRISTMAS' : 'CODE RAIN') + ' · SWIPE LEFT FOR WINTER', winter: 'WINTER · SWIPE LEFT FOR DETAILS · RIGHT FOR CHRISTMAS', details: 'WEATHER DETAILS · SWIPE LEFT FOR KITCHEN · RIGHT FOR WINTER', kitchen: SCENES.includes('g') ? 'KITCHEN · SWIPE LEFT FOR g · RIGHT FOR WEATHER DETAILS' : 'KITCHEN · SWIPE RIGHT FOR WEATHER DETAILS', g: 'g · TAP BACK FOR KITCHEN' }[scene]);
+    showLabel({ christmas: (isHoliday() ? 'CHRISTMAS' : 'SCREENSAVER') + ' · SWIPE LEFT FOR HOME', winter: 'HOME · SWIPE LEFT FOR WEATHER · RIGHT FOR THE SCREENSAVER', details: 'WEATHER STATION · SWIPE LEFT FOR KITCHEN · RIGHT FOR HOME', kitchen: SCENES.includes('g') ? 'KITCHEN · SWIPE LEFT FOR g · RIGHT FOR WEATHER' : 'KITCHEN · SWIPE RIGHT FOR WEATHER', g: 'g · TAP BACK FOR KITCHEN' }[scene]);
   }
   // One scene over to the left (dir 1) or right (dir -1), stopping at the ends.
   function stepScene(dir) {
