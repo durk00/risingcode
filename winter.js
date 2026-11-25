@@ -553,7 +553,7 @@
   // updated one shows again. Several at once: the most severe first, with a count.
   // Preview with ?alert on the address.
   const SEV = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1, Unknown: 0 };
-  let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, slide = 0, slideDir = 0;
+  let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, closeBox = null, slide = 0, slideDir = 0;
   try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]')); } catch (e) {}
   async function loadAlerts() {
     if (/[?&]alert\b/.test(q)) {
@@ -606,8 +606,9 @@
     ctx.fillText([endsText(a.ends), 'TAP FOR DETAILS', 'SWIPE TO DISMISS'].filter(Boolean).join(' · '), x + fs * 3, y + fs * 1.75);
     ctx.restore();
   }
-  // The details page (a first version; to be designed next): the whole alert, and a
-  // tap anywhere closes it.
+  // The details page: the whole alert. It stays open (even if you swipe to another screen and
+  // come back) until you tap the ✕ in its top right corner (V104; before, any tap closed it).
+  // Closing it doesn't dismiss the alert: the banner stays until it's swiped away.
   function wrap(text, maxW) {
     const out = [];
     for (const para of String(text).split(/\n\s*\n/)) {
@@ -636,10 +637,16 @@
     ctx.fillText([a.severity ? a.severity.toUpperCase() : '', endsText(a.ends)].filter(Boolean).join(' · '), x, y); y += fs * 2;
     ctx.fillStyle = '#e6edf3'; ctx.font = `500 ${fs}px ui-monospace, Menlo, monospace`;
     const lines = wrap(a.headline, maxW).concat(wrap(a.description, maxW), a.instruction ? wrap('WHAT TO DO: ' + a.instruction, maxW) : []);
-    const room = Math.floor((H - y - fs * 3) / (fs * 1.4));
+    const room = Math.floor((H - y - fs * 5) / (fs * 1.4));
     lines.slice(0, room).forEach((l, i) => ctx.fillText(l, x, y + i * fs * 1.4));
     ctx.fillStyle = '#9fb0c0'; ctx.font = `500 ${Math.round(fs * 0.8)}px ui-monospace, Menlo, monospace`;
-    ctx.fillText((lines.length > room ? 'MORE AT WEATHER.GOV · ' : '') + 'NOAA · TAP TO CLOSE', x, H - fs * 2);
+    ctx.fillText((lines.length > room ? 'MORE AT WEATHER.GOV · ' : '') + 'NOAA · TAP ✕ TO CLOSE', x, H - fs * 4);
+    const s = Math.max(48, fs * 3), bx = W - s - Math.max(16, W * 0.03), by = fs * 1.4;   // the ✕
+    closeBox = { x: bx, y: by, w: s, h: s };
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, s, s, s * 0.2); else ctx.rect(bx, by, s, s); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = Math.max(3, s * 0.07); ctx.lineCap = 'round'; const m = s * 0.3;
+    ctx.beginPath(); ctx.moveTo(bx + m, by + m); ctx.lineTo(bx + s - m, by + s - m); ctx.moveTo(bx + s - m, by + m); ctx.lineTo(bx + m, by + s - m); ctx.stroke();
     ctx.restore();
   }
   function panel() {
@@ -680,10 +687,10 @@
     drawMoon(c, cx, cy, R, age) { const keep = ctx; ctx = c; moon(cx, cy, R, '#e8eef6', age); ctx = keep; },   // for checking the phases
     // The forecast-box weather icon, shared with the weather station page (V40).
     icon(words, night, cx, cy, r, c) { const keep = ctx; ctx = c || ctx; icon(readWords(words), night, cx, cy, r); ctx = keep; },
-    // A tap: closes the details page if it's open; opens it if the tap is on the alert
+    // A tap: on the details page only its ✕ closes it; otherwise opens it if the tap is on the alert
     // banner; otherwise opens or closes the three-day forecast.
     tap(x, y) {
-      if (detail) { detail = null; return; }
+      if (detail) { const c = closeBox; if (c && x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 10 && y <= c.y + c.h + 10) detail = null; return; }
       const b = bannerBox;
       if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { detail = showing()[0] || null; return; }
       panelOpen = !panelOpen;
