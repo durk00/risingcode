@@ -43,7 +43,7 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 - **Rain, snow or a mix** falling: since V44 from the nearest NOAA station's current conditions when it has a reading from the last 2 hours (so it shows what is really coming down), otherwise from the forecast; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
 - **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
 - **Tap** for a three-day forecast box to the left of the house (day, forecast with a weather icon, high and low, chance of precipitation); tap again to close. Taps on Winter make no sound.
-- **Weather alerts** from NOAA for Happy Valley (checked every 10 minutes) show as a red banner across the top: tap it for the details, swipe it sideways to dismiss it. A dismissed alert stays away; a new one shows. Preview with `?alert`.
+- **Weather alerts** from NOAA for Happy Valley (checked every 10 minutes) show as a red banner across the top: tap it for the details (the page stays up, even if you swipe away and back, until you tap its ✕, V104), swipe the banner sideways to dismiss the alert. A dismissed alert stays away; a new one shows. Preview with `?alert`.
 - **Upcoming snow** is still previewed: if snow is due in the next two days, the top line says when and about how much, and clouds gather in its last 12 hours.
 
 Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
@@ -54,7 +54,7 @@ Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, 
 
 ## Alert chime (V103)
 
-When a new NOAA alert comes in, a short, soft three-note chime plays once (`alertchime.js`), so you look over at the red banner; a severe or extreme warning chimes twice. The same alert never chimes again, even when NOAA updates it, and a dismissed one stays quiet. From 10 PM to 7 AM only severe or extreme warnings make a sound; advisories and watches wait silently on the banner. Menu → ALERT SOUND turns it on or off (turning it on plays a sample). The iPad only allows sound after the app has been touched once since it opened, so an alert that arrives before that chimes at the first touch.
+When a new NOAA alert comes in, a short, soft three-note chime plays once (`alertchime.js`), so you look over at the red banner; a severe warning chimes twice; a tornado warning, tsunami warning, extreme wind warning, flash flood or tornado emergency, or anything NOAA rates Extreme sounds the Emergency Alert System attention tone (853 and 960 Hz together) for 5 seconds instead, day or night (V104). The same alert never chimes again, even when NOAA updates it, and a dismissed one stays quiet. From 10 PM to 7 AM only severe or extreme warnings make a sound; advisories and watches wait silently on the banner. Menu → ALERT SOUND turns it on or off (turning it on plays a sample). The iPad only allows sound after the app has been touched once since it opened, so an alert that arrives before that chimes at the first touch.
 
 ## Location (V66)
 

@@ -1,6 +1,7 @@
 // ALERT CHIME (Nov 25, 2026, V103): when a new NOAA weather alert comes in, a short, soft
 // three-note chime plays, once, so you look over at the red banner. A warning (the serious
-// kind: a tornado or winter storm warning) chimes twice. The same alert never chimes again,
+// kind: a winter storm warning) chimes twice. A tornado warning, or anything NOAA rates
+// extreme, sounds the Emergency Alert System tone instead (V104), day or night. The same alert never chimes again,
 // even when NOAA updates it, and a dismissed one stays quiet.
 //
 // Quiet at night: from 10 PM to 7 AM only a severe or extreme WARNING makes a sound; advisories
@@ -15,6 +16,9 @@
   try { on = localStorage.getItem(KEY) !== 'off'; chimed = JSON.parse(localStorage.getItem(DONE) || '[]'); } catch (e) {}
   const keyOf = (a) => (a.event || '') + '|' + String(a.ends || '').slice(0, 13);
   const warning = (a) => /warning/i.test(a.event || '') && (a.severity === 'Severe' || a.severity === 'Extreme');
+  // V104: life-threatening ones get the emergency tone instead, day or night: the two-tone
+  // attention signal the Emergency Alert System uses (853 and 960 Hz together), for 5 seconds.
+  const emergency = (a) => /tornado warning|tsunami warning|extreme wind warning|flash flood emergency|tornado emergency/i.test(a.event || '') || a.severity === 'Extreme';
   const quietHours = (d = new Date()) => d.getHours() >= 22 || d.getHours() < 7;
 
   let ac = null, pending = 0;
@@ -30,9 +34,15 @@
     o.connect(g); g.connect(c.destination); o2.connect(g2); g2.connect(c.destination);
     o.start(t0); o2.start(t0); o.stop(t0 + len + 0.05); o2.stop(t0 + len + 0.05);
   }
-  function play(times) {
+  function siren(c, t0, len) {
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.03);
+    g.gain.setValueAtTime(0.22, t0 + len - 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len); g.connect(c.destination);
+    for (const f of [853, 960]) { const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(g); o.start(t0); o.stop(t0 + len + 0.05); }
+  }
+  function play(times) {                           // times: 1 or 2 chimes; 3 means the emergency tone
     const c = ctx(); if (!c) return;
     if (c.state !== 'running') { pending = Math.max(pending, times); try { c.resume(); } catch (e) {} return; }
+    if (times >= 3) { siren(c, c.currentTime + 0.05, 5); return; }
     let t = c.currentTime + 0.05;
     for (let k = 0; k < times; k++) {
       [659.25, 830.61, 987.77].forEach((f, i) => note(c, f, t + i * 0.22, 1.3));   // E, G sharp, B: rising, friendly, not an alarm
@@ -53,8 +63,8 @@
       const k = keyOf(a);
       if (chimed.includes(k)) continue;
       chimed.push(k);
-      if (quietHours() && !warning(a)) continue;
-      times = Math.max(times, warning(a) ? 2 : 1);
+      if (quietHours() && !warning(a) && !emergency(a)) continue;
+      times = Math.max(times, emergency(a) ? 3 : warning(a) ? 2 : 1);
     }
     chimed = chimed.slice(-60);
     try { localStorage.setItem(DONE, JSON.stringify(chimed)); } catch (e) {}
