@@ -113,6 +113,7 @@
     const cur = sound ? sound.get() : -1;
     el.innerHTML = `<div class="wrap">
       <header><h1>MENU</h1><button class="x" aria-label="Close menu">✕</button></header>
+      ${window.HowTo ? `<div class="opts"><button class="opt" data-howto="1">HOW IT WORKS<small>WHAT EVERYTHING DOES, IN PLAIN ENGLISH</small></button></div>` : ''}
       ${window.Saver ? `<h2>SCREENSAVER</h2>
       <p class="help">The first screen: the Christmas display, or plain code rain with no holiday.</p>
       <div class="opts">${Saver.options().map(o => `<button class="opt${o.id === Saver.get() ? ' on' : ''}" data-saver="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
@@ -149,6 +150,7 @@
     e.stopPropagation();                         // menu taps never reach the scenes
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) { Menu.close(); return; }
+    if (b.dataset.howto && window.HowTo) { HowTo.open(); return; }   // V89
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
     if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }
