@@ -54,7 +54,7 @@ Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, 
 
 ## Alert chime (V103)
 
-When a new NOAA alert comes in, a short, soft three-note chime plays once (\`alertchime.js\`), so you look over at the red banner; a severe or extreme warning chimes twice. The same alert never chimes again, even when NOAA updates it, and a dismissed one stays quiet. From 10 PM to 7 AM only severe or extreme warnings make a sound; advisories and watches wait silently on the banner. Menu → ALERT SOUND turns it on or off (turning it on plays a sample). The iPad only allows sound after the app has been touched once since it opened, so an alert that arrives before that chimes at the first touch.
+When a new NOAA alert comes in, a short, soft three-note chime plays once (`alertchime.js`), so you look over at the red banner; a severe or extreme warning chimes twice. The same alert never chimes again, even when NOAA updates it, and a dismissed one stays quiet. From 10 PM to 7 AM only severe or extreme warnings make a sound; advisories and watches wait silently on the banner. Menu → ALERT SOUND turns it on or off (turning it on plays a sample). The iPad only allows sound after the app has been touched once since it opened, so an alert that arrives before that chimes at the first touch.
 
 ## Location (V66)
 
