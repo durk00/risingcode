@@ -199,7 +199,7 @@
       else if (a.kind === 'hen') drawHen(ctx, a, y + S * 0.03, S * 0.15, light, t);
       else drawPeacock(ctx, a, y, S * 0.3, light, t);
     }
-    rail(p.base - p.h * 0.75); rail(p.base - p.h * 0.35);
+    rail(p.base - p.h * 1.08); rail(p.base - p.h * 0.75); rail(p.base - p.h * 0.35);   // V115: a top rail in front too
     ctx.fillStyle = shade('#5e4430', light);
     for (let x = p.x0; x < Math.min(W + 20, p.x1); x += Math.max(S * 0.55, 30)) ctx.fillRect(x, p.base - p.h * 1.15, Math.max(3, S * 0.05), p.h * 1.15);
   }
