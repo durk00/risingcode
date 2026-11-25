@@ -363,15 +363,21 @@
     for (let x = 0; x <= W; x += 4) ctx.lineTo(x, groundY(x));
     ctx.lineTo(W, H); ctx.fill();
   }
-  const lamps = [0, 1].map(() => ({ v: 0.96, to: 0.96, next: 0 }));
+  // V121: the lamps are back to full brightness, with more life: each flame wanders on its own
+  // (between about 85% and full), now and then a draft makes it flutter for a second or two, and
+  // on a windy day the drafts come more often. Noticeable if you watch, easy to miss at a glance.
+  const lamps = [0, 1].map(() => ({ v: 0.95, to: 0.95, next: 0, flutter: 0, draft: 0 }));
   function flame(i) {
-    const L = lamps[i];
-    if (t >= L.next) {
-      const gutter = Math.random() < 0.04;                                            // about once every half minute or so
-      L.to = gutter ? 0.88 + Math.random() * 0.03 : 0.94 + Math.random() * 0.05;
-      L.next = t + (gutter ? 4 + Math.random() * 5 : 18 + Math.random() * 40);        // frames: a dip is brief, a wander is slow
+    const L = lamps[i], windy = windyNow();
+    if (t >= L.draft) {                                                               // a draft: every 10-30 s, more often in wind
+      L.flutter = t + 30 + Math.random() * 40;
+      L.draft = t + (windy ? 120 : 300) + Math.random() * (windy ? 300 : 600);
     }
-    L.v += (L.to - L.v) * 0.08;
+    if (t >= L.next) {
+      if (t < L.flutter) { L.to = 0.8 + Math.random() * 0.16; L.next = t + 2 + Math.random() * 4; }   // quick flicker in the draft
+      else { L.to = 0.88 + Math.random() * 0.12; L.next = t + 12 + Math.random() * 40; }               // a slow wander otherwise
+    }
+    L.v += (L.to - L.v) * (t < L.flutter ? 0.3 : 0.07);
     return L.v;
   }
   // V118: windy today? A wind alert of any kind, or wind in today's forecast words. (The farm won't

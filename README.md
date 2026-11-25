@@ -62,9 +62,9 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
-## Oil lamps in the windows (V111)
+## Oil lamps in the windows (V111, V121)
 
-At night each window is lit by its own oil lamp. The flicker is an Easter egg: each flame wanders slowly by a few percent on its own, and every half minute or so one gutters for a moment, a little dimmer, then steadies. A glance shows two steady lit windows; only a long look shows they're alive. (Before V111 both windows flickered together, fast and by 15%.)
+At night each window is lit by its own oil lamp. Since V121 they're back to full brightness with more life: each flame wanders on its own between about 85% and full, and every 10 to 30 seconds a draft makes one flutter for a second or two; on a windy day (a wind alert, or wind in today's forecast) the drafts come more often. Noticeable if you watch for a bit, easy to miss at a glance. (Before V111 both windows flickered together, fast; V111 made them so subtle they were hard to notice.)
 
 ## Location (V66)
 
