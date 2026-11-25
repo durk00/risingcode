@@ -358,10 +358,13 @@
     if (n) ctx.fillText(n.fromStation ? `READING: ${n.station} · ${clock(n.when)} · ${ago(n.when)}`
       : n.staleFrom ? `${n.station} · NEWEST STATION READING ${clock(n.staleFrom)} WAS TOO OLD` : `READING: ${n.station} · ${clock(n.when)}`, W - m, m * 0.6 + fs * (narrow ? 2.8 : 1.5));
     const top = m * 0.6 + fs * (narrow ? 4.1 : 2.8), sw = W - m * 2;
-    const consoleH = Math.min(H * 0.45, sw * 0.42);
+    // V131: lay out in the part of the screen you can see. In Safari on an iPhone the canvas runs
+    // down under the browser's bottom bar, which hid the WIND AND GUSTS chart and the day names.
+    const Hv = Math.min(H, window.innerHeight || H, (window.visualViewport && window.visualViewport.height) || H);
+    const consoleH = Math.min(Hv * 0.45, sw * 0.42);
     consoleTiles(m, top, sw, consoleH, fs);
     const chartsTop = top + consoleH + fs * 0.9, gap = fs * 0.4, k = 4;
-    const sh = (H - chartsTop - m * 0.6 - fs * 1.5 - gap * (k - 1)) / k;
+    const sh = (Hv - chartsTop - m * 0.6 - fs * 1.5 - gap * (k - 1)) / k;
     const geo = strip(m, chartsTop, sw, sh, fs, 'NEXT 3 DAYS · TEMPERATURE AND DEW POINT', [
       { v: data.temp, color: C.line, label: 'TEMP' },
       { v: data.dew, color: C.line2, dash: [7, 5], label: 'DEW PT', nudge: 0.8 },
@@ -382,7 +385,8 @@
       const dt = new Date(data.t0 + i * 3600e3), hr = dt.getHours(), x = geo.X(i);
       if (i === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.68); ctx.textAlign = 'left'; ctx.fillText('NOW', x, by); ctx.textAlign = 'center'; continue; }
       if (hr === 0) { ctx.fillStyle = C.text; ctx.font = font(700, fs * 0.7); ctx.fillText(dt.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase(), x, by); }
-      else if (hr === 12 && i > 3) { ctx.fillStyle = C.dim; ctx.font = font(500, fs * 0.62); ctx.fillText('NOON', x, by); }
+      else if (hr === 12 && i > 3 && x - geo.X(0) > fs * 4.5) {   // V131: not on top of NOW on a phone
+        ctx.fillStyle = C.dim; ctx.font = font(500, fs * 0.62); ctx.fillText('NOON', x, by); }
     }
   }
 
