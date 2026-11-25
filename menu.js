@@ -73,7 +73,17 @@
     const day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     return e.all_day ? day : day + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
+  // V98: the events calendar is Happy Valley's, so the section only shows when this iPad is
+  // set to Happy Valley or is actually within about 60 miles of it. Someone in California sees
+  // no events section at all, rather than events 2,500 miles away.
+  const NEAR = { lat: 40.8473, lon: -77.6858 };
+  function nearHome() {
+    const P = window.Place; if (!P) return true;
+    const R = Math.PI / 180, x = (P.lon - NEAR.lon) * R * Math.cos((P.lat + NEAR.lat) / 2 * R), y = (P.lat - NEAR.lat) * R;
+    return 3959 * Math.sqrt(x * x + y * y) < 60;
+  }
   async function loadLocal() {
+    if (!nearHome()) return;
     if (local.state === 'loading' || (local.state === 'ok' && Date.now() - local.at < 15 * 60 * 1000)) return;
     local.state = 'loading'; render();
     try {
@@ -86,6 +96,7 @@
     if (open) render();
   }
   function localHtml() {
+    if (!nearHome()) return '';
     const head = '<h2>AROUND HAPPY VALLEY</h2>';   // V96: Happy Valley, not the exact place
     const src = `<p class="src">Source: <a href="${EVENTS_SOURCE.url}" target="_blank" rel="noopener">${EVENTS_SOURCE.name}</a> events calendar. Local news isn't available here yet.</p>`;
     if (local.state === 'loading' || local.state === 'idle') return head + '<p class="help">Loading events…</p>' + src;
