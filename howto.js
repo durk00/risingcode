@@ -66,6 +66,8 @@
     <li><b>XMAS</b> shows up from mid-November to January 6 for Christmas music.</li>
     <li>Drag the dial, or tap <b>◀ ▶</b>, to change stations. Between stations you'll hear a soft hiss, like a real radio.</li>
     <li>If a station says <b>NO SIGNAL</b>, its stream is down. Turn the dial to the next one.</li>
+    <li>Leave the radio alone for 30 seconds and it fades almost away, so you can see the scene behind it. Touch it once to bring it back; that touch doesn't press anything.</li>
+    <li>Starting the radio turns the TV off, and starting a movie turns the radio off, so you never hear both.</li>
     <li>Swipe down, or tap the <b>bar</b> in the top right corner, to tuck the radio away. It keeps playing while you use the rest of the app, and when the screen goes dark. Pause it from the lock screen, or come back and tap ⏻.</li>
   </ul>
   <p><b>The TV</b> plays full-length classic movies from the Internet Archive, free.</p>
@@ -75,7 +77,6 @@
     <li>Tap <b>▶</b> on the picture to start the movie.</li>
     <li><b>FULL SCREEN</b> fills the screen. The button with the arrows pointing in, top right, brings it back.</li>
     <li>For newer movies, <b>TUBI, PLUTO TV</b> and <b>YOUTUBE</b> open those free services (with ads) in their own app or website. Close them and you're back here.</li>
-    <li>Starting a movie turns the radio off, so the two never play over each other.</li>
   </ul>
 
   <h2>THE MENU</h2>
