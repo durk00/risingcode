@@ -52,6 +52,10 @@ Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, 
 
 `wxnow.js` reads the last several readings from up to 5 nearby NOAA stations and takes the newest from the last 2 hours. When NOAA leaves a reading's words blank, it builds them from what the station measured: what is falling, and the cloud layers (clear, few, scattered, broken, overcast). Winter and Details both use it. When no station reading is available and the forecast only says a chance, Winter shows clouds but nothing falling. When the words say clear (Clear, Mostly Clear, Mostly Sunny), no clouds are drawn; only "Partly" draws a few (V59).
 
+## Alert over the radio (V123)
+
+The radio and TV set covers the scene with a dark backdrop, which hid the red alert banner (it only showed faintly through). Now, while the set is open, the alert shows on top of it across the top of the screen (`radioalert.js`), and the set moves down to make room. Tap it and the set tucks away and the alert's page opens on Home. When the set fades after 30 seconds, the strip fades with it, and the first touch brings both back.
+
 ## Alert chime (V103)
 
 When a new NOAA alert comes in, a short, soft three-note chime plays once (`alertchime.js`), so you look over at the red banner; a severe warning chimes twice; a tornado warning, tsunami warning, extreme wind warning, flash flood or tornado emergency, or anything NOAA rates Extreme sounds the Emergency Alert System attention tone (853 and 960 Hz together) for 5 seconds instead, day or night (V104). The same alert never chimes again, even when NOAA updates it, and a dismissed one stays quiet. A reworded reissue of the same alert doesn't chime, but the banner says UPDATED until the alert page is opened again (V106). From 10 PM to 7 AM only severe or extreme warnings make a sound; advisories and watches wait silently on the banner. Menu → ALERT SOUND turns it on or off (turning it on plays a sample). The iPad only allows sound after the app has been touched once since it opened, so an alert that arrives before that chimes at the first touch.

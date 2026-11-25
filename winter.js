@@ -730,6 +730,9 @@
       panelOpen = !panelOpen;
     },
     // A sideways swipe that starts on the banner dismisses the alert instead of changing scene.
+    // V123: for the radio set, which covers the scene: the alert on top, and a way to open its page.
+    activeAlert() { const a = showing()[0]; return a ? { event: a.event, ends: endsText(a.ends), updated: !!(window.AlertChime && AlertChime.updated(a)), count: showing().length } : null; },
+    openAlert() { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return !!detail; },
     swipeOnBanner(x, y, dx) {
       const b = bannerBox;
       if (detail || !b || !(x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;
