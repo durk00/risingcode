@@ -130,6 +130,29 @@
     // around a while, and goes slowly back down (a.head: 0 down, 1 up, eased).
     const u = a.head * a.head * (3 - 2 * a.head), hx = s * 0.55, hy = -s * (0.12 + 0.88 * u);
     ctx.lineWidth = s * 0.16; ctx.beginPath(); ctx.moveTo(s * 0.35, -s * 0.7); ctx.lineTo(hx, hy + s * (-0.08 + 0.18 * u)); ctx.stroke();
+    // V116: a mane along the top of the neck, well groomed: an even band combed flat, with fine
+    // strands lying back toward the withers. Silver-white on the white horse, near black on the rest.
+    {
+      const x0 = s * 0.35, y0 = -s * 0.7, x1 = hx, y1 = hy + s * (-0.08 + 0.18 * u);
+      const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+      let nx = -dy / len, ny = dx / len; if (ny > 0) { nx = -nx; ny = -ny; }           // the crest side, up and over
+      const mane = shade(a.coat === '#d8d2c8' ? '#a39c90' : '#1c1612', light);
+      const at = (f, off) => [x0 + dx * f + nx * off, y0 + dy * f + ny * off];
+      ctx.fillStyle = mane; ctx.beginPath();
+      for (let f = 0.02; f <= 0.92; f += 0.1) { const [px, py] = at(f, s * 0.065); f === 0.02 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+      for (let f = 0.92; f >= 0.02; f -= 0.1) { const [px, py] = at(f, s * (0.14 - 0.03 * f)); ctx.lineTo(px, py); }
+      ctx.closePath(); ctx.fill();
+      const sheen = shade(a.coat === '#d8d2c8' ? '#e2ddd4' : '#3a302a', light);          // fine combed lines inside the mane, all lying back
+      ctx.strokeStyle = sheen; ctx.lineWidth = Math.max(0.6, s * 0.008); ctx.lineCap = 'round';
+      for (let f = 0.1; f <= 0.88; f += 0.06) {
+        const [px, py] = at(f, s * 0.075), [qx, qy] = at(f - 0.05, s * 0.12);
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.stroke();
+      }
+      ctx.strokeStyle = mane; ctx.lineWidth = Math.max(1, s * 0.022);
+      const [fx, fy] = at(0.97, s * 0.05);                                             // a short, neat forelock at the poll
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx + s * 0.05, fy + s * 0.04 * (1 - u) + s * 0.025); ctx.stroke();
+      ctx.lineWidth = s * 0.16; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineCap = 'round';
+    }
     ctx.beginPath(); ctx.ellipse(hx + s * 0.07, hy, s * 0.16, s * 0.07, 1.2 - 0.7 * u, 0, 6.3); ctx.fill();
     ctx.lineWidth = s * 0.05; ctx.beginPath(); ctx.moveTo(-s * 0.45, -s * 0.66); ctx.quadraticCurveTo(-s * 0.62, -s * 0.5, -s * 0.58, -s * 0.28); ctx.stroke();   // tail
     ctx.restore();
