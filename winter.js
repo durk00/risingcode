@@ -603,7 +603,7 @@
     const more = showing().length > 1 ? `  +${showing().length - 1} MORE` : '';
     ctx.fillText((a.event || 'WEATHER ALERT').toUpperCase() + more, x + fs * 3, y + fs * 0.45);
     ctx.font = `500 ${Math.round(fs * 0.72)}px ui-monospace, Menlo, monospace`;
-    ctx.fillText([endsText(a.ends), 'TAP FOR DETAILS', 'SWIPE TO DISMISS'].filter(Boolean).join(' · '), x + fs * 3, y + fs * 1.75);
+    ctx.fillText([window.AlertChime && AlertChime.updated(a) ? 'UPDATED' : '', endsText(a.ends), 'TAP FOR DETAILS', 'SWIPE TO DISMISS'].filter(Boolean).join(' · '), x + fs * 3, y + fs * 1.75);
     ctx.restore();
   }
   // The details page: the whole alert. It stays open (even if you swipe to another screen and
@@ -692,7 +692,7 @@
     tap(x, y) {
       if (detail) { const c = closeBox; if (c && x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 10 && y <= c.y + c.h + 10) detail = null; return; }
       const b = bannerBox;
-      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { detail = showing()[0] || null; return; }
+      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return; }
       panelOpen = !panelOpen;
     },
     // A sideways swipe that starts on the banner dismisses the alert instead of changing scene.
