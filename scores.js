@@ -31,12 +31,12 @@
   #radio .slg button { flex: 1 0 14%; height: 40px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 800 14px ui-monospace, Menlo, monospace; letter-spacing: 0.04em; cursor: pointer; }
   #radio .slg button.on { background: #ffb84a; color: #14110c; }
   #radio .sgames { max-height: min(48vh, 440px); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
-  #radio .sgame { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 4px; border-bottom: 1px solid #3a2a10; color: inherit; text-decoration: none; }
+  #radio .sgame { display: grid; grid-template-columns: minmax(0, max-content) auto auto; justify-content: start; align-items: center; gap: 2px 18px; padding: 10px 4px; border-bottom: 1px solid #3a2a10; color: inherit; text-decoration: none; }
   #radio .sgame:last-child { border-bottom: 0; }
   #radio .sgame .t { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #b98a46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #radio .sgame .n { font-size: 18px; font-weight: 800; text-align: right; color: #b98a46; }
+  #radio .sgame .n { font-size: 18px; font-weight: 800; text-align: right; min-width: 2ch; color: #b98a46; }
   #radio .sgame .lead { color: #ffcf7a; text-shadow: 0 0 8px rgba(255,184,74,0.55); }
-  #radio .sgame .st { grid-column: 1 / -1; font-size: 12px; color: #b98a46; letter-spacing: 0.1em; text-transform: uppercase; }
+  #radio .sgame .st { grid-column: 3; grid-row: 1 / span 2; align-self: center; white-space: nowrap; font-size: 12px; color: #b98a46; letter-spacing: 0.1em; text-transform: uppercase; }
   #radio .sgame .st.live { color: #ffcf7a; font-weight: 800; }
   #radio .smsg { padding: 10px 4px; font-size: 14px; color: #b98a46; letter-spacing: 0.06em; line-height: 1.5; }
   @media (max-width: 560px) {
