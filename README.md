@@ -102,6 +102,10 @@ On the weather station, the WIND AND GUSTS chart along the bottom is in motion: 
 
 The chimney smoke now goes the way a strong wind is really blowing, from the nearest NOAA station's latest reading. Under 15 mph it's exactly the old smoke. Between 15 and 25 mph it eases over, and from 25 mph up it drifts downwind, a little lower and a bit faster the harder it blows (no faster past 40 mph). The puffs keep the same size and fade as before, so it looks the same through the radio; only the direction changes, and it turns slowly, never with a jump. The scene looks south, so a west wind sends the smoke left and an east wind sends it right. With no recent reading (none in the last 3 hours, or no direction), it's the old smoke. Preview: add `?wind` (a 30 mph west wind), `?wind=E`, `?wind=NW,25` or `?wind=90,35` to the address.
 
+## Trees and corn in a strong wind (V142)
+
+The same wind reading as the smoke now moves the trees and the corn, the same way the smoke goes (a west wind to the left, an east wind to the right). From about 25 mph sustained, the tops of the pines sway gently, a little more up to 50 mph; the low branches hardly move. From about 32 mph the standing corn leans and sways a little downwind, more up to 60 mph; the stubble the harvest has left doesn't move. When the station reports gusts of 32 mph or more, a gust crosses the scene now and then (every 4 to 15 seconds, more often the stronger they are), coming in from the side the wind blows from: it bends the tree tops and the corn further, then lets them settle back over a few seconds, up to full strength at 60 mph. A north or south wind bends nothing sideways; the sway alone shows it, a little smaller. No reading in the last 3 hours, no direction, or calm, and the trees and the corn are drawn exactly as before. Preview: `?wind=W,30` (30 mph from the west), `?wind=W,30,50` (with 50 mph gusts), `?wind=E,45,60`.
+
 ## Smoke in the wind (V124, taken back in V127)
 
 V124 made the chimney smoke lean and stream with the real wind. It's back to the way it was before, since the old smoke looked nicer, especially through the radio when it fades.

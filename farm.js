@@ -89,7 +89,12 @@
   // and bend over at the top, and the leaves hang. Drawn once into an off-screen picture and
   // reused (it only changes with the day, the light and the harvest's progress), so an old iPad
   // isn't redrawing hundreds of stalks every frame.
-  let stalks = null, stalkKey = '', pic = null, picKey = '';
+  // V142: IN A STRONG WIND (winter.js, Sway) the standing corn leans and sways downwind. The
+  // standing corn is then painted into its own picture, apart from the stubble, and drawn in thin
+  // upright strips, each one slanted from the ground up by the wind's lean there, so the tops move
+  // and the feet stay put. The stubble the harvest left stays still, drawn over it. Calm (or no
+  // wind reading), it's the one picture, drawn exactly as before.
+  let stalks = null, stalkKey = '', pic = null, picKey = '', stub = null;
   function cornField(ctx, env, L, w) {
     const { W, H, light } = env, S = L.S;
     const d = w.day, hv = harvest(w, L.steps, env);
@@ -97,16 +102,37 @@
     const passes = hv.total / L.steps, pass = hv.done < 0 ? passes : Math.floor(hv.done / L.steps), inPass = hv.done < 0 ? 0 : hv.done % L.steps;
     const cutX = hv.done >= hv.total ? 0 : inPass * L.tl;
     const left = 1 - Math.min(passes, pass + 1) / passes, right = 1 - Math.min(passes, pass) / passes;   // share of the corn still standing
-    const key = [W, H, d, Math.round(light * 24), Math.round(cutX), pass].join(':');
-    if (!pic || picKey !== key) { pic = pic || document.createElement('canvas'); paintCorn(pic, env, L, w, hv, cutX, left, right); picKey = key; }
-    ctx.drawImage(pic, 0, 0, W, H);
+    const sway = env.sway && env.sway.active ? env.sway : null;
+    const key = [W, H, d, Math.round(light * 24), Math.round(cutX), pass, sway ? 'wind' : 'calm'].join(':');
+    if (!pic || picKey !== key) {
+      pic = pic || document.createElement('canvas');
+      if (sway) { stub = stub || document.createElement('canvas'); stub.width = W; stub.height = H; }
+      paintCorn(pic, env, L, w, hv, cutX, left, right, sway ? stub : null); picKey = key;
+    }
+    if (!sway) ctx.drawImage(pic, 0, 0, W, H);
+    else { windCorn(ctx, env, pic, sway); ctx.drawImage(stub, 0, 0, W, H); }
     if (hv.out) tractor(ctx, env, L, Math.min(W - L.tl * 0.2, Math.max(L.tl * 0.6, cutX)), H, inPass / L.steps);
   }
-  function paintCorn(cv, env, L, w, hv, cutX, left, right) {
+  // The standing corn in strips, slanted by the wind (see V142 above). x' = x + lean * (height above
+  // the ground), so a lean of 0.1 moves a stalk's top a tenth of its height sideways.
+  function windCorn(ctx, env, cv, sway) {
+    const { W, H } = env, sw = 8;
+    for (let x = 0; x < W; x += sw) {
+      const k = sway.cornAt(x + sw / 2), gy = env.groundY(Math.min(W - 1, x + sw / 2)) - H * 0.006;
+      const cw = Math.min(sw + 1, W - x);                                          // one pixel of overlap, so no seams
+      if (cw <= 0) break;
+      ctx.save(); ctx.transform(1, 0, -k, 1, k * gy, 0);
+      ctx.drawImage(cv, x, 0, cw, H, x, 0, cw, H);
+      ctx.restore();
+    }
+  }
+  function paintCorn(cv, env, L, w, hv, cutX, left, right, stubCv) {
     let { W, H, light } = env;
     const S = L.S, d = w.day;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, W, H);
+    const sctx = stubCv ? stubCv.getContext('2d') : ctx;                            // V142: stubble apart in a wind
+    if (stubCv) { sctx.clearRect(0, 0, W, H); sctx.lineCap = 'round'; }
     light = Math.max(light, 0.38);                                                   // V122: still there at night, by moonlight and starlight
     if (!stalks || stalkKey !== W + 'x' + H) {
       const r = rnd32('corn'), n = Math.ceil(W / Math.max(2.2, S * 0.011));
@@ -146,8 +172,8 @@
       if (!standing(s.x, s)) {
         if (worked || !stubbleSeason) continue;
         if (s.rank !== 2 && s.x % 3 > 1) continue;                                     // stubble: short, sparser
-        ctx.strokeStyle = shade('#9c8658', light); ctx.lineWidth = Math.max(1, S * 0.007);
-        ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x + s.lean * 6, gy - S * 0.022); ctx.stroke();
+        sctx.strokeStyle = shade('#9c8658', light); sctx.lineWidth = Math.max(1, S * 0.007);
+        sctx.beginPath(); sctx.moveTo(s.x, gy); sctx.lineTo(s.x + s.lean * 6, gy - S * 0.022); sctx.stroke();
         continue;
       }
       const h = fullH * s.h * (0.08 + 0.92 * grow) * (s.broke ? 1 - 0.5 * wither : 1);
