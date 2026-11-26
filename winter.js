@@ -611,7 +611,7 @@
     ctx.font = `500 ${Math.max(11, Math.round(Math.min(W, H) / 60))}px ui-monospace, Menlo, monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';   // top left, clear of the tap hint at the bottom
     ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.8;
-    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · ' + placeName()} · ${say}`, 16, 14);
+    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · ' + placeName()} · ${say}`, 16, (isPhone() ? safeTop() : 0) + 14);   // V141: below the iPhone's status bar
     ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   }
 
@@ -701,7 +701,7 @@
   // updated one shows again. Several at once: the most severe first, with a count.
   // Preview with ?alert on the address.
   const SEV = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1, Unknown: 0 };
-  let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, closeBox = null, slide = 0, slideDir = 0;
+  let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, closeBox = null, slide = 0, slideDir = 0, dragging = false;
   try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]')); } catch (e) {}
   let alertsChecked = false;                     // V118: the farm waits to know about wind before counting work time
   async function loadAlerts() {
@@ -726,6 +726,24 @@
     alertsChecked = true;
   }
   const showing = () => alerts.filter(a => !dismissed.has(a.id));
+  // V141: a phone (the one-line banner) and the height of its status bar / notch / Dynamic Island.
+  // The page is drawn under the status bar (black-translucent), so anything near the top has to
+  // start below it. 0 in Safari's own window, on an iPad's layout, and on a Chromebook.
+  const isPhone = () => W < 700;
+  let safeProbe = null;
+  function safeTop() {
+    try {
+      if (!safeProbe) {
+        safeProbe = document.createElement('div');
+        safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none';
+        document.body.appendChild(safeProbe);
+      }
+      return safeProbe.offsetHeight || 0;
+    } catch (e) { return 0; }
+  }
+  // V141: the phone banner's touch area reaches a little past its edges, so it's easy to catch.
+  const onBanner = (x, y) => { const b = bannerBox, p = isPhone() ? 12 : 0;
+    return !!b && x >= b.x - p && x <= b.x + b.w + p && y >= b.y - p && y <= b.y + b.h + p; };
   const endsText = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -733,6 +751,7 @@
   };
   function banner() {
     const list = showing();
+    if (!slideDir && !dragging && slide) { slide *= 0.7; if (Math.abs(slide) < 0.5) slide = 0; }   // V141: a short drag eases back
     if (slideDir) { slide += slideDir * W * 0.08; if (Math.abs(slide) > W) { const a = list[0]; if (a) { dismissed.add(a.id); try { localStorage.setItem('risingcode_dismissed', JSON.stringify([...dismissed].slice(-50))); } catch (e) {} } slide = 0; slideDir = 0; } }
     const a = showing()[0];
     if (!a) { bannerBox = null; return; }
@@ -759,8 +778,12 @@
   }
   // V130: on a phone the full banner covered too much. Just the alert's name and when it ends,
   // in one short line ("WIND ADVISORY · 7 PM"); tap it for everything else, swipe it away as before.
+  // V141: on an iPhone it sat up under the clock and the notch (the app draws under the status bar),
+  // over the NOAA line, and a swipe up there pulled down iOS's own Notification Center instead.
+  // Now it sits below the status bar and the NOAA line, a little taller, and follows the finger
+  // when you slide it; let go past a short distance and it slides away.
   function phoneBanner(a) {
-    const fs = 13, h = fs * 2, y = 40;
+    const fs = 13, h = 34, y = safeTop() + 44;
     let ends = '';
     if (a.ends) { const d = new Date(a.ends), today = d.toDateString() === new Date().toDateString();
       ends = d.toLocaleString(undefined, today ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase().replace(':00', ''); }
@@ -865,8 +888,7 @@
     // banner; otherwise opens or closes the three-day forecast.
     tap(x, y) {
       if (detail) { const c = closeBox; if (c && x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 10 && y <= c.y + c.h + 10) detail = null; return; }
-      const b = bannerBox;
-      if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return; }
+      if (onBanner(x, y)) { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return; }
       panelOpen = !panelOpen;
     },
     // A sideways swipe that starts on the banner dismisses the alert instead of changing scene.
@@ -874,10 +896,17 @@
     activeAlert() { const a = showing()[0]; return a ? { event: a.event, ends: endsText(a.ends), updated: !!(window.AlertChime && AlertChime.updated(a)), count: showing().length } : null; },
     openAlert() { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return !!detail; },
     swipeOnBanner(x, y, dx) {
-      const b = bannerBox;
-      if (detail || !b || !(x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)) return false;
+      dragging = false;
+      if (detail || !onBanner(x, y)) return false;
       slideDir = dx < 0 ? -1 : 1; return true;
     },
+    // V141: on a phone the banner follows a sideways drag that starts on it. Returns true while it does.
+    dragBanner(x, y, dx, dy) {
+      if (detail || slideDir || !isPhone() || !onBanner(x, y) || Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) { if (dragging) { dragging = false; } return false; }
+      dragging = true; slide = dx; return true;
+    },
+    // V141: where a drag let go on the banner fell short of a swipe: it eases back.
+    releaseBanner() { dragging = false; },
     start(context) { ctx = context; if (!this.started) { this.started = true;
       if (window.Place) Place.onChange(p => { if (p.lat === LAT && p.lon === LON) return; LAT = p.lat; LON = p.lon; days = []; wx = Object.assign({}, wx, { status: 'loading' }); loadWeather(); loadAlerts(); });
       loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },

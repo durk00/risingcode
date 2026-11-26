@@ -90,6 +90,10 @@ In Safari on an iPhone, the bottom of the weather station (the WIND AND GUSTS ch
 
 On a phone, the full-width alert banner covered too much of the screen. Now a phone shows a small red tag at the top left with just the alert's name and when it ends, like WIND ADVISORY · 7 PM (the day too if it isn't today). Tap it for the whole alert, swipe it away as before. The iPad and Chromebook keep the full banner.
 
+## Alert tag lower on iPhone, easier to swipe away (V141)
+
+The app draws under the iPhone's status bar, so the alert tag sat up under the clock and the notch, and a swipe up there could pull down Notification Center instead. Now, on phone-width screens (under 700 pixels), the tag and the NOAA line above it start below the status bar (the screen's own safe area, read from `env(safe-area-inset-top)`), and the tag is a little taller. Its touch area reaches 12 pixels past its edges, it follows your finger when you slide it, a 40 pixel slide is enough to send it away (60 elsewhere), and a shorter one lets it ease back. In Safari's own window, where there's no status bar to clear, it moves down only a few pixels. The iPad and Chromebook are unchanged.
+
 ## Calmer location button (V128, V129)
 
 The ALLOW LOCATION button in the menu was an amber outline that looked like a warning, and it showed even when Happy Valley was picked on purpose. Now it's a plain button. It shows whenever the app isn't using where the iPad is, Happy Valley picked included, so anyone can tap it and say yes (V128 briefly hid it on Happy Valley; V129 put it back). And if the iPad never answers, as can happen in a Safari tab, the menu no longer says CHECKING… forever: after 30 seconds it shows Happy Valley, says the iPad didn't answer, and says where in Safari to allow it.
