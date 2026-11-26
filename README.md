@@ -98,6 +98,10 @@ The ALLOW LOCATION button in the menu was an amber outline that looked like a wa
 
 On the weather station, the WIND AND GUSTS chart along the bottom is in motion: darker amber streaks ride along the wind line (amber since V126, to match the page; darker so they show by brightness, not color) and the gust dots stream left to right, forward in time, the gusts a little faster than the wind. The lines themselves still show the real forecast; only the pattern on them moves.
 
+## Smoke that follows a strong wind (V140)
+
+The chimney smoke now goes the way a strong wind is really blowing, from the nearest NOAA station's latest reading. Under 15 mph it's exactly the old smoke. Between 15 and 25 mph it eases over, and from 25 mph up it drifts downwind, a little lower and a bit faster the harder it blows (no faster past 40 mph). The puffs keep the same size and fade as before, so it looks the same through the radio; only the direction changes, and it turns slowly, never with a jump. The scene looks south, so a west wind sends the smoke left and an east wind sends it right. With no recent reading (none in the last 3 hours, or no direction), it's the old smoke. Preview: add `?wind` (a 30 mph west wind), `?wind=E`, `?wind=NW,25` or `?wind=90,35` to the address.
+
 ## Smoke in the wind (V124, taken back in V127)
 
 V124 made the chimney smoke lean and stream with the real wind. It's back to the way it was before, since the old smoke looked nicer, especially through the radio when it fades.
