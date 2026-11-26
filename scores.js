@@ -31,13 +31,12 @@
   #radio .slg button { flex: 1 0 14%; height: 40px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 800 14px ui-monospace, Menlo, monospace; letter-spacing: 0.04em; cursor: pointer; }
   #radio .slg button.on { background: #ffb84a; color: #14110c; }
   #radio .sgames { max-height: min(48vh, 440px); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
-  #radio .sgame { display: grid; grid-template-columns: minmax(0, max-content) auto; justify-content: start; align-items: center; gap: 2px 14px; padding: 10px 4px; border-bottom: 1px solid #3a2a10; color: inherit; text-decoration: none; }
+  #radio .sgame { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px 16px; padding: 10px 4px; border-bottom: 1px solid #3a2a10; color: inherit; text-decoration: none; }
   #radio .sgame:last-child { border-bottom: 0; }
-  #radio .sgame .tm { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  #radio .sgame .t { min-width: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #b98a46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #radio .sgame .n { font-size: 18px; font-weight: 800; flex: none; color: #b98a46; }
+  #radio .sgame .t { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #b98a46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #radio .sgame .n { font-size: 18px; font-weight: 800; text-align: right; min-width: 2ch; color: #b98a46; }
   #radio .sgame .lead { color: #ffcf7a; text-shadow: 0 0 8px rgba(255,184,74,0.55); }
-  #radio .sgame .st { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; font-size: 12px; color: #b98a46; letter-spacing: 0.1em; text-transform: uppercase; }
+  #radio .sgame .st { grid-column: 3; grid-row: 1 / span 2; align-self: center; text-align: right; min-width: 9ch; white-space: nowrap; font-size: 12px; color: #b98a46; letter-spacing: 0.1em; text-transform: uppercase; }
   #radio .sgame .st.live { color: #ffcf7a; font-weight: 800; }
   #radio .smsg { padding: 10px 4px; font-size: 14px; color: #b98a46; letter-spacing: 0.06em; line-height: 1.5; }
   @media (max-width: 560px) {
@@ -99,8 +98,8 @@
       const pre = g.state === 'pre', live = g.state === 'in', fin = g.state === 'post';
       const a = +g.away.score, h = +g.home.score, aLead = !pre && (fin ? g.away.win : a > h), hLead = !pre && (fin ? g.home.win : h > a);
       const open = g.link ? `a href="${esc(g.link)}" target="_blank" rel="noopener"` : 'div';
-      return `<${open} class="sgame"><div class="tm"><div class="t ${aLead ? 'lead' : ''}">${esc(g.away.name)}</div><div class="n ${aLead ? 'lead' : ''}">${pre ? '' : esc(g.away.score)}</div></div>
-        <div class="tm"><div class="t ${hLead ? 'lead' : ''}">@ ${esc(g.home.name)}</div><div class="n ${hLead ? 'lead' : ''}">${pre ? '' : esc(g.home.score)}</div></div>
+      return `<${open} class="sgame"><div class="t ${aLead ? 'lead' : ''}">${esc(g.away.name)}</div><div class="n ${aLead ? 'lead' : ''}">${pre ? '' : esc(g.away.score)}</div>
+        <div class="t ${hLead ? 'lead' : ''}">@ ${esc(g.home.name)}</div><div class="n ${hLead ? 'lead' : ''}">${pre ? '' : esc(g.home.score)}</div>
         <div class="st ${live ? 'live' : ''}">${pre ? esc(when(g.date)) : esc(g.detail.toUpperCase())}</div></${g.link ? 'a' : 'div'}>`;
     }).join('')}</div>${err[league] ? '<div class="smsg">COULDN’T UPDATE · SHOWING THE LAST SCORES</div>' : ''}`;
   }
