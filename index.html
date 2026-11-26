@@ -52,7 +52,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V140</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V141</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -729,6 +729,8 @@
     lastX = x; lastY = y;
     const dx = x - downX, dy = y - downY;
     if (dy >= 80 && dy > Math.abs(dx) * 1.5 && window.Menu && !Menu.isOpen() && !downFromTop && !scrolledStart) swipeEnd(x, y);   // open mid-drag
+    // V141: on a phone the alert banner follows a sideways drag that starts on it.
+    if (scene === 'winter' && window.WinterScene && !(window.Menu && Menu.isOpen())) WinterScene.dragBanner(downX, downY, dx, dy);
     // Close mid-drag too (V36): Safari can cancel an upward drag on the menu's scrollable layer. If the menu is
     // taller than the screen and not scrolled to its end, the drag is a scroll; the ✕ button still closes.
     // V70: only when the menu was already at its very end when the finger went down, and a longer swipe;
@@ -747,6 +749,10 @@
       return;
     }
     if (window.Menu && Menu.isOpen()) return;
+    // V141: on a phone, a shorter sideways swipe (40 px) on the alert banner is enough to send it away.
+    if (scene === 'winter' && window.WinterScene && window.innerWidth < 700 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.2
+        && WinterScene.swipeOnBanner(x - dx, y - dy, dx)) { swipedAt = Date.now(); return; }
+    if (scene === 'winter' && window.WinterScene) WinterScene.releaseBanner();
     if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       swipedAt = Date.now();
       // On Winter, a swipe that starts on a weather-alert banner dismisses the alert (V29).
