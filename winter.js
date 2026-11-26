@@ -216,7 +216,7 @@
     trees = [];
     for (let i = 0; i < 9; i++) {
       const x = (i < 5 ? W * (0.03 + i * 0.085) : W * (0.86 + (i - 5) * 0.045)) + (Math.random() - 0.5) * W * 0.03;
-      trees.push({ x, h: H * (0.12 + Math.random() * 0.1) });
+      trees.push({ x, h: H * (0.12 + Math.random() * 0.1), seed: Math.random() });
     }
     clouds = Array.from({ length: 9 }, (_, i) => ({ x: Math.random() * (W + 400) - 200, y: H * (0.06 + Math.random() * 0.3), s: W * (0.1 + Math.random() * 0.08), v: 0.12 + Math.random() * 0.15, k: i }));
     const n = Math.ceil(W / COL) + 1;
@@ -348,10 +348,12 @@
     ctx.lineTo(W, H); ctx.fill();
     for (const tr of trees) {
       const b = groundY(tr.x) + H * 0.01, w = tr.h * 0.42;
+      // V142: in a strong wind the top bends most, the low branches hardly at all (0 when calm).
+      const lean = Sway.treeAt(tr.x, tr.seed || 0) * tr.h * 0.055, bend = (y) => lean * ((b - y) / tr.h) ** 2;
       ctx.fillStyle = tone('#0a1a14', '#1f3a2c');
       for (let k = 0; k < 3; k++) {
-        const top = b - tr.h + k * tr.h * 0.22, bot = b - tr.h * 0.1 - (2 - k) * tr.h * 0.18;
-        ctx.beginPath(); ctx.moveTo(tr.x, top); ctx.lineTo(tr.x - w * (0.55 + k * 0.22), bot); ctx.lineTo(tr.x + w * (0.55 + k * 0.22), bot); ctx.fill();
+        const top = b - tr.h + k * tr.h * 0.22, bot = b - tr.h * 0.1 - (2 - k) * tr.h * 0.18, db = bend(bot);
+        ctx.beginPath(); ctx.moveTo(tr.x + bend(top), top); ctx.lineTo(tr.x - w * (0.55 + k * 0.22) + db, bot); ctx.lineTo(tr.x + w * (0.55 + k * 0.22) + db, bot); ctx.fill();
       }
     }
     // Bare ground: winter grass and dirt, darker and glossier when it's raining.
@@ -400,16 +402,18 @@
   function windFrom(o) {
     const sp = o && o.windSpeed, dr = o && o.windDirection;
     if (!sp || typeof sp.value !== 'number') return null;
-    const mph = /m_s-1/.test(sp.unitCode || '') ? sp.value * 2.237 : sp.value * 0.6214;   // NOAA gives km/h
+    const toMph = (v) => /m_s-1/.test(v.unitCode || '') ? v.value * 2.237 : v.value * 0.6214;   // NOAA gives km/h
+    const mph = toMph(sp), gs = o.windGust;
+    const gust = gs && typeof gs.value === 'number' ? toMph(gs) : null;              // V142: the gusts too (often blank in a calm)
     const age = Date.now() - Date.parse(o.timestamp);
-    return { mph, dir: dr && typeof dr.value === 'number' ? dr.value : null, at: isFinite(age) ? Date.now() - age : Date.now() };
+    return { mph, gust, dir: dr && typeof dr.value === 'number' ? dr.value : null, at: isFinite(age) ? Date.now() - age : Date.now() };
   }
   const COMPASS = { N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5, S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5 };
   const windPreview = (() => {
-    const m = q.match(/[?&]wind(?:=([\w.]+)(?:,([\d.]+))?)?(?:&|$)/);
+    const m = q.match(/[?&]wind(?:=([\w.]+)(?:,([\d.]+)(?:,([\d.]+))?)?)?(?:&|$)/);
     if (!m) return null;
     const d = (m[1] || 'W').toUpperCase(), dir = d in COMPASS ? COMPASS[d] : isFinite(+d) ? +d % 360 : 270;
-    return { mph: m[2] ? +m[2] : 30, dir, at: Date.now(), preview: true };
+    return { mph: m[2] ? +m[2] : 30, gust: m[3] ? +m[3] : null, dir, at: Date.now(), preview: true };   // V142: ?wind=W,30,50 adds 50 mph gusts
   })();
   function windNow() {
     if (windPreview) return windPreview;
@@ -417,6 +421,76 @@
     return null;
   }
   let smokeWind = 0, smokeLean = 0;            // eased toward their targets so a new reading never jolts the plume
+  // V142: THE TREES AND THE CORN IN A STRONG WIND (William: the tops of the trees moving from about
+  // 25 mph sustained, more for gusts of 35 up to 60; the corn moving a little from about 35 mph,
+  // "the same way that the smoke does"). Same reading as the smoke (windNow above): no reading,
+  // a stale one, or no direction, and nothing moves. Calm, nothing moves either: the trees and the
+  // corn are drawn exactly as before.
+  //   trees   a gentle sway at the top from 25 mph sustained, a little more up to 50
+  //   corn    leans and sways a little from about 32 mph sustained, more up to 60
+  //   gusts   a reading with gusts of 32 mph or more sends a gust across the scene now and then
+  //           (every 4 to 15 seconds, more often the stronger they are), entering on the side
+  //           the wind comes from: it bends the tree tops and the standing corn further, then
+  //           lets them come back over a few seconds. Up to full strength at 60 mph.
+  // Everything bends downwind, the same way as the smoke: west wind to the left, east wind to the
+  // right. A north or south wind blows toward or away from us, so it bends nothing sideways; the
+  // sway alone shows it, a little smaller. Strengths ease over about four seconds, so a new
+  // reading never jumps. Preview: ?wind=W,30 (30 mph), ?wind=W,30,50 (with 50 mph gusts).
+  const ramp01 = (v, a, b) => Math.max(0, Math.min(1, (v - a) / (b - a)));
+  function swayTargets(w) {
+    if (!w) return { tree: 0, corn: 0, gust: 0, side: 0 };
+    const mph = w.mph, gust = Math.max(w.gust || 0, mph);
+    return {
+      tree: mph < 22 ? 0 : 0.4 * ramp01(mph, 22, 25) + 0.6 * ramp01(mph, 25, 50),   // a little at 25, more to 50
+      corn: ramp01(mph, 32, 60),
+      gust: ramp01(gust, 32, 60),
+      side: Math.sin(w.dir * Math.PI / 180),                                        // +1 east wind (moves right), -1 west
+    };
+  }
+  const Sway = {
+    active: false, tree: 0, corn: 0, gust: 0, side: 0, gusts: [], next: 0, last: 0, s: 0,
+    update(nowMs) {
+      const g = swayTargets(windNow()), dt = this.last ? Math.min(0.25, Math.max(0, (nowMs - this.last) / 1000)) : 0;
+      this.last = nowMs; this.s = nowMs / 1000;
+      const e = 1 - Math.exp(-dt / 4);
+      for (const k of ['tree', 'corn', 'gust', 'side']) { this[k] += (g[k] - this[k]) * e; if (g[k] === 0 && Math.abs(this[k]) < 1e-3) this[k] = 0; }
+      if (g.gust > 0 && nowMs >= this.next) {
+        if (this.next) this.gusts.push({ at: this.s, k: g.gust * (0.55 + Math.random() * 0.45) });
+        this.next = nowMs + (4 + (1 - g.gust) * 5 + Math.random() * 6) * 1000;
+      }
+      if (g.gust === 0) this.next = 0;
+      this.gusts = this.gusts.filter(q => this.s - q.at < 16);
+      this.active = this.tree > 0 || this.corn > 0 || (this.gust > 0 && this.gusts.length > 0);
+    },
+    // How hard a gust is pushing at x right now, 0 to 1. Each gust crosses the screen downwind in
+    // about two and a half seconds, rises over a second, and dies away over a few.
+    gustAt(x) {
+      let sum = 0;
+      const a = Math.abs(this.side), from = this.side < 0 ? (W - x) / W : x / W;
+      for (const q of this.gusts) {
+        const tau = this.s - q.at - from * 2.5 * a;
+        if (tau <= 0) continue;
+        sum += q.k * (tau < 1.2 ? Math.sin(Math.PI / 2 * tau / 1.2) ** 2 : Math.exp(-(tau - 1.2) / 2.2));
+      }
+      return Math.min(1, sum) * this.gust;
+    },
+    // A tree top's sideways bend, in units of about 5.5% of the tree's height (seed: 0..1 per tree).
+    treeAt(x, seed) {
+      if (!this.active) return 0;
+      const gu = this.gustAt(x), f = 0.22 + seed * 0.1, ph = seed * 6.28;
+      const wob = Math.sin(this.s * 6.28 * f + ph) * 0.65 + Math.sin(this.s * 6.28 * f * 2.3 + ph * 1.7) * 0.35;
+      const across = 0.45 + 0.55 * Math.abs(this.side);
+      return this.side * (0.5 * this.tree + 1.0 * gu) + wob * (0.4 * this.tree + 0.45 * gu) * across;
+    },
+    // The standing corn's lean at x: how far the top moves sideways for each pixel of height.
+    cornAt(x) {
+      if (!this.active) return 0;
+      const gu = this.gustAt(x);
+      const dirn = this.side < 0 ? -1 : 1, wave = Math.sin(this.s * 6.28 * 0.4 - dirn * x / Math.max(1, W * 0.14));
+      const across = 0.45 + 0.55 * Math.abs(this.side);
+      return this.side * (0.09 * this.corn + 0.07 * gu) + wave * (0.03 * this.corn + 0.025 * gu) * across;
+    },
+  };
   function drawHouse() {
     const { x, w, h, top, peak, eave, chimney: ch } = house;
     ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
@@ -556,6 +630,7 @@
     cover = ease(cover, targetCover(), 0.01);
     fog = ease(fog, wx.sky === 'fog' ? 1 : 0, 0.01);
     light = ease(light, daylight(), 0.02);   // follows the real sun (V46)
+    Sway.update(performance.now());          // V142: the trees and the corn in a strong wind
     // Ground: white while snow is in today's forecast (a light cover at least),
     // otherwise any snow melts slowly away to bare ground.
     if (wx.snowToday) { const floor = H * 0.008; for (let i = 0; i < depth.length; i++) if (depth[i] < floor) depth[i] = first ? floor : depth[i] + 0.02; }
@@ -565,7 +640,7 @@
     const life = window.Wildlife ? wildEnv() : null;
     // V78: the homestead (homestead.js): solar array, well and paddock behind the house line,
     // and the person who lives here in front of it.
-    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house, windy: windyNow(), ready: alertsChecked } : null;
+    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house, windy: windyNow(), ready: alertsChecked, sway: Sway } : null;
     sky(); if (life) Wildlife.sky(ctx, life); land(); if (home && window.Farm) Farm.back(ctx, home); if (home) Homestead.back(ctx, home); drawHouse(); snowLayers(); if (home) Homestead.front(ctx, home); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;
@@ -808,6 +883,6 @@
       loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail, wind: windNow(), sway: Sway }),
   };
 })();
