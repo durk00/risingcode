@@ -142,7 +142,7 @@
       // V58: read through WxNow, which checks the last several readings of the nearest stations
       // and builds the words from the measurements when NOAA leaves them blank.
       let observed = '';
-      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) observed = now.words; }
+      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) { observed = now.words; if (!stale()) windObs = windFrom(now.o); } }
       catch (e) { /* the forecast alone still drives the scene */ }
       const obsHeavy = /heavy/i.test(observed), obsLight = /light|drizzle|flurr/i.test(observed);
       if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky; chance = false; }
@@ -383,6 +383,40 @@
   // V118: windy today? A wind alert of any kind, or wind in today's forecast words. (The farm won't
   // harvest in it.)
   function windyNow() { return alerts.some(a => /wind/i.test(a.event || '')) || (days[0] && /wind|breez|gust/i.test(days[0].words || '')); }
+  // V140: THE SMOKE FOLLOWS A STRONG WIND (William: at about 25 mph it should go the way the wind
+  // is blowing). The wind is the nearest NOAA station's latest reading: its speed, and the compass
+  // direction it blows FROM. Under 15 mph the smoke is exactly the old smoke. From 15 to 25 mph it
+  // eases over, and from 25 mph up it streams downwind, a little lower and a little faster the
+  // harder it blows (capped at 40 mph so it never gets frantic). Same puffs, same size, same fade:
+  // only where they drift changes. No reading, a reading over 3 hours old, or no direction: the
+  // old smoke. Nothing is made up from forecast words.
+  // The scene looks south (skypath.js: the sun rises on the left, sets on the right), so east is
+  // left and west is right. Wind FROM the west travels east: the smoke goes left. Screen drift is
+  // sin(direction it's from): west (270) gives -1 (left), east (90) gives +1 (right), and a north
+  // or south wind (toward or away from us) barely moves it sideways.
+  // Preview: ?wind (a 30 mph west wind), or ?wind=E, ?wind=NW,25, ?wind=90,35. Preview only; normal
+  // use never looks at it.
+  let windObs = null;
+  function windFrom(o) {
+    const sp = o && o.windSpeed, dr = o && o.windDirection;
+    if (!sp || typeof sp.value !== 'number') return null;
+    const mph = /m_s-1/.test(sp.unitCode || '') ? sp.value * 2.237 : sp.value * 0.6214;   // NOAA gives km/h
+    const age = Date.now() - Date.parse(o.timestamp);
+    return { mph, dir: dr && typeof dr.value === 'number' ? dr.value : null, at: isFinite(age) ? Date.now() - age : Date.now() };
+  }
+  const COMPASS = { N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5, S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5 };
+  const windPreview = (() => {
+    const m = q.match(/[?&]wind(?:=([\w.]+)(?:,([\d.]+))?)?(?:&|$)/);
+    if (!m) return null;
+    const d = (m[1] || 'W').toUpperCase(), dir = d in COMPASS ? COMPASS[d] : isFinite(+d) ? +d % 360 : 270;
+    return { mph: m[2] ? +m[2] : 30, dir, at: Date.now(), preview: true };
+  })();
+  function windNow() {
+    if (windPreview) return windPreview;
+    if (windObs && windObs.dir !== null && Date.now() - windObs.at < 3 * 3600e3) return windObs;
+    return null;
+  }
+  let smokeWind = 0, smokeLean = 0;            // eased toward their targets so a new reading never jolts the plume
   function drawHouse() {
     const { x, w, h, top, peak, eave, chimney: ch } = house;
     ctx.fillStyle = tone('#222c3a', '#7a5f4c'); ctx.fillRect(x, top, w, h);             // walls
@@ -420,7 +454,14 @@
     }
     // Chimney smoke, always: soft puffs that rise, spread and drift, whatever the weather.
     if (t % 6 === 0) smoke.push({ x: ch.x + ch.w / 2, y: ch.top - 4, r: ch.w * 0.5, a: 0.24 });
-    for (const s of smoke) { s.y -= 0.45; s.x += 0.25 + Math.sin((t + s.y) / 30) * 0.15 + (wx.fall !== 'none' ? 0.2 : 0); s.r += 0.12; s.a *= 0.992; }
+    { // V140: blend the old drift into the wind's drift (see windNow above)
+      const w = windNow(), mph = w ? Math.min(w.mph, 40) : 0;
+      const kT = w ? Math.max(0, Math.min(1, (mph - 15) / 10)) : 0;                  // 0 under 15 mph, 1 at 25 mph and up
+      const leanT = w ? Math.sin(w.dir * Math.PI / 180) * (0.5 + 0.025 * Math.max(0, mph - 25)) : 0;   // px per frame, 0.5 at 25 mph, 0.875 at 40
+      smokeWind += (kT - smokeWind) * 0.01; smokeLean += (leanT - smokeLean) * 0.01;
+      const k = smokeWind, calm = 0.25 + (wx.fall !== 'none' ? 0.2 : 0);           // the old drift (rain or snow nudges it), used only in calm
+      for (const s of smoke) { s.y -= 0.45 * (1 - 0.3 * k); s.x += calm * (1 - k) + smokeLean * k + Math.sin((t + s.y) / 30) * 0.15; s.r += 0.12; s.a *= 0.992; }
+    }
     smoke = smoke.filter(s => s.a > 0.01 && s.y > -50);
     const sc = tone('#bec8d4', '#e6eaee');
     for (const s of smoke) { ctx.globalAlpha = s.a * (light > 0.5 ? 1.6 : 1); ctx.fillStyle = sc; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill(); }
