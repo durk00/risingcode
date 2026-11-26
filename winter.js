@@ -711,6 +711,9 @@
         headline: 'Winter Storm Warning issued for your county (preview)',
         description: 'Heavy snow expected. Total snow accumulations of 8 to 12 inches. Winds gusting as high as 35 mph. (This is a preview, not a real alert.)',
         instruction: 'If you must travel, keep an extra flashlight, food, and water in your vehicle in case of an emergency.' }];
+      // V143: ?alert=long previews a long alert, the kind that has to scroll on a phone.
+      if (/[?&]alert=long\b/.test(q)) Object.assign(alerts[0], { event: 'Severe Thunderstorm Warning',
+        description: Array.from({ length: 6 }, (_, i) => `Paragraph ${i + 1} of 6. At 4:15 PM EST, a line of strong storms was located along a line from Bellefonte to Spring Mills, moving east at 40 mph. Hazards include 60 mph wind gusts and quarter size hail. Damage to roofs, siding, trees and power lines is possible.`).join('\n\n') + ' (This is a preview, not a real alert.)' });
       alertsChecked = true; return;
     }
     try {
@@ -819,26 +822,66 @@
     }
     return out;
   }
+  // V143: on an iPhone the page sat too high: its ✕ was up under the clock and the notch, partly cut
+  // off, and a long alert was simply cut short; a drag on it pulled down the menu instead. Now on a
+  // phone the page starts below the status bar and notch, the long title wraps clear of the ✕, and the
+  // alert's text scrolls inside the page (drag it, or the mouse wheel / arrow keys on a Chromebook),
+  // fading softly at its top and bottom edges. While the page is open, a drag on it is only ever a
+  // scroll: it never opens the menu or the radio and never changes screen. A short alert looks as before.
+  let detailScroll = 0, detailVel = 0, detailMax = 0, detailTouching = false;
+  let safeProbeB = null;
+  function safeBottom() {
+    try {
+      if (!safeProbeB) {
+        safeProbeB = document.createElement('div');
+        safeProbeB.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-bottom, 0px);visibility:hidden;pointer-events:none';
+        document.body.appendChild(safeProbeB);
+      }
+      return safeProbeB.offsetHeight || 0;
+    } catch (e) { return 0; }
+  }
   function detailPage() {
     const a = detail; if (!a) return;
     const fs = Math.max(13, Math.min(20, Math.round(Math.min(W, H) / 40)));
+    const phone = isPhone(), top = phone ? safeTop() + 12 : 0, bottom = phone ? safeBottom() : 0;
     ctx.save();
     ctx.fillStyle = 'rgba(6,9,14,0.985)'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgb(200,24,36)'; ctx.fillRect(0, 0, W, fs * 0.5);
+    ctx.fillStyle = 'rgb(200,24,36)'; ctx.fillRect(0, phone ? top - 4 : 0, W, fs * 0.5);
     const x = Math.max(24, W * 0.08), maxW = W - x * 2;
-    let y = fs * 2;
+    const s = Math.max(48, fs * 3), bx = W - s - Math.max(16, W * 0.03), by = top + fs * 1.4;   // the ✕
+    let y = top + fs * 2;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#ffffff'; ctx.font = `800 ${Math.round(fs * 1.4)}px ui-monospace, Menlo, monospace`;
-    ctx.fillText((a.event || '').toUpperCase(), x, y); y += fs * 2.2;
+    // The title keeps clear of the ✕: a long one wraps onto a second line.
+    const title = wrap((a.event || '').toUpperCase(), bx - x - fs).filter(Boolean);
+    title.forEach((l, i) => { ctx.fillText(l, x, y); y += i < title.length - 1 ? fs * 1.7 : fs * 2.2; });
+    if (!title.length) y += fs * 2.2;
     ctx.fillStyle = '#ffb3b8'; ctx.font = `600 ${fs}px ui-monospace, Menlo, monospace`;
     ctx.fillText([a.severity ? a.severity.toUpperCase() : '', endsText(a.ends)].filter(Boolean).join(' · '), x, y); y += fs * 2;
     ctx.fillStyle = '#e6edf3'; ctx.font = `500 ${fs}px ui-monospace, Menlo, monospace`;
     const lines = wrap(a.headline, maxW).concat(wrap(a.description, maxW), a.instruction ? wrap('WHAT TO DO: ' + a.instruction, maxW) : []);
-    const room = Math.floor((H - y - fs * 5) / (fs * 1.4));
-    lines.slice(0, room).forEach((l, i) => ctx.fillText(l, x, y + i * fs * 1.4));
+    while (lines.length && !lines[lines.length - 1]) lines.pop();
+    const lh = fs * 1.4, footY = H - bottom - fs * 4, boxTop = y, boxBot = footY - fs * 1.2;
+    const textH = lines.length * lh;
+    detailMax = Math.max(0, textH - (boxBot - boxTop));
+    if (!detailTouching && detailVel) { detailScroll += detailVel; detailVel *= 0.92; if (Math.abs(detailVel) < 0.2) detailVel = 0; }
+    if (detailScroll < 0 || detailScroll > detailMax) { detailScroll = Math.max(0, Math.min(detailMax, detailScroll)); detailVel = 0; }
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, boxTop - 2, W, boxBot - boxTop + 2); ctx.clip();
+    const first = Math.max(0, Math.floor(detailScroll / lh) - 1);
+    for (let i = first; i < lines.length; i++) { const ly = boxTop + i * lh - detailScroll; if (ly > boxBot) break; ctx.fillText(lines[i], x, ly); }
+    ctx.restore();
+    if (detailMax > 0) {
+      // Soft fades where text runs on past the edges, and a thin quiet bar showing where you are.
+      const bg = 'rgba(6,9,14,', f = fs * 1.6;
+      if (detailScroll > 1) { const g = ctx.createLinearGradient(0, boxTop - 2, 0, boxTop + f); g.addColorStop(0, bg + '1)'); g.addColorStop(1, bg + '0)'); ctx.fillStyle = g; ctx.fillRect(0, boxTop - 2, W, f + 2); }
+      if (detailScroll < detailMax - 1) { const g = ctx.createLinearGradient(0, boxBot - f, 0, boxBot); g.addColorStop(0, bg + '0)'); g.addColorStop(1, bg + '1)'); ctx.fillStyle = g; ctx.fillRect(0, boxBot - f, W, f); }
+      const trackH = boxBot - boxTop, barH = Math.max(fs * 2, trackH * (trackH / textH)), barY = boxTop + (trackH - barH) * (detailScroll / detailMax);
+      ctx.fillStyle = 'rgba(230,238,246,0.22)';
+      ctx.beginPath(); const bxx = W - Math.max(10, x * 0.4); if (ctx.roundRect) ctx.roundRect(bxx, barY, 3, barH, 1.5); else ctx.rect(bxx, barY, 3, barH); ctx.fill();
+    }
     ctx.fillStyle = '#9fb0c0'; ctx.font = `500 ${Math.round(fs * 0.8)}px ui-monospace, Menlo, monospace`;
-    ctx.fillText((lines.length > room ? 'MORE AT WEATHER.GOV · ' : '') + 'NOAA · TAP ✕ TO CLOSE', x, H - fs * 4);
-    const s = Math.max(48, fs * 3), bx = W - s - Math.max(16, W * 0.03), by = fs * 1.4;   // the ✕
+    ctx.fillText((detailMax > 0 ? 'SCROLL FOR MORE · ' : '') + 'NOAA · TAP ✕ TO CLOSE', x, footY);
     closeBox = { x: bx, y: by, w: s, h: s };
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, s, s, s * 0.2); else ctx.rect(bx, by, s, s); ctx.fill(); ctx.stroke();
@@ -846,6 +889,7 @@
     ctx.beginPath(); ctx.moveTo(bx + m, by + m); ctx.lineTo(bx + s - m, by + s - m); ctx.moveTo(bx + s - m, by + m); ctx.lineTo(bx + m, by + s - m); ctx.stroke();
     ctx.restore();
   }
+
   function panel() {
     panelA += ((panelOpen ? 1 : 0) - panelA) * 0.15;
     if (panelA < 0.02) return;
@@ -888,13 +932,13 @@
     // banner; otherwise opens or closes the three-day forecast.
     tap(x, y) {
       if (detail) { const c = closeBox; if (c && x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 10 && y <= c.y + c.h + 10) detail = null; return; }
-      if (onBanner(x, y)) { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return; }
+      if (onBanner(x, y)) { detail = showing()[0] || null; detailScroll = 0; detailVel = 0; if (detail && window.AlertChime) AlertChime.read(detail); return; }
       panelOpen = !panelOpen;
     },
     // A sideways swipe that starts on the banner dismisses the alert instead of changing scene.
     // V123: for the radio set, which covers the scene: the alert on top, and a way to open its page.
     activeAlert() { const a = showing()[0]; return a ? { event: a.event, ends: endsText(a.ends), updated: !!(window.AlertChime && AlertChime.updated(a)), count: showing().length } : null; },
-    openAlert() { detail = showing()[0] || null; if (detail && window.AlertChime) AlertChime.read(detail); return !!detail; },
+    openAlert() { detail = showing()[0] || null; detailScroll = 0; detailVel = 0; if (detail && window.AlertChime) AlertChime.read(detail); return !!detail; },
     swipeOnBanner(x, y, dx) {
       dragging = false;
       if (detail || !onBanner(x, y)) return false;
@@ -907,11 +951,18 @@
     },
     // V141: where a drag let go on the banner fell short of a swipe: it eases back.
     releaseBanner() { dragging = false; },
+    // V143: the details page is open (a drag on it is a scroll and nothing else), and scrolling it.
+    detailOpen: () => !!detail,
+    scrollDetail(dy, done, vel) {
+      if (!detail) return;
+      detailTouching = !done; detailScroll = Math.max(0, Math.min(detailMax, detailScroll + dy));
+      detailVel = done ? Math.max(-40, Math.min(40, vel || 0)) : 0;
+    },
     start(context) { ctx = context; if (!this.started) { this.started = true;
       if (window.Place) Place.onChange(p => { if (p.lat === LAT && p.lon === LON) return; LAT = p.lat; LON = p.lon; days = []; wx = Object.assign({}, wx, { status: 'loading' }); loadWeather(); loadAlerts(); });
       loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail, wind: windNow(), sway: Sway }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail, detailScroll, detailMax, closeBox, wind: windNow(), sway: Sway }),
   };
 })();
