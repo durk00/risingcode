@@ -46,7 +46,7 @@
   document.head.appendChild(css);
 
   const tvTab = set.querySelector('.tab[data-mode="tv"]');
-  const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'tab'; tab.dataset.scores = '1'; tab.textContent = 'SCORES';
+  const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'tab'; tab.dataset.scores = '1'; tab.textContent = 'SPORTS';
   tvTab.after(tab);
   const body = document.createElement('div'); body.className = 'scoresbody';
   body.innerHTML = `<div class="slg"></div><div class="lcd"><div class="sview"></div></div>

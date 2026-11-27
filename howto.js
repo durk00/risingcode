@@ -79,7 +79,7 @@
     <li>For newer movies, <b>TUBI, PLUTO TV</b> and <b>YOUTUBE</b> open those free services (with ads) in their own app or website. Close them and you're back here.</li>
   </ul>
 
-  <p><b>SCORES</b>, the third button on the set, shows today's games from ESPN. Pick the league along the top: NFL, MLB, NBA, NHL, COLLEGE FB or COLLEGE BB. You see the score while a game is on and when it's final, or the start time before; the team that's ahead is brighter. <b>Tap a game</b> to open it on ESPN and follow it play by play.</p>
+  <p><b>SPORTS</b>, the third button on the set, shows today's games from ESPN. Pick the league along the top: NFL, MLB, NBA, NHL, COLLEGE FB or COLLEGE BB. You see the score while a game is on and when it's final, or the start time before; the team that's ahead is brighter. <b>Tap a game</b> to open it on ESPN and follow it play by play.</p>
 
   <h2>THE MENU</h2>
   <ul>
