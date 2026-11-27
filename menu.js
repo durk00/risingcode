@@ -12,11 +12,13 @@
 //             and linked. Only the YMCA of Centre County's local events calendar
 //             (its public Events API, which a browser may read) works from this page; no
 //             local news feed does (see README). Fetched when the menu opens, kept 15 min.
-//   LOOK IT UP (V146) a link to shield.html: Shield's checks rebuilt from public records, no AI
 //   MY CORNER the personal wildcard: one thing picked for this household's own
 //             interests (a poem of the day, a what-can-I-cook helper, ...). The
 //             pick is remembered on this device; what each one shows is still to
 //             be built.
+//   SHIELD (V148) at the very bottom, under My Corner: a white button, SHIELD in big letters and
+//             Consumer Protection under it, that opens shield.html (Shield's checks from public
+//             records, no AI). It replaces V146's LOOK IT UP section, so there is one way in.
 // index.html opens and closes it and hands it the sound controls (Menu.connect).
 (() => {
   const WILDCARDS = [
@@ -25,6 +27,8 @@
     { id: 'poem', name: 'Poem of the day', note: 'COMING' },
     { id: 'cook', name: 'What can I make?', note: 'COMING' },
   ];
+  // V148: a plain shield outline for the SHIELD button, dark on its white face.
+  const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#1d4f91" stroke="#0b1520" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   let wild = 'none';
   try { if (WILDCARDS.some(w => w.id === localStorage.getItem('risingcode_wildcard'))) wild = localStorage.getItem('risingcode_wildcard'); } catch (e) {}
   const EVENTS_URL = 'https://www.ymcaofcentrecounty.org/wp-json/tribe/events/v1/events?per_page=6&categories=penns-valley-events';
@@ -72,6 +76,15 @@
   #menu .em .disc svg { width: 30px; height: 30px; display: block; }
   #menu .em:active { background: #1e2a37; }
   @media (max-width: 380px) { #menu .em { font-size: 13px; letter-spacing: 0.06em; padding-right: 10px; gap: 7px; } #menu header.three { gap: 6px; } }
+  /* V148: SHIELD, a white button at the bottom of the menu (William's spot, under Poem of the day).
+     Dark text on white so it reads on the dark menu; a full-width row, tall enough for a finger. */
+  #menu .shieldbtn { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 14px 20px; min-height: 76px;
+    border-radius: 12px; background: #ffffff; color: #0b1520; border: 2px solid #ffffff; text-decoration: none;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  #menu .shieldbtn:active { background: #dfe6ec; border-color: #dfe6ec; }
+  #menu .shieldbtn svg { flex-shrink: 0; width: 40px; height: 46px; display: block; }
+  #menu .shieldbtn .t { display: block; font: 800 26px/1.05 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; }
+  #menu .shieldbtn .s { display: block; margin-top: 5px; font: 600 13px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #3a4a5a; }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
@@ -173,13 +186,11 @@
       ${allowHtml()}<p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
       <div class="opts">${Place.options().map(o => `<button class="opt${o.id === Place.mode() ? ' on' : ''}" data-place="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       ${localHtml()}
-      <h2>LOOK IT UP</h2>
-      <p class="help">Restaurants near you, a car's recalls and crash tests, and where to check a contractor or business. Public records only, nothing made up.</p>
-      <div class="opts"><a class="opt" href="shield.html" style="text-decoration:none">OPEN LOOK IT UP<small>RESTAURANTS · VEHICLES · CONTRACTORS · ANY BUSINESS</small></a></div>
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
       ${wild === 'verses' ? versesHtml() : ''}
+      <a class="shieldbtn" href="shield.html" aria-label="Shield, Consumer Protection: look up restaurants, vehicles, contractors and businesses in public records">${SHIELD_MARK}<span><span class="t">SHIELD</span><span class="s">Consumer Protection</span></span></a>
       <footer>TAP ✕ TO CLOSE, OR AT THE BOTTOM GIVE IT A GOOD SWIPE UP</footer></div>`;
   }
   // THE HIDDEN g SWITCH (V71): tap the word MENU 5 times quickly to turn the g page on (or off)
@@ -209,6 +220,19 @@
     if (b.dataset.place && window.Place) { Place.set(b.dataset.place); render(); }
     if (b.dataset.wild) { wild = b.dataset.wild; try { localStorage.setItem('risingcode_wildcard', wild); } catch (e2) {} render(); }
   });
+
+  // V148: on an older iPad, Safari can drop the click after a touch on a scrolling page, so the
+  // SHIELD button opens on the finger's lift (like the alert ✕ in V144 and the radio bar in V145).
+  // A finger that slides more than about an inch is a scroll, not a tap, and opens nothing.
+  let shX = null, shY = 0;
+  el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; shX = e.target.closest('.shieldbtn') ? p.clientX : null; shY = p.clientY; }, { passive: true });
+  el.addEventListener('touchcancel', () => { shX = null; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    const p = e.changedTouches[0], x0 = shX; shX = null;
+    if (x0 === null || e.touches.length || !e.target.closest('.shieldbtn') || Math.hypot(p.clientX - x0, p.clientY - shY) > 30) return;
+    if (e.cancelable) e.preventDefault();
+    location.href = 'shield.html';
+  }, { passive: false });
 
   let open = false;
   window.Menu = {
