@@ -4,7 +4,7 @@
 
 Outside In is a window. It shows what is really happening outside your house right now: the sky, the weather, the sun and the moon where they actually are, the animals that come by when they really would. Add a radio, a TV and a kitchen, and it's a quiet corner to step back from the noise of the day. There is no news feed, no notifications, no ads and no account. Everything it shows is real, and when a reading is old, it says so. Made for an iPad; works in any modern browser.
 
-Full plain-English instructions are in the app: Menu → **HOW IT WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set at the top of `howto.js` and in `index.html` (the page title and the home-screen name).
+Full plain-English instructions are in the app: Menu → **HOW THE APP WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set at the top of `howto.js` and in `index.html` (the page title and the home-screen name).
 
 ## Use it on an iPad
 
@@ -190,15 +190,15 @@ In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by def
 
 ## First-time guide
 
-In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW IT WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
+In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW THE APP WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
 
 ## EMERGENCIES: Respond inside Outside In (V145)
 
-A round white button with the blue Star of Life and the word EMERGENCIES under it sits in the bottom-right corner of Home (the house). It shows on Home only, and hides while the menu, the radio and TV, the alert page, the night clock or a guide is open. Tapping it opens the full Respond app (durk00/respond) in this app's own code (`respond.js`), with no Base44, no login and no other site:
+**EMERGENCIES sits at the top of the menu** (swipe down from the center of any screen), centered between the word MENU and the ✕, just above HOW THE APP WORKS: the blue Star of Life on a white disc with the word EMERGENCIES beside it. Nothing shows for it on Home or any other screen. Tapping it slides the menu away and opens the full Respond app (durk00/respond) in this app's own code (`respond.js`), with no Base44, no login and no other site:
 
 - **Terms first, every time:** Respond's terms of use, word for word, and nothing else opens until "Yes — I Understand and Accept" is tapped. "Not now" goes back to Outside In.
-- **Then everything Respond does:** its home screen (EMERGENCY, "I'm not sure what's happening", Call 911, Local Health Alerts), the five categories and twenty situations, the Call 911 First screen, and the steps, read aloud, with Say "What's next?" / "Go back" / "Repeat" where the browser can listen and the same buttons on screen everywhere. ✕ Close (or Escape) goes back to the house.
-- **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. The two protocols Respond marks DRAFT (Unresponsive but Breathing, and Child CPR) say "DRAFT — awaiting responder review" on screen. To change a protocol, change it in Respond first, after responder review, then copy it again.
+- **Then everything Respond does:** its home screen (EMERGENCY, "I'm not sure what's happening", Call 911, Local Health Alerts), the five categories and twenty situations, the Call 911 First screen, and the steps, read aloud, with Say "What's next?" / "Go back" / "Repeat" where the browser can listen and the same buttons on screen everywhere. ✕ Close (or Escape) goes back to the screen you were on, with the menu closed.
+- **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. Respond's code still lists two protocols as DRAFT (Unresponsive but Breathing, and Child CPR). William, a former EMT, signed off on their wording as written on November 26, 2026, so they no longer carry a DRAFT tag here. To change a protocol, change it in Respond first, after responder review, then copy it again.
 - **Why not a red cross:** a red cross on a white background is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the American Red Cross and military medical services.
 
 (The home-screen version line is left alone here because other open pull requests change it too.)
