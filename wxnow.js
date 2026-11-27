@@ -26,7 +26,8 @@
       if (/ts|thunder/.test(pw)) return 'Thunderstorm';
       if (/ra|rain/.test(pw)) return heavy + 'Rain';
       if (/fg|fog/.test(pw)) return 'Fog';
-      if (/br|mist|hz|haze/.test(pw)) return 'Haze';
+      if (/br|mist/.test(pw)) return 'Mist';         // V147: mist (BR) is its own word now, so the scene's fog shows
+      if (/hz|haze/.test(pw)) return 'Haze';
     }
     let top = null;
     for (const l of o.cloudLayers || []) if (l && l.amount in RANK && (top === null || RANK[l.amount] > RANK[top])) top = l.amount;
