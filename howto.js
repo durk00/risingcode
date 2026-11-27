@@ -75,6 +75,7 @@
   <ul>
     <li>Pick a channel: <b>30s, 40s, 50s, 60s, 70s, CARTOONS</b> or <b>OLD TV</b> (old TV shows). Newer movies are still owned by the studios, so these are the classics that are free to show.</li>
     <li><b>☰ TV GUIDE</b> shows every movie on a channel. Pick a channel at the top, scroll with your finger, and tap a movie to watch it. <b>✕</b> closes the guide. Or use <b>◀ ▶</b> to flip to the next movie.</li>
+    <li><b>⏻</b> turns the TV on with the first movie in the TV GUIDE for its channel (the 30s, the first time) already up on the screen.</li>
     <li>Tap <b>▶</b> on the picture to start the movie.</li>
     <li><b>FULL SCREEN</b> fills the screen. The button with the arrows pointing in, top right, brings it back.</li>
     <li>For newer movies, <b>TUBI, PLUTO TV</b> and <b>YOUTUBE</b> open those free services (with ads) in their own app or website. Close them and you're back here.</li>
