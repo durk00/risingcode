@@ -58,6 +58,7 @@
 
   <h2>RADIO AND TV</h2>
   <p>Swipe up from the middle of any screen. Two buttons along the top switch between <b>RADIO</b> and <b>TV</b>.</p>
+  <p><b>VOLUME</b> is the round amber knob on the orange lines beside the minimize bar (on a phone, on its own row under the buttons). Drag it, or tap where you want it: left is quieter, right is louder, and the little notches light up to show the level. It sets the radio and the Santa sounds, and it's remembered. The TV's movies play in the Internet Archive's own player, so for those use the device's volume buttons. A few stations on an iPhone or iPad only play at the device's volume; the set says so when one does. Weather alert chimes always play at full.</p>
   <p><b>The radio</b> plays real stations streaming on the internet.</p>
   <ul>
     <li><b>⏻</b> turns it on and off.</li>
