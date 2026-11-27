@@ -15,6 +15,20 @@
 // the nearest station and plays. If a stream is dead it says NO SIGNAL; turn the dial.
 // Minimizing the radio (swipe down, or the minimize bar, V82) leaves it playing over the scenes; ⏻ turns it off.
 // V145: the bar closes on the touch itself, and a quick second tap after the set wakes from fading counts.
+// V152: the three orange lines between SPORTS and the minimize bar are now the VOLUME: a round
+// amber knob on the lines, with small amber notches above and below that light up to the level.
+// Drag it (or tap where you want it) and the radio gets louder or quieter; the level is kept on
+// the device. It also sets the hiss between stations and the screensaver's Santa sounds. Weather
+// alert chimes stay at full on purpose, so a warning is never turned down by accident.
+// How it reaches the radio: on a Chromebook (and Android, Mac, PC) the browser just sets the
+// stream's volume. An iPhone or iPad ignores that, so there the stream is played through the
+// page's own sound mixer (Web Audio) with a volume step in it, which only works when the station
+// allows it (most do; a few don't, and HLS streams can't). Those stations play at the device's
+// own volume, and the set says so. At full volume an iPhone or iPad plays the stream the old
+// direct way, so nothing changes for anyone who never turns it down.
+// The TV can't be turned down from here: the movie plays in the Internet Archive's own player,
+// and a page isn't allowed to reach inside another site's player. With the TV showing, the knob
+// dims and a tap on it says to use the device's volume buttons.
 (() => {
   const KEY = 'risingcode_radio';
   const MIRRORS = ['de1', 'de2', 'fi1', 'nl1', 'at1'].map(s => `https://${s}.api.radio-browser.info`).concat('https://all.api.radio-browser.info');
@@ -120,8 +134,25 @@
   }
 
   // ---- sound: the stream, and the hiss between stations --------------------------------
-  const player = new Audio(); player.preload = 'none'; player.setAttribute('playsinline', '');
-  let ac = null, hissGain = null;
+  const VKEY = 'risingcode_volume';
+  let vol = 1;
+  try { const v = parseFloat(localStorage.getItem(VKEY)); if (v >= 0 && v <= 1) vol = v; } catch (e) {}
+  const volHooks = [];
+  window.AppVolume = { get: () => vol, onChange: (f) => { volHooks.push(f); } };
+  // Can this browser set a stream's volume? An iPhone or iPad always reads it back as 1.
+  const canSetVolume = (() => { try { const a = document.createElement('audio'); a.volume = 0.5; return Math.abs(a.volume - 0.5) < 0.01; } catch (e) { return false; } })();
+  const forceGain = /[?&]volroute=gain(&|$)/.test(location.search);   // for testing the iPad way on a computer
+  const needsGain = () => forceGain || !canSetVolume;
+  function makePlayer(cors) {
+    const a = new Audio(); a.preload = 'none'; a.setAttribute('playsinline', '');
+    if (cors) a.crossOrigin = 'anonymous';
+    return a;
+  }
+  const direct = makePlayer(false);
+  let player = direct, routed = null, routedGain = null;
+  const noGain = {};                                                   // stations that wouldn't go through the mixer
+  const isHls = (url) => /\.m3u8(\?|$)/i.test(url || '');
+  let ac = null, hissGain = null, lastHiss = 0;
   function wake() {
     try {
       if (!ac) {
@@ -140,9 +171,31 @@
     } catch (e) {}
   }
   function hiss(level) {                                                   // 0..1, kept quiet on purpose
+    lastHiss = level;
     if (!ac || !hissGain) return;
-    hissGain.gain.setTargetAtTime(on ? level * 0.05 : 0, ac.currentTime, 0.08);
+    hissGain.gain.setTargetAtTime(on ? level * 0.05 * vol : 0, ac.currentTime, 0.08);
   }
+  // The stream through the mixer, for an iPhone or iPad turned below full.
+  function routedPlayer() {
+    if (routed) return routed;
+    wake(); if (!ac) return null;
+    try {
+      const a = makePlayer(true), src = ac.createMediaElementSource(a);
+      routedGain = ac.createGain(); routedGain.gain.value = vol;
+      src.connect(routedGain); routedGain.connect(ac.destination);
+      hook(a); routed = a;
+    } catch (e) { routed = null; routedGain = null; }
+    return routed;
+  }
+  function pickPlayer(url) {
+    if (needsGain() && vol < 0.995 && !isHls(url) && !noGain[url]) { const r = routedPlayer(); if (r) return r; }
+    return direct;
+  }
+  // Does the level the knob shows really reach what's playing?
+  const volReaches = () => !needsGain() || player === routed || vol >= 0.995;
+  // What the knob is doing right now, for checking on a device (type AppVolume.state() in the console).
+  window.AppVolume.state = () => ({ level: vol, route: player === routed ? 'mixer' : 'direct', setsVolume: canSetVolume, directVolume: direct.volume,
+    mixerLevel: routedGain ? routedGain.gain.value : null, playing: !!playing && !player.paused, time: player.currentTime, reaches: volReaches() });
 
   // ---- state --------------------------------------------------------------------------
   let band = bands().find(b => b.id === saved.band) || bands()[1];
@@ -163,6 +216,25 @@
   #radio .top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
   #radio .brand { font-weight: 800; font-style: italic; letter-spacing: 0.22em; font-size: 15px; color: #e8eef4; }
   #radio .stripes { flex: 1; height: 14px; background: linear-gradient(#ffb84a 0 22%, transparent 22% 33%, #d9892a 33% 55%, transparent 55% 66%, #9a5a1c 66% 88%, transparent 88%); }
+  /* V152: the volume, made from the old three lines: lit up to the knob, dim past it. */
+  #radio .vol { flex: 1; min-width: 130px; height: 48px; position: relative; cursor: pointer; touch-action: none; outline: none; -webkit-tap-highlight-color: transparent; }
+  #radio .vol .vtrack { position: absolute; left: 15px; right: 15px; top: 0; bottom: 0; }
+  #radio .vol .vlines, #radio .vol .vlit { position: absolute; left: 0; top: 17px; height: 14px; background: linear-gradient(#ffb84a 0 22%, transparent 22% 33%, #d9892a 33% 55%, transparent 55% 66%, #9a5a1c 66% 88%, transparent 88%); }
+  #radio .vol .vlines { right: 0; opacity: 0.3; }
+  #radio .vol .vnotch i { position: absolute; width: 2px; margin-left: -1px; border-radius: 1px; background: #ffb84a; opacity: 0.3; }
+  #radio .vol .vnotch i.lit { opacity: 1; }
+  #radio .vol .vknob { position: absolute; top: 11px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffd08a, #ffb84a 55%, #d9892a);
+    box-shadow: 0 0 0 2px #14110c, 0 0 8px rgba(255,184,74,0.45); }
+  #radio .vol .vknob::after { content: ''; position: absolute; left: 12px; top: 6px; width: 2px; height: 14px; border-radius: 1px; background: #14110c; opacity: 0.7; }
+  #radio .vol:focus-visible .vknob { box-shadow: 0 0 0 2px #14110c, 0 0 0 4px #ffb84a; }
+  #radio .vol.na { opacity: 0.35; }
+  #radio .vol.fixed .vlit, #radio .vol.fixed .vnotch i.lit { opacity: 0.55; }
+  /* On a phone there isn't room beside the buttons, so the volume gets its own row under them. */
+  @media (max-width: 600px) {
+    #radio .top { flex-wrap: wrap; row-gap: 4px; }
+    #radio .top .x { margin-left: auto; }
+    #radio .vol { order: 9; flex: 1 0 100%; }
+  }
   #radio .x, #radio .pw { width: 52px; height: 44px; border-radius: 10px; border: 2px solid #ffb84a; background: #1e2a37; color: #ffb84a; font: 700 20px ui-monospace, Menlo, monospace; cursor: pointer; }
   #radio .x { position: relative; }   /* V82: a minimize mark (a bar low in the button), not an X: the radio keeps playing */
   #radio .x::after { content: ''; position: absolute; left: 50%; bottom: 11px; width: 22px; height: 4px; margin-left: -11px; border-radius: 2px; background: #ffb84a; }
@@ -190,7 +262,7 @@
   const el = document.createElement('div');
   el.id = 'radio'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="set">
-    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><button type="button" class="tab" data-mode="radio">RADIO</button><button type="button" class="tab" data-mode="tv">TV</button><span class="stripes"></span><button type="button" class="x" aria-label="Minimize"></button></div>
+    <div class="top"><button type="button" class="pw" aria-label="Power">⏻</button><button type="button" class="tab" data-mode="radio">RADIO</button><button type="button" class="tab" data-mode="tv">TV</button><div class="vol" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100"><div class="vtrack"><i class="vlines"></i><i class="vlit"></i><span class="vnotch"></span><i class="vknob"></i></div></div><button type="button" class="x" aria-label="Minimize"></button></div>
     <div class="radiobody"><div class="lcd"><div class="name">—</div><div class="sub">&nbsp;</div></div>
     <div class="dial"><canvas></canvas></div>
     <div class="row"><button type="button" class="step" data-step="-1" aria-label="Tune down">◀</button><div class="bands"></div><button type="button" class="step" data-step="1" aria-label="Tune up">▶</button></div>
@@ -208,6 +280,7 @@
     el.classList.toggle('tv', mode === 'tv');
     el.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
     if (mode === 'tv') { TV.show(); $('.pw').classList.toggle('on', TV.isOn()); } else render();
+    volShow();
   }
 
   function renderBands() {
@@ -246,12 +319,102 @@
     c.fillStyle = '#c0420e'; c.fillRect(nx - dpr * 1.5, 0, dpr * 3, H);
   }
   function render() { renderBands(); showStation(); drawDial(); }
+
+  // ---- the volume knob (V152) -------------------------------------------------------------
+  const volEl = $('.vol'), vtrack = $('.vtrack'), vknob = $('.vknob'), vlit = $('.vlit');
+  const NOTCHES = 11;
+  // Small amber notches above and below the lines, a little taller toward loud, lit up to the level.
+  $('.vnotch').innerHTML = Array.from({ length: NOTCHES }, (_, i) => {
+    const h = 4 + Math.round(i * 0.5), x = (i * 100 / (NOTCHES - 1)) + '%';
+    return `<i style="left:${x};top:${15 - h}px;height:${h}px"></i><i style="left:${x};top:33px;height:${h}px"></i>`;
+  }).join('');
+  const notches = el.querySelectorAll('.vnotch i');
+  function volShow() {
+    const pct = Math.round(vol * 100);
+    vknob.style.left = pct + '%'; vlit.style.width = pct + '%';
+    for (let k = 0; k < notches.length; k++) notches[k].classList.toggle('lit', (k >> 1) * 100 / (NOTCHES - 1) <= pct + 0.5);
+    const tv = mode === 'tv';
+    volEl.classList.toggle('na', tv);
+    const fixed = !tv && on && !!playing && !volReaches();
+    volEl.classList.toggle('fixed', fixed);
+    // A station the knob can't reach says so for as long as it plays.
+    if (fixed !== fixedShown) { fixedShown = fixed; if (fixed) volNote(OWN_VOL, true); else if (noteSticky) volNoteEnd(); }
+    volEl.setAttribute('aria-valuenow', String(pct));
+    volEl.setAttribute('aria-valuetext', tv ? 'The TV uses the device\'s volume buttons' : pct + ' percent');
+  }
+  const OWN_VOL = 'THIS STATION PLAYS AT THE DEVICE\'S OWN VOLUME · USE ITS VOLUME BUTTONS';
+  let noteTimer = null, noteEl = null, noteWas = '', noteSticky = false, fixedShown = false;
+  function volNoteEnd() { clearTimeout(noteTimer); if (noteEl) noteEl.textContent = noteWas; noteEl = null; noteSticky = false; }
+  function volNote(text, sticky) {
+    const hints = el.querySelectorAll('.hint'); let h = null;
+    for (let k = 0; k < hints.length; k++) if (hints[k].offsetParent !== null) h = hints[k];
+    if (!h) return;
+    if (noteEl && noteEl !== h) noteEl.textContent = noteWas;
+    if (noteEl !== h) { noteWas = h.textContent; noteEl = h; }
+    h.textContent = text; clearTimeout(noteTimer); noteSticky = !!sticky;
+    if (!sticky) noteTimer = setTimeout(() => { if (fixedShown && mode !== 'tv') { h.textContent = OWN_VOL; noteSticky = true; } else volNoteEnd(); }, 4000);
+  }
+  function applyVol() {
+    if (canSetVolume) { try { direct.volume = forceGain ? 1 : vol; } catch (e) {} }
+    if (routedGain && ac) { try { routedGain.gain.setTargetAtTime(vol, ac.currentTime, 0.03); } catch (e) { routedGain.gain.value = vol; } }
+    hiss(lastHiss);
+    for (let k = 0; k < volHooks.length; k++) { try { volHooks[k](vol); } catch (e) {} }
+    volShow();
+  }
+  function setVol(v, keep) {
+    vol = Math.max(0, Math.min(1, v));
+    if (vol > 0.98) vol = 1;                                              // easy to get back to full
+    applyVol();
+    if (keep) { try { localStorage.setItem(VKEY, String(Math.round(vol * 100) / 100)); } catch (e) {} }
+  }
+  // When a finger lets go: on an iPhone or iPad playing the direct way, turning it below full moves
+  // the station onto the mixer (a second of tuning in), since that's the only way it can get quieter.
+  function volDone() {
+    try { localStorage.setItem(VKEY, String(Math.round(vol * 100) / 100)); } catch (e) {}
+    if (mode === 'tv') return;
+    if (on && playing && player === direct && needsGain() && vol < 0.995) {
+      const want = pickPlayer(playing);
+      if (want !== direct) {
+        const url = playing; quiet(direct); player = want; status = 'buffering'; showStation();
+        player.src = url; player.play().catch(() => {});
+      } else volNote(OWN_VOL);
+    }
+    volShow();
+  }
+  const volAt = (x) => { const r = vtrack.getBoundingClientRect(); return r.width ? (x - r.left) / r.width : vol; };
+  let vdrag = false;
+  function volStart(x) {
+    wake();
+    if (mode === 'tv') { volNote('THE MOVIE\'S SOUND IS IN THE INTERNET ARCHIVE\'S PLAYER · USE THE DEVICE\'S VOLUME BUTTONS'); return false; }
+    vdrag = true; setVol(volAt(x)); return true;
+  }
+  volEl.addEventListener('touchstart', (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); volStart(e.touches[0].clientX); }, { passive: false });
+  volEl.addEventListener('touchmove', (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); if (vdrag) setVol(volAt(e.touches[0].clientX)); }, { passive: false });
+  const vEnd = (e) => { e.stopPropagation(); if (vdrag) { vdrag = false; volDone(); } };
+  volEl.addEventListener('touchend', vEnd, { passive: true });
+  volEl.addEventListener('touchcancel', vEnd, { passive: true });
+  volEl.addEventListener('mousedown', (e) => {
+    if (e.button) return; e.preventDefault(); e.stopPropagation(); if (!volStart(e.clientX)) return;
+    const mv = (ev) => { if (vdrag) setVol(volAt(ev.clientX)); };
+    const up = () => { window.removeEventListener('mousemove', mv, true); window.removeEventListener('mouseup', up, true); if (vdrag) { vdrag = false; volDone(); } };
+    window.addEventListener('mousemove', mv, true); window.addEventListener('mouseup', up, true);
+  });
+  volEl.addEventListener('click', (e) => e.stopPropagation());
+  volEl.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: -0.05, ArrowRight: 0.05, ArrowUp: 0.05, Home: -1, End: 1 }[e.key];
+    if (step === undefined) return;
+    e.preventDefault(); e.stopPropagation();
+    if (mode === 'tv') return volStart(0);
+    setVol(vol + step); volDone();
+  });
+  applyVol();
   // V108: keep redrawing while the tubes warm up or cool down, and now and then for the faint flicker.
   setInterval(() => { if (isOpen() && (window.TubeGlow && (TubeGlow.warming() || on))) drawDial(); }, 120);
 
   // ---- tuning -----------------------------------------------------------------------------
   let settleTimer = null;
-  function stopStream() { try { player.pause(); player.removeAttribute('src'); player.load(); } catch (e) {} playing = null; }
+  function quiet(a) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {} }
+  function stopStream() { quiet(direct); if (routed) quiet(routed); playing = null; }
   function tuneIn() {
     if (!on || !list.length) { stopStream(); hiss(0); return; }
     const n = nearest();
@@ -261,11 +424,11 @@
     if (playing === s.url) return showStation();
     stopStream(); playing = s.url; status = 'buffering';
     if (window.TV && TV.isOn()) TV.off();             // V107: never the TV and the radio at once
+    player = pickPlayer(s.url);
     player.src = s.url; current = s; retries = 0; mediaInfo(s);
     const p = player.play(); if (p && p.catch) p.catch(() => { if (playing === s.url) { status = 'dead'; hiss(0.35); showStation(); } });
-    saved.pos[band.id] = pos; save(); showStation();
+    saved.pos[band.id] = pos; save(); showStation(); volShow();
   }
-  player.addEventListener('playing', () => { status = 'live'; retries = 0; hiss(0); showStation(); try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} });
 
   // V81: the radio plays until it's turned off, wherever you are in the app (any scene, Kitchen,
   // the night clock) and when the iPad's screen goes dark. For that, the station is announced to
@@ -294,13 +457,26 @@
     retries++; clearTimeout(retryTimer);
     retryTimer = setTimeout(() => { if (!on || !current || playing !== current.url) return; player.src = current.url; player.play().catch(() => {}); }, 2500 * retries);
   }
-  player.addEventListener('stalled', retry);
-  player.addEventListener('ended', retry);
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && routed && ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
     if (document.visibilityState === 'visible' && on && playing && player.paused) player.play().catch(retry);
   });
-  player.addEventListener('waiting', () => { if (playing) { status = 'buffering'; showStation(); } });
-  player.addEventListener('error', () => { if (playing) { if (current && retries < 3 && status === 'live') return retry(); status = 'dead'; hiss(0.35); showStation(); } });
+  // Each stream player reports only while it's the one playing.
+  function hook(a) {
+    const mine = (f) => (e) => { if (a === player) f(e); };
+    a.addEventListener('playing', mine(() => { status = 'live'; retries = 0; hiss(0); showStation(); volShow(); try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} }));
+    a.addEventListener('stalled', mine(retry));
+    a.addEventListener('ended', mine(retry));
+    a.addEventListener('waiting', mine(() => { if (playing) { status = 'buffering'; showStation(); } }));
+    a.addEventListener('error', mine(() => {
+      if (!playing) return;
+      // V152: a station that won't go through the mixer (it doesn't allow it) plays the direct
+      // way instead, at the device's own volume.
+      if (a === routed && status !== 'live') { noGain[playing] = true; const url = playing; quiet(routed); player = direct; direct.src = url; direct.play().catch(() => { if (playing === url) { status = 'dead'; hiss(0.35); showStation(); } }); volShow(); volNote(OWN_VOL); return; }
+      if (current && retries < 3 && status === 'live') return retry(); status = 'dead'; hiss(0.35); showStation();
+    }));
+  }
+  hook(direct);
 
   function settle() {                                                      // glide onto the nearest station
     clearTimeout(settleTimer);
@@ -348,7 +524,7 @@
     const glide = () => { k += 0.12; pos = from + (to - from) * Math.min(1, k); drawDial(); hiss(Math.sin(Math.min(1, k) * Math.PI) * 0.8); showStation(); if (k < 1) settleTimer = setTimeout(glide, 30); else tuneIn(); };
     glide();
   }
-  function powerOff() { on = false; saved.on = false; save(); stopStream(); hiss(0); status = ''; showStation(); }
+  function powerOff() { on = false; saved.on = false; save(); stopStream(); hiss(0); status = ''; showStation(); volShow(); }
   el.addEventListener('click', (e) => {
     wake();
     const b = e.target.closest('button'); if (!b) return;
@@ -378,11 +554,11 @@
   }
   // Swipe down on the radio closes it. Touches on the radio never reach the scenes underneath.
   let sy = null, sx = 0;
-  el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; sy = e.target.closest('.dial, button, .guide') ? null : p.clientY; sx = p.clientX; e.stopPropagation(); }, { passive: true });
+  el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; sy = e.target.closest('.dial, button, .guide, .vol') ? null : p.clientY; sx = p.clientX; e.stopPropagation(); }, { passive: true });
   el.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
   el.addEventListener('touchend', (e) => { const p = e.changedTouches[0]; if (sy !== null && p.clientY - sy > 90 && p.clientY - sy > Math.abs(p.clientX - sx) * 1.5) close(); sy = null; e.stopPropagation(); }, { passive: true });
   for (const t of ['mousedown', 'mouseup', 'click']) el.addEventListener(t, (e) => e.stopPropagation());
-  el.addEventListener('mousedown', (e) => { if (!e.target.closest('.dial, button, .guide')) sy = e.clientY; });
+  el.addEventListener('mousedown', (e) => { if (!e.target.closest('.dial, button, .guide, .vol')) sy = e.clientY; });
   el.addEventListener('mouseup', (e) => { if (sy !== null && e.clientY - sy > 90) close(); sy = null; });
   document.addEventListener('keydown', (e) => { if (isOpen() && (e.key === 'Escape' || e.key === 'ArrowDown')) { e.stopImmediatePropagation(); close(); } }, true);
   window.addEventListener('resize', () => { if (isOpen()) drawDial(); });

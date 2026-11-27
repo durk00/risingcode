@@ -67,6 +67,18 @@ When a new NOAA alert comes in, a short, soft three-note chime plays once (`aler
 
 The horses graze the way horses do (V112): head down nearly all the time; every half minute to a minute and a half one slowly raises its head over a couple of seconds, looks around a while, and slowly lowers it again. There's a herd of 2 to 4 horses (V117), usually including a white one, with the run of a long paddock that goes well off the right edge of the picture, so who's in view is random: none, one or two, different ones at different times, wandering in and out slowly, grazing, heads coming up now and then. When he comes out to feed them, they come over and stand together near him. The paddock fence has a top rail in front now too, three rails high (V115). The horses have manes (V116): a neat, well-groomed band along the top of the neck with fine combed lines lying back, and a short forelock; silver-gray on the white horse, near black on the others.
 
+## Volume on the radio set (V152)
+
+The three orange lines on the radio set's top bar, between SPORTS and the minimize bar, are now the volume (`radio.js`): a round amber knob on the lines, with small amber notches above and below that light up to the level. Drag it or tap where you want it (touch on iPad and iPhone, mouse on a Chromebook; arrow keys work too). A drag on it never swipes the set closed or moves the scenes. On a phone it gets its own row under the buttons, since there's no room beside them. The level is kept on the device (`risingcode_volume`).
+
+What it controls:
+- **Radio stream.** On a Chromebook, Mac, PC or Android, the browser sets the stream's volume directly. iPhones and iPads ignore that, so there, below full, the stream plays through the page's own Web Audio mixer with a volume step (a GainNode). That needs the station to allow it (CORS); most do. A station that doesn't, or an HLS (.m3u8) stream, plays at the device's own volume, the knob's lit part dims, and the set says so. At full volume an iPhone or iPad plays every stream the old direct way, so the lock-screen playing is unchanged for anyone who never turns it down. Turning it below full while a station is playing directly on an iPhone or iPad moves it onto the mixer when you let go, with a second of tuning in.
+- **The hiss between stations** and **the screensaver's Santa sounds** follow the knob everywhere.
+- **The TV** can't: the movie plays in the Internet Archive's own player in a frame from archive.org, and a page can't reach inside another site's player. With the TV showing, the knob dims and a tap says to use the device's volume buttons.
+- **Weather alert chimes** stay at full on purpose.
+
+Add `?volroute=gain` to the address to try the iPhone/iPad mixer path on a computer.
+
 ## Sports on the radio set (V135, the Arena Pulse way since V139)
 
 `scores.js` adds a third button to the radio set, SPORTS, next to RADIO and TV: like flipping the radio over to the ballgame. It shows today's games straight from ESPN's scoreboard, one league at a time (NFL, MLB, NBA, NHL, COLLEGE FB, COLLEGE BB; the last league picked is remembered), in the radio's glowing display: the score while it's on or when it's final (the team ahead is brighter, not a different color), or the start time before. Tap a game to open it on ESPN and follow it play by play. It refreshes every minute while a game is on. If ESPN can't be reached it says NO SIGNAL instead of guessing. (V135 to V138 had you pick your teams from ESPN's team list; that list wouldn't load in the browser, so V139 went back to the plain scoreboard, the way Arena Pulse does it.)

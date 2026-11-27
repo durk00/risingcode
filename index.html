@@ -538,6 +538,15 @@
     } catch (e) { audio = null; }
   }
 
+  // V152: every Santa sound goes through one master level, set by the volume knob on the radio set.
+  let mainOut = null;
+  function master() {
+    if (!mainOut) {
+      mainOut = audio.createGain(); mainOut.gain.value = window.AppVolume ? AppVolume.get() : 1; mainOut.connect(audio.destination);
+      if (window.AppVolume) AppVolume.onChange((v) => { mainOut.gain.value = v; });
+    }
+    return mainOut;
+  }
   let bus = null;
   // V14: everything goes through one bus: straight out, and through a slight echo
   // (a quarter-second repeat that fades, a little darker each time).
@@ -546,8 +555,8 @@
     bus = audio.createGain(); bus.gain.value = 1;
     const delay = audio.createDelay(1), back = audio.createGain(), tone = audio.createBiquadFilter(), wet = audio.createGain();
     delay.delayTime.value = 0.24; back.gain.value = 0.32; tone.type = 'lowpass'; tone.frequency.value = 3500; wet.gain.value = 0.35;
-    bus.connect(audio.destination);
-    bus.connect(delay); delay.connect(tone); tone.connect(back); back.connect(delay); tone.connect(wet); wet.connect(audio.destination);
+    bus.connect(master());
+    bus.connect(delay); delay.connect(tone); tone.connect(back); back.connect(delay); tone.connect(wet); wet.connect(master());
     bus.wet = wet;
     return bus;
   }
@@ -600,7 +609,7 @@
 
   let noise = null, plain = null;
   function plainOut() {
-    if (!plain) { plain = audio.createGain(); plain.gain.value = 0.5; plain.connect(audio.destination); }
+    if (!plain) { plain = audio.createGain(); plain.gain.value = 0.5; plain.connect(master()); }
     return plain;
   }
   function noiseBuf() {
@@ -647,14 +656,14 @@
       v.gain.setValueAtTime(0.0001, t);
       v.gain.exponentialRampToValueAtTime(gain * g, t + 0.002);
       v.gain.exponentialRampToValueAtTime(0.0001, t + 0.09 + Math.random() * 0.08);
-      o.connect(v).connect(audio.destination); o.start(t); o.stop(t + 0.2);
+      o.connect(v).connect(master()); o.start(t); o.stop(t + 0.2);
     });
     const src = audio.createBufferSource(), bp = audio.createBiquadFilter(), v = audio.createGain();
     src.buffer = noiseBuf(); bp.type = 'bandpass'; bp.frequency.value = 8000; bp.Q.value = 2;
     v.gain.setValueAtTime(0.0001, t);
     v.gain.exponentialRampToValueAtTime(gain * 0.5, t + 0.002);
     v.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    src.connect(bp).connect(v).connect(audio.destination); src.start(t); src.stop(t + 0.08);
+    src.connect(bp).connect(v).connect(master()); src.start(t); src.stop(t + 0.08);
   }
   function icicles(t0) {
     for (let i = 0; i < 22; i++) {
