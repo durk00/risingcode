@@ -15,17 +15,18 @@
 //   MY CORNER the personal wildcard: one thing picked for this household's own
 //             interests. Off or Verses for the week (V149: the Poem of the day and
 //             What can I make? placeholders are gone). The pick is remembered on this device.
-//   SHIELD (V148) at the very bottom, under My Corner: a white button, SHIELD in big letters and
-//             Consumer Protection under it, that opens shield.html (Shield's checks from public
+//   SHIELD (V148) at the very bottom, under My Corner: opens shield.html (Shield's checks from public
 //             records, no AI). It replaces V146's LOOK IT UP section, so there is one way in.
+//             V150: a SHIELD heading like the other sections, and a box styled like the other menu
+//             boxes: an amber shield, Consumer Protection, BUILT INTO OUTSIDE IN under it.
 // index.html opens and closes it and hands it the sound controls (Menu.connect).
 (() => {
   const WILDCARDS = [
     { id: 'none', name: 'Off', note: 'SHOW NOTHING HERE' },   // V48: was "Nothing"; it's the off switch for My Corner
     { id: 'verses', name: 'Verses for the week', note: 'KING JAMES' },   // V47, verses.js
   ];
-  // V148: a plain shield outline for the SHIELD button, dark on its white face.
-  const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#1d4f91" stroke="#0b1520" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // V148: a plain shield for the SHIELD button. V150: amber (the app's amber), dark check, on the dark box.
+  const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#ffa21f" stroke="#ffa21f" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#0b1520" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   let wild = 'none';
   // V149: a pick that's no longer offered (the old Poem of the day or What can I make?) falls back to Off,
   // and the stale pick is cleared so this device remembers Off from now on.
@@ -79,15 +80,15 @@
   #menu .em .disc svg { width: 30px; height: 30px; display: block; }
   #menu .em:active { background: #1e2a37; }
   @media (max-width: 380px) { #menu .em { font-size: 13px; letter-spacing: 0.06em; padding-right: 10px; gap: 7px; } #menu header.three { gap: 6px; } }
-  /* V148: SHIELD, a white button at the bottom of the menu (William's spot, under My Corner).
-     Dark text on white so it reads on the dark menu; a full-width row, tall enough for a finger. */
-  #menu .shieldbtn { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 14px 20px; min-height: 76px;
-    border-radius: 12px; background: #ffffff; color: #0b1520; border: 2px solid #ffffff; text-decoration: none;
-    cursor: pointer; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
-  #menu .shieldbtn:active { background: #dfe6ec; border-color: #dfe6ec; }
-  #menu .shieldbtn svg { flex-shrink: 0; width: 40px; height: 46px; display: block; }
-  #menu .shieldbtn .t { display: block; font: 800 26px/1.05 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; }
-  #menu .shieldbtn .s { display: block; margin-top: 5px; font: 600 13px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #3a4a5a; }
+  /* V148: SHIELD at the bottom of the menu (William's spot, under My Corner).
+     V150: styled like the other menu boxes (dark, thin border, same font and corners) instead of white. */
+  #menu .shieldbtn { display: flex; align-items: center; gap: 14px; padding: 14px 16px; min-height: 56px;
+    border-radius: 10px; background: #121a23; color: #e8eef4; border: 2px solid #243241; text-decoration: none;
+    font: 600 16px ui-monospace, monospace; cursor: pointer; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  #menu .shieldbtn:active { background: #1e2a37; border-color: #ffffff; }
+  #menu .shieldbtn svg { flex-shrink: 0; width: 26px; height: 30px; display: block; }
+  #menu .shieldbtn .t { display: block; }
+  #menu .shieldbtn .s { display: block; color: #93a4b4; font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
@@ -193,7 +194,9 @@
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
       ${wild === 'verses' ? versesHtml() : ''}
-      <a class="shieldbtn" href="shield.html" aria-label="Shield, Consumer Protection: look up restaurants, vehicles, contractors and businesses in public records">${SHIELD_MARK}<span><span class="t">SHIELD</span><span class="s">Consumer Protection</span></span></a>
+      <h2>SHIELD</h2>
+      <p class="help">Look up restaurants, vehicles, contractors and businesses in public records.</p>
+      <a class="shieldbtn" href="shield.html" aria-label="Shield, Consumer Protection, built into Outside In: look up restaurants, vehicles, contractors and businesses in public records">${SHIELD_MARK}<span><span class="t">Consumer Protection</span><span class="s">BUILT INTO OUTSIDE IN</span></span></a>
       <footer>TAP ✕ TO CLOSE, OR AT THE BOTTOM GIVE IT A GOOD SWIPE UP</footer></div>`;
   }
   // THE HIDDEN g SWITCH (V71): tap the word MENU 5 times quickly to turn the g page on (or off)
