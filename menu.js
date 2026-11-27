@@ -19,6 +19,7 @@
 //             records, no AI). It replaces V146's LOOK IT UP section, so there is one way in.
 //             V150: a SHIELD heading like the other sections, and a box styled like the other menu
 //             boxes: an amber shield, Consumer Protection, BUILT INTO OUTSIDE IN under it.
+//             V156: the version (V156) on one more small line under BUILT INTO OUTSIDE IN.
 // index.html opens and closes it and hands it the sound controls (Menu.connect).
 (() => {
   const WILDCARDS = [
@@ -27,6 +28,9 @@
   ];
   // V148: a plain shield for the SHIELD button. V150: amber (the app's amber), dark check, on the dark box.
   const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#ffa21f" stroke="#ffa21f" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#0b1520" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // V156: the app's version on its own line under BUILT INTO OUTSIDE IN, read from the home screen's
+  // hint line (index.html) so the two always agree and only one place needs the number changed.
+  const appVersion = () => { const h = document.getElementById('hint'); const m = h && h.textContent.match(/\bV\d+\b/); return m ? m[0] : 'V156'; };
   let wild = 'none';
   // V149: a pick that's no longer offered (the old Poem of the day or What can I make?) falls back to Off,
   // and the stale pick is cleared so this device remembers Off from now on.
@@ -89,6 +93,7 @@
   #menu .shieldbtn svg { flex-shrink: 0; width: 26px; height: 30px; display: block; }
   #menu .shieldbtn .t { display: block; }
   #menu .shieldbtn .s { display: block; color: #93a4b4; font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
+  #menu .shieldbtn .s.v { margin-top: 3px; opacity: 0.8; }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
@@ -199,7 +204,7 @@
       ${wild === 'verses' ? versesHtml() : ''}
       <h2>SHIELD</h2>
       <p class="help">Look up restaurants, vehicles, contractors and businesses in public records.</p>
-      <a class="shieldbtn" href="shield.html" aria-label="Shield, Consumer Protection, built into Outside In: look up restaurants, vehicles, contractors and businesses in public records">${SHIELD_MARK}<span><span class="t">Consumer Protection</span><span class="s">BUILT INTO OUTSIDE IN</span></span></a>
+      <a class="shieldbtn" href="shield.html" aria-label="Shield, Consumer Protection, built into Outside In: look up restaurants, vehicles, contractors and businesses in public records">${SHIELD_MARK}<span><span class="t">Consumer Protection</span><span class="s">BUILT INTO OUTSIDE IN</span><span class="s v">${appVersion()}</span></span></a>
       <footer>TAP ✕ TO CLOSE, OR AT THE BOTTOM GIVE IT A GOOD SWIPE UP</footer></div>`;
   }
   // THE HIDDEN g SWITCH (V71): tap the word MENU 5 times quickly to turn the g page on (or off)
