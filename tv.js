@@ -97,6 +97,26 @@
      browser gives the page. */
   .tvbody .screen.big { box-shadow: 0 0 0 200px #000; }
   .tvbody .screen.big .shrink { display: flex; }
+  /* V156: the Internet Archive's player puts its logo in its own top right corner, right where the
+     shrink button sat, so the logo peeked out from behind it. In full screen the player now steps
+     aside and leaves the button a black lane of its own: down the right side when the screen is
+     wider than tall (the film is pillarboxed there anyway, so it loses nothing), across the top
+     when it's taller than wide. The button sits in the middle of that lane, inside the safe area,
+     and covers nothing of the player's. */
+  .tvbody .screen.big, .tvbody .screen.big .pic { background: #000; }
+  .tvbody .screen:fullscreen, .tvbody .screen:fullscreen .pic { background: #000; }
+  .tvbody .screen:-webkit-full-screen, .tvbody .screen:-webkit-full-screen .pic { background: #000; }
+  .tvbody .screen.big .pic { right: calc(84px + env(safe-area-inset-right, 0px)); }
+  .tvbody .screen:fullscreen .pic { right: calc(84px + env(safe-area-inset-right, 0px)); }
+  .tvbody .screen:-webkit-full-screen .pic { right: calc(84px + env(safe-area-inset-right, 0px)); }
+  .tvbody .screen.big .shrink { top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .tvbody .screen:fullscreen .shrink { top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .tvbody .screen:-webkit-full-screen .shrink { top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+  @media (orientation: portrait) {
+    .tvbody .screen.big .pic { right: 0; top: calc(84px + env(safe-area-inset-top, 0px)); }
+    .tvbody .screen:fullscreen .pic { right: 0; top: calc(84px + env(safe-area-inset-top, 0px)); }
+    .tvbody .screen:-webkit-full-screen .pic { right: 0; top: calc(84px + env(safe-area-inset-top, 0px)); }
+  }
   .tvbody .titlerow { display: flex; align-items: center; gap: 12px; margin: 10px 2px; }
   .tvbody .title { flex: 1; min-width: 0; min-height: 44px; }
   .tvbody .title .name { font-size: 20px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 8px rgba(255,184,74,0.45); }
@@ -111,7 +131,7 @@
 `;
   document.head.appendChild(css);
 
-  let root = null, opts = {}, ch = CHANNELS.find(c => c.id === saved.ch) || CHANNELS[1], list = [], idx = 0, on = false, loading = false, err = false, staticTimer = null;
+  let root = null, opts = {}, ch = CHANNELS.find(c => c.id === saved.ch) || CHANNELS[0], list = [], idx = 0, on = false, loading = false, err = false, staticTimer = null;
   const $ = (s) => root.querySelector(s);
   const scr = () => $('.screen .pic');
 
@@ -192,8 +212,11 @@
     try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
   }
   function off() { if (on) { on = false; screenMsg(''); render(); } }   // V107: the radio turns the TV off when it starts playing
+  // V156: turning the set on brings up the first movie in the TV GUIDE for the channel it's on
+  // (the 30s the first time), loaded in the Archive's player and ready for a tap on ▶. Picking a
+  // channel or flipping with ◀ ▶ still goes back to where you were on that channel.
   function power() {
-    if (on) { on = false; screenMsg(''); render(); } else pick(ch.id);
+    if (on) { on = false; screenMsg(''); render(); } else { saved.idx[ch.id] = 0; save(); pick(ch.id); }
     return on;
   }
 
