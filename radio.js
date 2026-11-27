@@ -29,6 +29,12 @@
 // The TV can't be turned down from here: the movie plays in the Internet Archive's own player,
 // and a page isn't allowed to reach inside another site's player. With the TV showing, the knob
 // dims and a tap on it says to use the device's volume buttons.
+// V154: on an iPhone or iPad the knob is grayed out the same way, and a tap on it says to use the
+// side volume buttons. Apple's browser engine (Safari, and Chrome and every other browser there,
+// which all run on it) won't let a page turn a live station down, and the mixer way around that
+// didn't work on William's iPhone. So the radio plays there the plain way, at the device's own
+// volume, as it always did, which keeps it playing with the screen locked or in the background.
+// The knob still works as before on a Chromebook, Android, a Mac or a PC.
 (() => {
   const KEY = 'risingcode_radio';
   const MIRRORS = ['de1', 'de2', 'fi1', 'nl1', 'at1'].map(s => `https://${s}.api.radio-browser.info`).concat('https://all.api.radio-browser.info');
@@ -135,8 +141,16 @@
 
   // ---- sound: the stream, and the hiss between stations --------------------------------
   const VKEY = 'risingcode_volume';
+  // V154: an iPhone or iPad, in any browser: the iPhone/iPad/iPod name, or an iPad that says it's a
+  // Mac (iPadOS 13 and later) but has a touch screen. Older iPads on old iOS say "iPad" outright.
+  // ?volapple on the address makes a computer act like one, for testing.
+  const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (/Mac/.test(navigator.platform || '') && ((navigator.maxTouchPoints || 0) > 1 || 'ontouchend' in document)) ||
+    /[?&]volapple(&|$)/.test(location.search);
   let vol = 1;
-  try { const v = parseFloat(localStorage.getItem(VKEY)); if (v >= 0 && v <= 1) vol = v; } catch (e) {}
+  // On an iPhone or iPad the level stays at full, so a level saved by an earlier version can't
+  // leave the hiss and the Santa sounds turned down with no knob to bring them back up.
+  if (!appleTouch) { try { const v = parseFloat(localStorage.getItem(VKEY)); if (v >= 0 && v <= 1) vol = v; } catch (e) {} }
   const volHooks = [];
   window.AppVolume = { get: () => vol, onChange: (f) => { volHooks.push(f); } };
   // Can this browser set a stream's volume?
@@ -147,12 +161,12 @@
   // changed a number Safari was about to undo: no tuning onto the mixer, no note. Now an Apple touch
   // device starts as "can't", and the answer is settled by reading the value again after that moment
   // (newer iPad software lets a page set volume, and then this says so and the plain way is used).
-  const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const volCheck = { apple: appleTouch, now: null, later: null };
   let canSetVolume = (() => {
     try {
       const a = document.createElement('audio'); a.volume = 0.5;
       const now = Math.abs(a.volume - 0.5) < 0.01; volCheck.now = now;
+      if (appleTouch) return false;                                     // V154: the knob is grayed out there anyway
       setTimeout(() => {
         let later = false; try { later = Math.abs(a.volume - 0.5) < 0.01; } catch (e) {}
         volCheck.later = later; canSetVolume = now && later;
@@ -162,7 +176,8 @@
     } catch (e) { return false; }
   })();
   const forceGain = /[?&]volroute=gain(&|$)/.test(location.search);   // for testing the iPad way on a computer
-  const needsGain = () => forceGain || !canSetVolume;
+  // V154: never on an iPhone or iPad: the station always plays the plain way there.
+  const needsGain = () => !appleTouch && (forceGain || !canSetVolume);
   function makePlayer(cors) {
     const a = new Audio(); a.preload = 'none'; a.setAttribute('playsinline', '');
     if (cors) a.crossOrigin = 'anonymous';
@@ -394,14 +409,16 @@
     vknob.style.left = pct + '%'; vlit.style.width = pct + '%';
     for (let k = 0; k < notches.length; k++) notches[k].classList.toggle('lit', (k >> 1) * 100 / (NOTCHES - 1) <= pct + 0.5);
     const tv = mode === 'tv';
-    volEl.classList.toggle('na', tv);
+    volEl.classList.toggle('na', tv || appleTouch);
     const fixed = !tv && on && !!playing && !volReaches();
     volEl.classList.toggle('fixed', fixed);
     // A station the knob can't reach says so for as long as it plays.
     if (fixed !== fixedShown) { fixedShown = fixed; if (fixed) volNote(OWN_VOL, true); else if (noteSticky) volNoteEnd(); }
     volEl.setAttribute('aria-valuenow', String(pct));
-    volEl.setAttribute('aria-valuetext', tv ? 'The TV uses the device\'s volume buttons' : pct + ' percent');
+    volEl.setAttribute('aria-valuetext', appleTouch ? 'Use the side volume buttons' : tv ? 'The TV uses the device\'s volume buttons' : pct + ' percent');
+    volEl.setAttribute('aria-disabled', appleTouch || tv ? 'true' : 'false');
   }
+  const APPLE_VOL = 'ON AN IPHONE OR IPAD, USE THE SIDE VOLUME BUTTONS';
   const OWN_VOL = 'THIS STATION PLAYS AT THE DEVICE\'S OWN VOLUME · USE ITS VOLUME BUTTONS';
   let noteTimer = null, noteEl = null, noteWas = '', noteSticky = false, fixedShown = false;
   function volNoteEnd() { clearTimeout(noteTimer); if (noteEl) noteEl.textContent = noteWas; noteEl = null; noteSticky = false; }
@@ -415,7 +432,7 @@
     if (!sticky) noteTimer = setTimeout(() => { if (fixedShown && mode !== 'tv') { h.textContent = OWN_VOL; noteSticky = true; } else volNoteEnd(); }, 4000);
   }
   function applyVol() {
-    if (canSetVolume) { try { direct.volume = forceGain ? 1 : vol; } catch (e) {} }
+    if (canSetVolume && !appleTouch) { try { direct.volume = forceGain ? 1 : vol; } catch (e) {} }
     if (routedGain && ac) { try { routedGain.gain.setTargetAtTime(vol, ac.currentTime, 0.03); } catch (e) { routedGain.gain.value = vol; } }
     hiss(lastHiss);
     for (let k = 0; k < volHooks.length; k++) { try { volHooks[k](vol); } catch (e) {} }
@@ -425,11 +442,12 @@
     vol = Math.max(0, Math.min(1, v));
     if (vol > 0.98) vol = 1;                                              // easy to get back to full
     applyVol();
-    if (keep) { try { localStorage.setItem(VKEY, String(Math.round(vol * 100) / 100)); } catch (e) {} }
+    if (keep && !appleTouch) { try { localStorage.setItem(VKEY, String(Math.round(vol * 100) / 100)); } catch (e) {} }
   }
   // When a finger lets go: on an iPhone or iPad playing the direct way, turning it below full moves
   // the station onto the mixer (a second of tuning in), since that's the only way it can get quieter.
   function volDone() {
+    if (appleTouch) return;
     try { localStorage.setItem(VKEY, String(Math.round(vol * 100) / 100)); } catch (e) {}
     if (mode === 'tv') return;
     if (on && playing && player === direct && needsGain() && vol < 0.995) {
@@ -445,6 +463,7 @@
   let vdrag = false;
   function volStart(x) {
     wake();
+    if (appleTouch) { volNote(APPLE_VOL); return false; }
     if (mode === 'tv') { volNote('THE MOVIE\'S SOUND IS IN THE INTERNET ARCHIVE\'S PLAYER · USE THE DEVICE\'S VOLUME BUTTONS'); return false; }
     vdrag = true; setVol(volAt(x)); return true;
   }
@@ -464,7 +483,7 @@
     const step = { ArrowLeft: -0.05, ArrowRight: 0.05, ArrowUp: 0.05, Home: -1, End: 1 }[e.key];
     if (step === undefined) return;
     e.preventDefault(); e.stopPropagation();
-    if (mode === 'tv') return volStart(0);
+    if (mode === 'tv' || appleTouch) return volStart(0);
     setVol(vol + step); volDone();
   });
   applyVol();
@@ -643,8 +662,8 @@
     setInterval(() => {
       const st = window.AppVolume.state();
       let host = ''; try { host = st.station ? new URL(st.station).host : ''; } catch (e) {}
-      box.textContent = 'VOLDEBUG V153\n' +
-        'apple touch: ' + yn(st.check.apple) + ' · volume kept at once: ' + yn(st.check.now) + ' · kept later: ' + yn(st.check.later) + '\n' +
+      box.textContent = 'VOLDEBUG V154\n' +
+        'apple touch (knob grayed): ' + yn(st.check.apple) + ' · volume kept at once: ' + yn(st.check.now) + ' · kept later: ' + yn(st.check.later) + '\n' +
         'page can set volume: ' + yn(st.setsVolume) + '\n' +
         'knob: ' + Math.round(st.level * 100) + '% · route: ' + st.route + ' · reaches: ' + yn(st.reaches) + '\n' +
         'mixer: ' + st.context + (st.mixerLevel === null ? '' : ' · gain ' + st.mixerLevel.toFixed(2)) + ' · session: ' + st.session + '\n' +
