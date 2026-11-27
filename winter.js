@@ -148,11 +148,13 @@
       // snow shows when it's really coming down and not when it's only "a chance".
       // V58: read through WxNow, which checks the last several readings of the nearest stations
       // and builds the words from the measurements when NOAA leaves them blank.
-      let observed = '';
-      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) { observed = now.words; if (!stale()) windObs = windFrom(now.o); } }
+      let observed = '', obsSky = '';
+      try { const now = window.WxNow && await WxNow.latest(pt.properties.observationStations); if (now) { observed = now.words; obsSky = now.sky || ''; if (!stale()) windObs = windFrom(now.o); } }
       catch (e) { /* the forecast alone still drives the scene */ }
       const obsHeavy = /heavy/i.test(observed), obsLight = /light|drizzle|flurr/i.test(observed);
-      if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky; chance = false; }
+      // V157: the sky is what the nearby stations see between them (obsSky), not one farther station alone.
+      if (observed) { const ob = readWords(observed); fall = ob.fall; sky = ob.fall !== 'none' ? 'cloudy' : ob.sky === 'fog' ? 'fog' : obsSky ? readWords(obsSky).sky : ob.sky; chance = false;
+        if (ob.fall === 'none' && ob.sky !== 'fog' && obsSky) observed = obsSky; }
       // No station reading, and the forecast only says a chance: show the clouds, but nothing
       // falling. A false rain is worse than a missed one (V58).
       else if (chance && fall !== 'none') fall = 'none';
