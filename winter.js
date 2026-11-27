@@ -72,6 +72,12 @@
     while (noon - r > 12 * 3600e3) r += 864e5;
     return new Date(r);
   }
+  // V153: today's sunrise and sunset, worked out once a day (the hunt in homestead.js keeps to legal hours).
+  let sunDay = '', sunPair = null;
+  function sunToday(now = new Date()) {
+    const k = now.toDateString(); if (k !== sunDay) { sunDay = k; sunPair = { rise: +sunAt(true, now), set: +sunAt(false, now) }; }
+    return sunPair;
+  }
   function daylight(now = new Date()) {                // 0 night ... 1 day, with a one-hour blend at each end
     if (previewTime) return previewTime === 'day' ? 1 : 0;
     const up = sunAt(true, now), down = sunAt(false, now), half = 30 * 60e3;
@@ -658,7 +664,7 @@
     const life = window.Wildlife ? wildEnv() : null;
     // V78: the homestead (homestead.js): solar array, well and paddock behind the house line,
     // and the person who lives here in front of it.
-    const home = window.Homestead ? { W, H, t, now: new Date(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house, windy: windyNow(), ready: alertsChecked, sway: Sway } : null;
+    const home = window.Homestead ? { W, H, t, now: new Date(), sun: sunToday(), light, fall: wx.fall || 'none', rate: Math.max(wx.rate || 0, (wx.rain || 0) * 4), groundY, house, windy: windyNow(), ready: alertsChecked, sway: Sway } : null;
     sky(); if (life) Wildlife.sky(ctx, life); land(); if (home && window.Farm) Farm.back(ctx, home); if (home) Homestead.back(ctx, home); drawHouse(); snowLayers(); if (home) Homestead.front(ctx, home); if (life) Wildlife.ground(ctx, life); precipitation(); fogLayer();
     if (t % 3 === 0) for (const arr of [depth, roofDepth]) for (let i = 1; i < arr.length - 1; i++) {
       if (arr === roofDepth && roofY(i * COL) === null) continue;

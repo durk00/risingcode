@@ -15,10 +15,24 @@
 //     walking slowly from the door to the panels (clearing snow after a snowfall, or just
 //     checking them), to the well for a bucket of water, or in with the animals at feeding
 //     time. Gone in by dark.
+//   - GOOSE HUNTING (V153), only on days and hours the real season is open where we are
+//     (Centre County is in Pennsylvania's Resident Population goose zone): when a flock of geese
+//     goes over and he's in the house, he sees it out the back window now and then, comes out
+//     with his shotgun and stands in the yard. A few geese come in low; he raises the gun and
+//     takes one shot, with a small puff of smoke and a faint, far-off report. Some tries miss and
+//     the flock flares away, and he goes back in to wait for the next one. When he gets one, it
+//     tumbles down into the yard; he walks over, picks it up, carries it by the neck to the
+//     house and goes in. One goose a day, then he's done; the rest of the time he goes about his
+//     chores as before. Never swans, never on a Sunday.
+//     2026-27 seasons, Game Commission (Resident Population Zone): Canada geese Sept 1-25, Oct
+//     24-Nov 27, Dec 15-Jan 18, Jan 29-Feb 20; light (snow) geese Nov 6-Mar 10. Hours: half an
+//     hour before sunrise to sunset (to half an hour after sunset in the September season).
+//     Later years use the same dates until they're updated here.
+// Preview for checking: ?homestead=hunt sends him out to hunt now (and he gets one).
 // Preview for checking: ?homestead=work sends the person out now (to clear snow, if any;
 // add &wx=snow to see it).
 (() => {
-  const q = location.search, preview = /[?&]homestead=work\b/.test(q);
+  const q = location.search, preview = /[?&]homestead=work\b/.test(q), huntPreview = /[?&]homestead=hunt\b/.test(q);
   const rnd = (a, b) => a + Math.random() * (b - a);
   const load = new Array(16).fill(0);            // snow on each panel, 0 to 1
   let person = null, nextOuting = 0, lastT = 0, critters = null, critterDay = '';
@@ -273,12 +287,123 @@
       ctx.fillStyle = shade('#c8a858', light); ctx.beginPath(); ctx.ellipse(x - s * 0.12, y - s * 0.98, s * 0.025, s * 0.06, 0.4, 0, 6.3); ctx.fill();
     } else if (P.state === 'work' && P.task === 'well') {
       ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + s * 0.2, y - s * (0.85 + work * 0.1)); ctx.stroke();
+    } else if (P.task === 'hunt') {                                   // V153: the shotgun, and the goose
+      const d = P.dir === undefined ? -1 : P.dir, face = -d;                    // he faces the geese coming in
+      const bend = P.state === 'work' && P.target.pick;
+      const wood = shade('#6a4a2e', light), steel = shade('#2a2a2c', Math.max(0.4, light));
+      if (bend) {                                                                // reaching down for it
+        ctx.beginPath(); ctx.moveTo(x, y - s * 0.72); ctx.lineTo(x + face * s * 0.18, y - s * 0.12); ctx.stroke();
+        if (fallen) { fallen.x = x + face * s * 0.22; }
+      } else if (P.aim) {                                                        // shouldered, pointing up at them
+        const ang = -Math.PI / 2 + face * 0.75, kick = P.shot && +env.now - P.shot < 300 ? s * 0.03 : 0;
+        const bx = x + face * s * 0.05 - face * kick, by = y - s * 0.78, mx = bx + Math.cos(ang) * s * 0.55, my = by + Math.sin(ang) * s * 0.55;
+        ctx.beginPath(); ctx.moveTo(x, y - s * 0.74); ctx.lineTo(bx + Math.cos(ang) * s * 0.22, by + Math.sin(ang) * s * 0.22); ctx.stroke();
+        ctx.strokeStyle = wood; ctx.lineWidth = s * 0.045; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(ang) * s * 0.2, by + Math.sin(ang) * s * 0.2); ctx.stroke();
+        ctx.strokeStyle = steel; ctx.lineWidth = s * 0.025; ctx.beginPath(); ctx.moveTo(bx + Math.cos(ang) * s * 0.2, by + Math.sin(ang) * s * 0.2); ctx.lineTo(mx, my); ctx.stroke();
+        if (puff && !puff.placed) { puff.x = mx; puff.y = my; puff.placed = true; }
+      } else {                                                                   // carried, muzzle up, over the shoulder
+        ctx.beginPath(); ctx.moveTo(x - s * 0.08, y - s * 0.75); ctx.lineTo(x - s * 0.12 - sw, y - s * 0.45); ctx.moveTo(x + s * 0.06, y - s * 0.75); ctx.lineTo(x + s * 0.1, y - s * 0.6); ctx.stroke();
+        ctx.strokeStyle = wood; ctx.lineWidth = s * 0.045; ctx.beginPath(); ctx.moveTo(x + s * 0.12, y - s * 0.5); ctx.lineTo(x + s * 0.1, y - s * 0.68); ctx.stroke();
+        ctx.strokeStyle = steel; ctx.lineWidth = s * 0.025; ctx.beginPath(); ctx.moveTo(x + s * 0.1, y - s * 0.68); ctx.lineTo(x + s * 0.02, y - s * 1.12); ctx.stroke();
+      }
+      if (P.carryGoose && !bend) {                                               // the other hand, holding it by the neck
+        ctx.strokeStyle = shade('#7a2e26', light); ctx.lineWidth = s * 0.07;
+        ctx.beginPath(); ctx.moveTo(x - s * 0.08, y - s * 0.75); ctx.lineTo(x - s * 0.14, y - s * 0.46); ctx.stroke();
+        drawGoose(ctx, x - s * 0.14, y - s * 0.46, s, P.carryGoose, light, 'hang');
+      }
     } else {
       ctx.beginPath(); ctx.moveTo(x - s * 0.08, y - s * 0.75); ctx.lineTo(x - s * 0.12 - sw, y - s * 0.45); ctx.moveTo(x + s * 0.08, y - s * 0.75); ctx.lineTo(x + s * 0.12 + sw, y - s * 0.45); ctx.stroke();
       if (P.carrying) { ctx.fillStyle = shade('#6a6e74', light); ctx.fillRect(x + s * 0.08, y - s * 0.45, s * 0.12, s * 0.12); }
       if (P.task === 'paddock' && P.state === 'work') { ctx.fillStyle = shade('#c8a860', light); ctx.fillRect(x - s * 0.25, y - s * 0.55, s * 0.18, s * 0.12); }   // a flake of hay
     }
     ctx.restore();
+  }
+
+  // ---- goose hunting (V153) ------------------------------------------------------------
+  const SEASONS = {                                // month*100+day, Resident Population Zone, 2026-27
+    goose: [[901, 925, true], [1024, 1127], [1215, 1231], [101, 118], [129, 220]],
+    snow: [[1106, 1231], [101, 310]],
+  };
+  function huntOpen(env, kind) {
+    const d = env.now, md = (d.getMonth() + 1) * 100 + d.getDate();
+    if (d.getDay() === 0 || !SEASONS[kind]) return false;                      // Sundays closed; never swans
+    const seg = SEASONS[kind].find(([a, b]) => md >= a && md <= b); if (!seg) return false;
+    if (!env.sun) return false;
+    const t = +d, late = seg[2] ? 30 * 60e3 : 0;                                // the September season runs later
+    return t >= env.sun.rise - 30 * 60e3 && t <= env.sun.set + late;
+  }
+  const hunt = { day: '', bagged: false, tries: 0, nextLook: 0, seen: 0 };
+  let fallen = null, puff = null;
+  function standX(env, L) { const hx = env.house.x + env.house.w; return L.pad.x0 - Math.max(20, L.pad.x0 - hx) * 0.22; }   // past the trash can, by the fence
+  function planHunt(env, L, kind, dir) {
+    person = { x: L.door.x, y: L.door.base, state: 'walk', task: 'hunt', kind, dir, gun: true, carrying: false, stops: [] };
+    person.target = { x: standX(env, L), dwell: 600, hunt: true };          // he stays till a flock comes in
+  }
+  function stepHunt(env, L, P, now) {
+    if (P.state !== 'work') return;
+    const W = Wildlife;
+    if (P.target.hunt) {
+      if (!P.flock && !P.shot) {                                            // standing: a few come in low
+        P.waitTill = P.waitTill || now + rnd(8, 25) * 1000;
+        if (now < P.waitTill) return;
+        const S = L.S;
+        P.flock = W.huntFlock({ kind: P.kind, dir: P.dir, W: env.W, y: P.y - S * rnd(2.4, 3), ty: P.y - S * rnd(1.3, 1.7), size: S * 0.075, speed: env.W / 1500 });
+        return;
+      }
+      if (P.flock && !P.shot) {
+        const a = W.lead(P.flock);
+        if (!a) { P.shot = now; P.hit = false; return; }                      // they went by
+        const ahead = (P.x - a.x) * a.dir;                                     // how far the lead still has to come
+        P.aim = ahead < env.W * 0.3;
+        if (ahead < L.S * 0.15) {
+          P.shot = now; puff = { x: P.x + P.dir * -L.S * 0.3, y: P.y - L.S * 0.85, t: now };
+          P.hit = huntPreview || hunt.tries > 0 || Math.random() < 0.5;          // he always gets one by the second try
+          if (window.BirdCalls && BirdCalls.shot) BirdCalls.shot();
+          if (P.hit) { const b = W.down(P.flock, P.x); if (b) fallen = { ...b, vy: 0, vx: b.dir * b.speed * 0.5, rot: 0, landed: false }; else P.hit = false; }
+          else W.flare(P.flock);
+        }
+        return;
+      }
+      if (now - P.shot < 2500) return;                                       // lowers the gun, watches
+      P.aim = false;
+      if (P.hit && fallen) {
+        if (!fallen.landed) return;
+        P.target = { x: fallen.x, dwell: rnd(3, 5), pick: true }; P.state = 'walk'; return;
+      }
+      hunt.tries++; hunt.nextLook = now + rnd(15, 40) * 60e3;               // missed: back in to wait for another
+      P.target = { x: L.door.x, dwell: 0, home: true }; P.state = 'walk';
+    }
+  }
+  function stepFallen(env, L, dt) {
+    if (!fallen || fallen.landed) return;
+    const gy = env.groundY(Math.max(0, Math.min(env.W - 1, fallen.x))) + env.H * 0.025;
+    fallen.vy += L.S * 0.0009 * dt * 60; fallen.y += fallen.vy * dt * 60; fallen.x += fallen.vx * dt * 60; fallen.rot += 0.08 * dt * 60;
+    if (fallen.y >= gy) { fallen.y = gy; fallen.landed = true; fallen.rot = 0; fallen.x = Math.max(L.S * 0.3, Math.min(env.W - L.S * 0.3, fallen.x)); }
+  }
+  // A goose: dark brown with a black neck (Canada) or white with black wingtips (snow).
+  function drawGoose(ctx, x, y, s, kind, light, pose, rot) {
+    const body = kind === 'snow' ? '#eeece6' : '#6a5a4a', neck = kind === 'snow' ? '#eeece6' : '#1e1c1a';
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.lineCap = 'round';
+    if (pose === 'hang') {                                                   // carried by the neck
+      ctx.strokeStyle = shade(neck, light); ctx.lineWidth = s * 0.05; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, s * 0.18); ctx.stroke();
+      ctx.fillStyle = shade(body, light); ctx.beginPath(); ctx.ellipse(0, s * 0.3, s * 0.07, s * 0.14, 0, 0, 6.3); ctx.fill();
+      if (kind === 'snow') { ctx.fillStyle = shade('#1e1c1a', light); ctx.fillRect(-s * 0.06, s * 0.4, s * 0.12, s * 0.04); }
+    } else {                                                                  // lying in the grass, or tumbling down
+      ctx.fillStyle = shade(body, light); ctx.beginPath(); ctx.ellipse(0, -s * 0.05, s * 0.15, s * 0.06, 0, 0, 6.3); ctx.fill();
+      ctx.strokeStyle = shade(neck, light); ctx.lineWidth = s * 0.045; ctx.beginPath(); ctx.moveTo(s * 0.12, -s * 0.06); ctx.lineTo(s * 0.26, -s * 0.03); ctx.stroke();
+      if (kind === 'snow') { ctx.fillStyle = shade('#1e1c1a', light); ctx.fillRect(-s * 0.15, -s * 0.08, s * 0.05, s * 0.04); }
+    }
+    ctx.restore();
+  }
+  function drawHuntExtras(ctx, env, L) {
+    const light = env.light, s = L.S * 0.55;
+    if (fallen && !(person && person.carryGoose)) drawGoose(ctx, fallen.x, fallen.y, s, fallen.kind, light, 'lie', fallen.rot);
+    if (puff) {                                                               // a small grey puff, drifting and fading
+      const age = (+env.now - puff.t) / 1000;
+      if (age > 2.5) puff = null;
+      else { ctx.save(); ctx.globalAlpha = 0.45 * (1 - age / 2.5); ctx.fillStyle = shade('#c8c8c4', Math.max(0.5, light));
+        ctx.beginPath(); ctx.arc(puff.x + age * s * 0.15, puff.y - age * s * 0.1, s * (0.05 + age * 0.08), 0, 6.3); ctx.fill(); ctx.restore(); }
+    }
   }
 
   // ---- the person's day -------------------------------------------------------------
@@ -312,11 +437,25 @@
     if (!person) {
       if (env.light < 0.55) return;
       if (window.Farm && Farm.busy(env)) return;                                 // he's out on the tractor
+      // V153: geese going over, the season open and none in yet today: now and then he goes out.
+      const dk = env.now.toDateString(); if (hunt.day !== dk) { hunt.day = dk; hunt.bagged = false; hunt.tries = 0; }
+      if (window.Wildlife && Wildlife.flockOverhead && !hunt.bagged && (huntPreview || now >= hunt.nextLook)) {
+        const f = Wildlife.flockOverhead(env.W);
+        if (huntPreview && !hunt.tries && !fallen) { const k = huntOpen(env, 'goose') || !huntOpen(env, 'snow') ? 'goose' : 'snow'; planHunt(env, L, k, f ? f.dir : -1); return; }
+        if (f && f.id !== hunt.seen && huntOpen(env, f.kind)) {
+          hunt.seen = f.id;
+          if (Math.random() < 0.6) { planHunt(env, L, f.kind, f.dir); return; }
+        }
+      }
       if (!nextOuting) nextOuting = now + rnd(2, 25) * 60e3;
       if (preview || now >= nextOuting) { planOuting(env, L); nextOuting = now + rnd(20, 70) * 60e3; }
       return;
     }
     const P = person;
+    if (P.task === 'hunt') {                                                    // V153
+      if (P.target.hunt && !P.shot && P.state === 'work' && !huntOpen(env, P.kind) && !huntPreview) { P.target = { x: L.door.x, dwell: 0, home: true }; P.state = 'walk'; }
+      stepHunt(env, L, P, now);
+    }
     if (env.light < 0.4 && !P.target.home) { P.stops = []; P.target = { x: L.door.x, dwell: 0, home: true }; P.state = 'walk'; }   // in by dark
     const groundAt = (x) => env.groundY(Math.max(0, Math.min(env.W - 1, x))) + env.H * 0.025;
     if (P.state === 'walk') {
@@ -340,7 +479,9 @@
       load[c] = Math.max(0, load[c] - k * 1.2); load[c + 8] = Math.max(0, load[c + 8] - k * 1.2);
     }
     if (now >= P.until) {
-      if (P.target.home) { person = null; return; }
+      if (P.target.home) { if (P.carryGoose) { hunt.bagged = true; hunt.nextLook = Infinity; } person = null; return; }
+      if (P.target.pick) { P.carryGoose = fallen ? fallen.kind : P.kind; fallen = null; P.target = { x: L.door.x, dwell: 0, home: true }; P.state = 'walk'; return; }
+      if (P.target.hunt) return;                                                  // stepHunt moves him on
       if (P.target.fill) P.carrying = true;
       if (P.target.empty) P.carrying = false;                                    // watered the row
       P.target = P.stops.shift() || { x: L.door.x, dwell: 0, home: true }; P.state = 'walk';
@@ -360,9 +501,9 @@
     const nowMs = performance.now(), dt = lastT ? Math.min(0.1, (nowMs - lastT) / 1000) : 0.016; lastT = nowMs;
     const L = layout(env);
     if (preview && !person && !load.some(v => v > 0) && (env.fall === 'snow' || env.fall === 'mix')) load.fill(0.8);
-    stepSnow(env, dt); stepPerson(env, L, dt);
+    stepSnow(env, dt); stepPerson(env, L, dt); stepFallen(env, L, dt);
     drawArray(ctx, env, L); drawWell(ctx, env, L); drawPaddock(ctx, env, L, dt);
   }
-  function front(ctx, env) { drawHouseEnd(ctx, env); if (person) drawPerson(ctx, env, layout(env)); }
-  window.Homestead = { back, front, debug: () => ({ person: person && { task: person.task, state: person.state, x: Math.round(person.x) }, snow: load.map(v => +v.toFixed(2)), critters: (critters || []).map(c => c.kind), horses: (critters || []).filter(c => c.kind === 'horse').map(c => Math.round(c.x)) }) };
+  function front(ctx, env) { const L = layout(env); drawHouseEnd(ctx, env); drawHuntExtras(ctx, env, L); if (person) drawPerson(ctx, env, L); }
+  window.Homestead = { back, front, huntOpen, debug: () => ({ person: person && { task: person.task, state: person.state, x: Math.round(person.x), aim: !!person.aim, shot: !!person.shot, hit: !!person.hit, carrying: person.carryGoose || null }, fallen: fallen && { landed: fallen.landed, x: Math.round(fallen.x) }, hunt: { ...hunt }, snow: load.map(v => +v.toFixed(2)), critters: (critters || []).map(c => c.kind), horses: (critters || []).filter(c => c.kind === 'horse').map(c => Math.round(c.x)) }) };
 })();
