@@ -34,6 +34,13 @@
   }
   html, body { height: 100%; }
   body { background: var(--void); color: var(--frost); overflow: hidden; }
+  /* V155: Chrome on an iPhone, turned sideways, can lay the page out a notch-width narrower than
+     the screen (a known Chrome-on-iOS problem with viewport-fit=cover) and leave a white strip down
+     one side, most visible behind the full-screen TV. The page itself is black, and a black sheet
+     reaching well past every edge sits behind everything, so whatever the browser shows beyond the
+     page is black too. It adds no scrolling and changes nothing inside the screen. */
+  html { background: var(--void); }
+  body::before { content: ""; position: fixed; top: -200px; right: -200px; bottom: -200px; left: -200px; background: var(--void); z-index: -1; pointer-events: none; }
   /* Home-screen app on an iPhone or iPad (Nov 23): the page starts under the status bar, but
      iOS reports the screen as shorter by the status bar's height, which left an empty black
      band at the bottom. The canvas reaches that much further down, and is drawn at its real size. */
@@ -52,7 +59,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V154</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V155</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -860,6 +867,29 @@
   window.addEventListener('resize', resize);
   resize(); draw(); keepAwake();
   requestAnimationFrame(loop);
+})();
+</script>
+<script>
+// V155: add ?vpdebug to the address for a small box, bottom left, with the width the browser gives
+// the page next to the screen's own width and the notch margins. One look on a sideways iPhone
+// shows whether the browser is laying the page out narrower than the screen.
+(() => {
+  if (!/[?&]vpdebug\b/.test(location.search)) return;
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.85);color:#9fe39f;font:11px/1.35 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre';
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+  document.body.appendChild(probe); document.body.appendChild(box);
+  const show = () => {
+    const p = getComputedStyle(probe), v = window.visualViewport;
+    const portrait = screen.height > screen.width;
+    const sw = Math.round((innerWidth > innerHeight) === portrait ? screen.height : screen.width);
+    box.textContent = 'page ' + innerWidth + ' x ' + innerHeight + '   screen across ' + sw +
+      (v ? '\nvisible ' + Math.round(v.width) + ' x ' + Math.round(v.height) + ' at ' + Math.round(v.offsetLeft) + ', zoom ' + v.scale.toFixed(2) : '') +
+      '\nnotch margins L ' + parseFloat(p.paddingLeft) + ' R ' + parseFloat(p.paddingRight) + ' T ' + parseFloat(p.paddingTop) + ' B ' + parseFloat(p.paddingBottom);
+  };
+  show(); addEventListener('resize', show); if (window.visualViewport) visualViewport.addEventListener('resize', show);
+  setInterval(show, 1000);
 })();
 </script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "31a0becd0eca4bde9f25d48fe927b359"}'></script><!-- End Cloudflare Web Analytics -->

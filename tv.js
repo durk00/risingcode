@@ -92,6 +92,10 @@
   .tvbody .screen:fullscreen .shrink { display: flex; }
   .tvbody .screen:-webkit-full-screen .shrink { display: flex; }
   .tvbody .screen.big { position: fixed; inset: 0; z-index: 5; width: 100vw; height: 100vh; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+  /* V155: the stretched picture also throws a black margin far past its edges (it doesn't scroll or
+     take room), so on an iPhone turned sideways no strip beside it shows white, whatever width the
+     browser gives the page. */
+  .tvbody .screen.big { box-shadow: 0 0 0 200px #000; }
   .tvbody .screen.big .shrink { display: flex; }
   .tvbody .titlerow { display: flex; align-items: center; gap: 12px; margin: 10px 2px; }
   .tvbody .title { flex: 1; min-width: 0; min-height: 44px; }
