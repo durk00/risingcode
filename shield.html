@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Look It Up · Outside In</title>
+<style>
+  /* LOOK IT UP (V146): the Shield checks, rebuilt with no AI. Every fact on this page is read
+     from a public record and names where it came from; anything we can't read is said plainly,
+     with a link to look it up on the source's own site. Nothing here is made up or scored. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #080c12; color: #e8eef4; }
+  body { font: 500 16px/1.45 ui-monospace, Menlo, monospace; letter-spacing: 0.03em;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) 48px max(18px, env(safe-area-inset-left, 0px)); }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; }
+  h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: 0.08em; }
+  a { color: #e8eef4; }
+  .back { border: 2px solid #93a4b4; border-radius: 22px; padding: 8px 14px; text-decoration: none; font-weight: 700; white-space: nowrap; }
+  .help { color: #93a4b4; font-size: 13px; margin: 6px 0 14px; }
+  .areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 18px 0; }
+  .area { text-align: left; padding: 16px; border-radius: 10px; background: #121a23; color: #e8eef4; border: 2px solid #243241;
+    font: 700 16px ui-monospace, monospace; cursor: pointer; min-height: 72px; }
+  .area small { display: block; color: #93a4b4; font-size: 11px; font-weight: 600; margin-top: 6px; letter-spacing: 0.08em; }
+  .area.on { border-color: #fff; background: #1e2a37; }
+  section { display: none; } section.on { display: block; }
+  h2 { font-size: 14px; color: #93a4b4; letter-spacing: 0.12em; margin: 22px 0 8px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  input, select { flex: 1 1 180px; min-height: 48px; padding: 10px 12px; border-radius: 8px; border: 2px solid #243241; background: #0f161e; color: #e8eef4; font: 500 16px ui-monospace, monospace; }
+  select { -webkit-appearance: none; appearance: none; background: #0f161e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2393a4b4' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center; padding-right: 34px; }
+  button.go { min-height: 48px; padding: 0 20px; border-radius: 8px; border: 2px solid #fff; background: #1e2a37; color: #fff; font: 800 15px ui-monospace, monospace; letter-spacing: 0.1em; cursor: pointer; }
+  .card { padding: 14px 16px; margin: 8px 0; border-radius: 10px; background: #121a23; border: 2px solid #243241; }
+  .card b { display: block; font-size: 17px; }
+  .card .meta { color: #93a4b4; font-size: 13px; margin-top: 4px; }
+  .card .row { margin-top: 6px; font-size: 14px; }
+  .links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .links a { font-size: 13px; padding: 6px 10px; border: 1px solid #93a4b4; border-radius: 16px; text-decoration: none; }
+  .ext::after { content: " ↗"; }
+  .na { color: #c9a66b; }
+  .src { color: #93a4b4; font-size: 12px; margin-top: 10px; }
+  .lookup { padding: 12px 16px; margin: 8px 0; border-radius: 10px; border: 2px dashed #3a4a5a; }
+  .lookup b { display: block; }
+  .lookup span { color: #93a4b4; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>LOOK IT UP</h1><a class="back" href="./">‹ BACK</a></header>
+  <p class="help">Public records only. Anything read here names its source. Anything we can't read here says so, with a link to check it on the source's own site (marked ↗). Nothing is rated, scored or guessed.</p>
+  <div class="areas">
+    <button class="area" data-area="food">RESTAURANTS<small>FIND ONE NEAR YOU</small></button>
+    <button class="area" data-area="car">VEHICLES<small>RECALLS · COMPLAINTS · CRASH TESTS</small></button>
+    <button class="area" data-area="home">CONTRACTORS<small>HOME SERVICES · REGISTRATION · REVIEWS</small></button>
+    <button class="area" data-area="biz">ANY BUSINESS<small>VENDORS · STORES · LENDERS</small></button>
+  </div>
+
+  <section id="food">
+    <h2>RESTAURANTS NEAR YOU</h2>
+    <p class="help">Type a name ("Brothers") or a kind of food ("pizza", "chinese"), or leave it blank for everything nearby.</p>
+    <form id="foodForm"><input id="foodQ" placeholder="Name or kind of food" autocomplete="off">
+      <select id="foodR"><option value="5">Within 5 miles</option><option value="10" selected>Within 10 miles</option><option value="25">Within 25 miles</option></select>
+      <button class="go">SCAN</button></form>
+    <p class="help" id="foodWhere"></p>
+    <div id="foodOut"></div>
+  </section>
+
+  <section id="car">
+    <h2>VEHICLES</h2>
+    <p class="help">Enter a 17-character VIN, or the year, make and model.</p>
+    <form id="carForm"><input id="carVin" placeholder="VIN (optional)" maxlength="17" autocomplete="off" autocapitalize="characters">
+      <input id="carYear" placeholder="Year" inputmode="numeric" maxlength="4"><input id="carMake" placeholder="Make (Toyota)"><input id="carModel" placeholder="Model (Camry)">
+      <button class="go">SCAN</button></form>
+    <div id="carOut"></div>
+  </section>
+
+  <section id="home">
+    <h2>CONTRACTORS &amp; HOME SERVICES</h2>
+    <p class="help">Enter the company's name and town. None of these sites lets this page read its records, so each opens on its own site with your search filled in where it can be.</p>
+    <form id="homeForm"><input id="homeName" placeholder="Company name" autocomplete="off"><input id="homeCity" placeholder="Town, State"><button class="go">SCAN</button></form>
+    <div id="homeOut"></div>
+  </section>
+
+  <section id="biz">
+    <h2>ANY BUSINESS</h2>
+    <p class="help">A store, dealer, vendor or lender. Enter its name and town. Each check opens on the source's own site.</p>
+    <form id="bizForm"><input id="bizName" placeholder="Business name" autocomplete="off"><input id="bizCity" placeholder="Town, State"><button class="go">SCAN</button></form>
+    <div id="bizOut"></div>
+  </section>
+</div>
+<script src="shield.js"></script>
+</body>
+</html>

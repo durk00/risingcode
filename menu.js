@@ -10,6 +10,7 @@
 //             and linked. Only the YMCA of Centre County's local events calendar
 //             (its public Events API, which a browser may read) works from this page; no
 //             local news feed does (see README). Fetched when the menu opens, kept 15 min.
+//   LOOK IT UP (V146) a link to shield.html: Shield's checks rebuilt from public records, no AI
 //   MY CORNER the personal wildcard: one thing picked for this household's own
 //             interests (a poem of the day, a what-can-I-cook helper, ...). The
 //             pick is remembered on this device; what each one shows is still to
@@ -159,6 +160,9 @@
       ${allowHtml()}<p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
       <div class="opts">${Place.options().map(o => `<button class="opt${o.id === Place.mode() ? ' on' : ''}" data-place="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       ${localHtml()}
+      <h2>LOOK IT UP</h2>
+      <p class="help">Restaurants near you, a car's recalls and crash tests, and where to check a contractor or business. Public records only, nothing made up.</p>
+      <div class="opts"><a class="opt" href="shield.html" style="text-decoration:none">OPEN LOOK IT UP<small>RESTAURANTS · VEHICLES · CONTRACTORS · ANY BUSINESS</small></a></div>
       <h2>MY CORNER</h2>
       <p class="help">One thing just for this household. Picked here, remembered on this device.</p>
       <div class="opts">${WILDCARDS.map(w => `<button class="opt${w.id === wild ? ' on' : ''}" data-wild="${w.id}">${w.name}${w.note ? `<small>${w.note}</small>` : ''}</button>`).join('')}</div>
