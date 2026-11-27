@@ -110,9 +110,95 @@
 
   // ---- VEHICLES: NHTSA's public APIs (no key, readable by a page): vPIC decodes a VIN,
   // then recalls, owner complaints and NCAP crash-test stars for that year, make and model.
+  // V150: everything is shown in plain English, read straight from those records (no AI,
+  // nothing added), and the links go to NHTSA's own pages for people, not the raw API data.
   const NHTSA = 'https://api.nhtsa.gov';
-  const nhtsaDate = (s) => { const m = /^(\d\d)\/(\d\d)\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (s || ''); };
-  const stars = (v) => /^[1-5]$/.test(v || '') ? '★'.repeat(+v) + '☆'.repeat(5 - v) + ' (' + v + ' of 5)' : na('Not rated');
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fmtDate = (y, m, d) => (m >= 1 && m <= 12 && d >= 1 && d <= 31) ? MONTHS[m - 1] + ' ' + d + ', ' + y : '';
+  // NHTSA writes recall dates day first (17/01/2020) and complaint dates month first (11/11/2026).
+  const recallDate = (s) => { const m = /^(\d\d)\/(\d\d)\/(\d{4})/.exec(s || ''); return m ? fmtDate(+m[3], +m[2], +m[1]) : ''; };
+  const complaintDate = (s) => { const m = /^(\d\d)\/(\d\d)\/(\d{4})/.exec(s || ''); return m ? fmtDate(+m[3], +m[1], +m[2]) : ''; };
+  const complaintSort = (s) => { const m = /^(\d\d)\/(\d\d)\/(\d{4})/.exec(s || ''); return m ? +(m[3] + m[1] + m[2]) : 0; };
+  // NHTSA's part names come in capitals ("AIR BAGS: AIR BAG/RESTRAINT CONTROL MODULE"); read them as
+  // ordinary words, keeping the usual abbreviations in capitals.
+  const KEEP = { ABS: 1, ECU: 1, ECM: 1, PCM: 1, TPMS: 1, LED: 1, HID: 1, EV: 1, HVAC: 1, CVT: 1, VIN: 1, GPS: 1, USB: 1, ADAS: 1, AC: 1, DC: 1, '4WD': 1, AWD: 1, FWD: 1, RWD: 1, SRS: 1, USA: 1, US: 1, UK: 1 };
+  const words = (s) => String(s || '').toLowerCase().replace(/[a-z0-9]+/g, (w) => KEEP[w.toUpperCase()] ? w.toUpperCase() : w);
+  const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  const partName = (s) => { const g = String(s || '').split(':').map((p) => words(p).trim()).filter(Boolean); return g.length ? capFirst(g[0]) + (g.length > 1 ? ': ' + g.slice(1).join(', ') : '') : ''; };
+  const partList = (s) => String(s || '').split(',').map((p) => capFirst(words(p).trim())).filter(Boolean);
+  const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  const rated = (v) => /^[1-5]$/.test(String(v == null ? '' : v));
+  const starsTxt = (v) => `<span class="stars">${'★'.repeat(+v)}${'☆'.repeat(5 - v)}</span> ${v} star${+v === 1 ? '' : 's'}`;
+  const nhtsaVehicle = (y, mk, md) => `https://www.nhtsa.gov/vehicle/${enc(y)}/${enc(mk)}/${enc(md)}`;
+  const nhtsaId = (id) => 'https://www.nhtsa.gov/recalls?nhtsaId=' + enc(id);
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+
+  function recallCard(x) {
+    const warn = [];
+    if (x.parkIt) warn.push('NHTSA says don’t drive it: park it until it’s fixed.');
+    if (x.parkOutSide) warn.push('NHTSA says park it outside, away from buildings, until it’s fixed.');
+    const when = recallDate(x.ReportReceivedDate);
+    return `<div class="card"><b>${esc(partName(x.Component) || 'Recall')}</b>
+      <div class="meta">Recall ${esc(x.NHTSACampaignNumber)}${when ? ' · announced ' + esc(when) : ''}${x.Manufacturer ? ' · by ' + esc(clean(x.Manufacturer)) : ''}</div>
+      ${warn.map((w) => `<div class="row warn">${esc(w)}</div>`).join('')}
+      ${clean(x.Summary) ? `<div class="row"><span class="lbl">What’s wrong:</span> ${esc(clean(x.Summary))}</div>` : ''}
+      ${clean(x.Consequence) ? `<div class="row"><span class="lbl">What can happen:</span> ${esc(clean(x.Consequence))}</div>` : ''}
+      ${clean(x.Remedy) ? `<div class="row"><span class="lbl">The fix:</span> ${esc(clean(x.Remedy))}</div>` : ''}
+      ${x.overTheAirUpdate ? '<div class="row">NHTSA lists this fix as an over-the-air software update.</div>' : ''}
+      <div class="links">${ext(nhtsaId(x.NHTSACampaignNumber), 'This recall on NHTSA')}</div></div>`;
+  }
+
+  function complaintCard(c) {
+    const filed = complaintDate(c.dateComplaintFiled), happened = complaintDate(c.dateOfIncident);
+    const what = [];
+    if (c.crash) what.push('a crash');
+    if (c.fire) what.push('a fire');
+    if (+c.numberOfInjuries > 0) what.push(plural(+c.numberOfInjuries, 'injury', 'injuries'));
+    if (+c.numberOfDeaths > 0) what.push(plural(+c.numberOfDeaths, 'death'));
+    const parts = partList(c.components);
+    return `<div class="card cmp"><div class="meta">Filed ${esc(filed || 'date not given')}${happened && happened !== filed ? ' · happened ' + esc(happened) : ''}</div>
+      ${parts.length ? `<div class="row"><span class="lbl">Part:</span> ${esc(parts.join(', '))}</div>` : ''}
+      <div class="row">${what.length ? '<span class="warn">Reported ' + esc(what.join(', ')) + '.</span>' : 'No crash, fire or injury reported.'}</div>
+      ${clean(c.summary) ? `<div class="row said">“${esc(clean(c.summary))}”</div>` : ''}
+      <div class="links">${ext(nhtsaId(c.odiNumber), 'Complaint ' + c.odiNumber + ' on NHTSA')}</div></div>`;
+  }
+
+  function ratingCard(v, r, page) {
+    let rows = '';
+    if (!r) rows = '<div class="row">Couldn’t read this rating right now.</div>';
+    else {
+      const line = (label, val, extra) => rated(val) ? `<div class="row"><span class="lbl">${label}:</span> ${starsTxt(val)}${extra || ''}</div>` : '';
+      const sub = (pairs) => { const s = pairs.filter((p) => rated(p[1])).map((p) => p[0] + ' ' + plural(+p[1], 'star')); return s.length ? ' <span class="sub">(' + s.join(', ') + ')</span>' : ''; };
+      rows += `<div class="row"><span class="lbl">Overall:</span> ${rated(r.OverallRating) ? starsTxt(r.OverallRating) : na('Not rated')}</div>`;
+      rows += line('Front crash', r.OverallFrontCrashRating, sub([['driver', r.FrontCrashDriversideRating], ['passenger', r.FrontCrashPassengersideRating]]));
+      rows += line('Side crash', r.OverallSideCrashRating, sub([['front seat', r['combinedSideBarrierAndPoleRating-Front']], ['rear seat', r['combinedSideBarrierAndPoleRating-Rear']]]));
+      rows += line('Side pole crash', r.SidePoleCrashRating);
+      const risk = typeof r.RolloverPossibility === 'number' && r.RolloverPossibility > 0 ? ' <span class="sub">(rollover risk ' + (Math.round(r.RolloverPossibility * 1000) / 10) + '%)</span>' : '';
+      rows += line('Rollover', r.RolloverRating, risk);
+      if (rated(r.RolloverRating) && /tip/i.test(r.dynamicTipResult || '')) rows += `<div class="row sub">In the tip-over test: ${/^no tip$/i.test(r.dynamicTipResult) ? 'it didn’t tip' : esc(words(r.dynamicTipResult))}.</div>`;
+      const tech = [['Stability control', r.NHTSAElectronicStabilityControl], ['Forward collision warning', r.NHTSAForwardCollisionWarning], ['Lane departure warning', r.NHTSALaneDepartureWarning]]
+        .filter((t) => t[1] && !/not rated|^$/i.test(t[1])).map((t) => t[0] + ': ' + esc(words(t[1])));
+      if (tech.length) rows += `<div class="row sub">${tech.join(' · ')}</div>`;
+    }
+    return `<div class="card"><b>${esc(v.VehicleDescription)}</b>${rows}<div class="links">${ext(page, 'Ratings on NHTSA')}</div></div>`;
+  }
+
+  let cmpList = [], cmpShown = 0;
+  const CMP_STEP = 10;
+  function moreComplaints() {
+    const box = $('cmpList'), btn = $('cmpMore');
+    if (!box) return;
+    const next = cmpList.slice(cmpShown, cmpShown + CMP_STEP);
+    box.insertAdjacentHTML('beforeend', next.map(complaintCard).join(''));
+    cmpShown += next.length;
+    if (btn) {
+      const left = cmpList.length - cmpShown;
+      if (left > 0) btn.textContent = 'SHOW ' + Math.min(CMP_STEP, left) + ' MORE (' + left + ' left)';
+      else btn.parentNode.removeChild(btn);
+    }
+  }
+  $('carOut').addEventListener('click', (ev) => { if (ev.target && ev.target.id === 'cmpMore') { ev.preventDefault(); moreComplaints(); } });
+
   $('carForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const out = $('carOut');
@@ -125,55 +211,66 @@
         const v = ((await getJson('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/' + vin + '?format=json')).Results || [])[0] || {};
         if (!v.ModelYear || !v.Make || !v.Model) { out.innerHTML = '<p class="help">NHTSA couldn’t decode that VIN to a year, make and model. Check it, or enter them below it.</p>'; return; }
         year = v.ModelYear; make = v.Make; model = v.Model;
-        decoded = `<div class="card"><b>${esc([year, make, model, v.Trim].filter(Boolean).join(' '))}</b><div class="meta">${esc([v.BodyClass, v.DisplacementL ? (+v.DisplacementL).toFixed(1) + ' L' : '', v.FuelTypePrimary, v.PlantCity ? 'built in ' + v.PlantCity + (v.PlantCountry ? ', ' + v.PlantCountry : '') : ''].filter(Boolean).join(' · '))}</div>
-          <p class="src">Decoded by NHTSA vPIC (${ext('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/' + vin + '?format=json', 'record')}). Recalls below are for every ${esc(year + ' ' + make + ' ' + model)}; whether this exact car still has one open is a VIN check on ${ext('https://www.nhtsa.gov/recalls', 'NHTSA’s recall page')}.</p></div>`;
+        const facts = [];
+        if (v.BodyClass) facts.push(['Body', v.BodyClass]);
+        if (v.DisplacementL && isFinite(+v.DisplacementL)) facts.push(['Engine', (+v.DisplacementL).toFixed(1) + ' liter' + (v.EngineCylinders ? ', ' + v.EngineCylinders + ' cylinders' : '')]);
+        if (v.FuelTypePrimary) facts.push(['Fuel', v.FuelTypePrimary]);
+        if (v.DriveType) facts.push(['Drive', v.DriveType]);
+        if (v.PlantCity) facts.push(['Built in', words(v.PlantCity).replace(/(^|\s)\S/g, (c) => c.toUpperCase()) + (v.PlantCountry ? ', ' + words(v.PlantCountry).replace(/(^|\s)\S/g, (c) => c.toUpperCase()) : '')]);
+        decoded = `<div class="card"><b>${esc([year, make, model, v.Trim].filter(Boolean).join(' '))}</b>
+          ${facts.map((f) => `<div class="row"><span class="lbl">${esc(f[0])}:</span> ${esc(f[1])}</div>`).join('')}
+          <p class="src">VIN ${esc(vin)}, decoded by NHTSA. The recalls below are for every ${esc(year + ' ' + make + ' ' + model)}. To see whether this exact car still has one that hasn’t been fixed, enter the VIN on ${ext('https://www.nhtsa.gov/recalls', 'NHTSA’s recall page')}.</p></div>`;
       } catch (e) { out.innerHTML = '<p class="help">Couldn’t reach NHTSA right now. Try again in a minute.</p>'; return; }
     }
     if (!/^(19|20)\d\d$/.test(year) || !make || !model) { out.innerHTML = '<p class="help">Enter a VIN, or the year, make and model.</p>'; return; }
     out.innerHTML = decoded + '<p class="help">Reading NHTSA records…</p>';
     const q = `make=${enc(make)}&model=${enc(model)}&modelYear=${enc(year)}`;
-    const recallsUrl = `${NHTSA}/recalls/recallsByVehicle?${q}`, compUrl = `${NHTSA}/complaints/complaintsByVehicle?${q}`, ratUrl = `${NHTSA}/SafetyRatings/modelyear/${enc(year)}/make/${enc(make)}/model/${enc(model)}`;
-    const [rec, comp, rat] = await Promise.all([recallsUrl, compUrl, ratUrl].map((u) => getJson(u).catch(() => null)));
+    const page = nhtsaVehicle(year, make, model);
+    const [rec, comp, rat] = await Promise.all([`${NHTSA}/recalls/recallsByVehicle?${q}`, `${NHTSA}/complaints/complaintsByVehicle?${q}`,
+      `${NHTSA}/SafetyRatings/modelyear/${enc(year)}/make/${enc(make)}/model/${enc(model)}`].map((u) => getJson(u).catch(() => null)));
     const title = esc(`${year} ${make} ${model}`);
     let html = decoded;
+    html += `<div class="links top">${ext(page, 'The ' + year + ' ' + make + ' ' + model + ' on NHTSA')}</div>`;
     // recalls
-    html += `<h2>RECALLS</h2>`;
+    const recs = rec ? (rec.results || []) : [];
+    html += `<h2>RECALLS${rec ? ' (' + recs.length + ')' : ''}</h2>`;
     if (!rec) html += `<p class="help">Couldn’t read recalls right now.</p>`;
-    else if (!(rec.results || []).length) html += `<p class="help">NHTSA lists no recalls for the ${title}. (If the model name doesn’t match NHTSA’s spelling it finds nothing, so a VIN is surer.)</p>`;
-    else html += rec.results.map((x) => `<div class="card"><b>${esc(x.Component || 'Recall')}</b><div class="meta">NHTSA campaign ${esc(x.NHTSACampaignNumber)} · reported ${esc(nhtsaDate(x.ReportReceivedDate))}${x.parkIt ? ' · PARK IT: don’t drive' : ''}${x.parkOutSide ? ' · PARK OUTSIDE' : ''}</div>
-      <div class="row">${esc(x.Summary)}</div>${x.Remedy ? `<div class="row">Remedy: ${esc(x.Remedy)}</div>` : ''}</div>`).join('');
-    html += `<p class="src">Source: NHTSA recalls (${ext(recallsUrl, 'record')}).</p>`;
-    // complaints: counted from the records, not judged
+    else if (!recs.length) html += `<p class="help">NHTSA lists no recalls for the ${title}. (If the model name doesn’t match NHTSA’s spelling it finds nothing, so a VIN is surer.)</p>`;
+    else html += recs.map(recallCard).join('');
+    // complaints: counted from the records, then the owners' own words, newest first
     html += `<h2>OWNER COMPLAINTS</h2>`;
+    cmpList = []; cmpShown = 0;
     if (!comp) html += `<p class="help">Couldn’t read complaints right now.</p>`;
     else {
-      const list = comp.results || [];
+      const list = (comp.results || []).slice().sort((a, b) => complaintSort(b.dateComplaintFiled) - complaintSort(a.dateComplaintFiled));
       if (!list.length) html += `<p class="help">NHTSA lists no owner complaints for the ${title}.</p>`;
       else {
         const sum = (k) => list.reduce((n, c) => n + (+c[k] || 0), 0), cnt = (k) => list.filter((c) => c[k]).length;
         const parts = {};
-        list.forEach((c) => String(c.components || 'UNKNOWN').split(',').forEach((p) => { p = p.trim(); if (p) parts[p] = (parts[p] || 0) + 1; }));
+        list.forEach((c) => partList(c.components).forEach((p) => { parts[p] = (parts[p] || 0) + 1; }));
         const top = Object.keys(parts).sort((a, b) => parts[b] - parts[a]).slice(0, 5);
-        html += `<div class="card"><b>${list.length} complaint${list.length === 1 ? '' : 's'} filed with NHTSA</b>
-          <div class="row">Involving a crash: ${cnt('crash')} · a fire: ${cnt('fire')} · injuries reported: ${sum('numberOfInjuries')} · deaths reported: ${sum('numberOfDeaths')}</div>
-          <div class="row">Most-named parts: ${top.map((p) => esc(p.toLowerCase()) + ' (' + parts[p] + ')').join(', ')}</div>
-          <div class="meta">These are owners’ own reports, not findings. NHTSA doesn’t confirm them.</div></div>`;
+        html += `<div class="card"><b>${plural(list.length, 'complaint')} filed with NHTSA</b>
+          <div class="row">Involving a crash: ${cnt('crash')} · Involving a fire: ${cnt('fire')}</div>
+          <div class="row">Injuries reported: ${sum('numberOfInjuries')} · Deaths reported: ${sum('numberOfDeaths')}</div>
+          <div class="row"><span class="lbl">Parts named most:</span> ${top.map((p) => esc(p) + ' (' + parts[p] + ')').join(', ')}</div>
+          <div class="meta">These are owners’ own reports, in their own words. NHTSA doesn’t confirm them.</div></div>
+          <h2>NEWEST FIRST</h2><div id="cmpList"></div>${list.length > CMP_STEP ? '<button class="go more" id="cmpMore" type="button">SHOW MORE</button>' : ''}`;
+        cmpList = list;
       }
-      html += `<p class="src">Source: NHTSA complaints (${ext(compUrl, 'record')}).</p>`;
     }
     // crash tests
-    html += `<h2>CRASH-TEST STARS (NCAP)</h2>`;
+    html += `<h2>CRASH-TEST STARS</h2>`;
     if (!rat) html += `<p class="help">Couldn’t read crash-test ratings right now.</p>`;
     else if (!(rat.Results || []).length) html += `<p class="help">NHTSA has no crash-test ratings for the ${title}.</p>`;
     else {
       const det = await Promise.all(rat.Results.slice(0, 4).map((v) => getJson(`${NHTSA}/SafetyRatings/VehicleId/${v.VehicleId}`).then((j) => ({ v, r: (j.Results || [])[0] || {} }), () => ({ v, r: null }))));
-      html += det.map(({ v, r }) => `<div class="card"><b>${esc(v.VehicleDescription)}</b>${r ? `
-        <div class="row">Overall: ${stars(r.OverallRating)}</div><div class="row">Front crash: ${stars(r.OverallFrontCrashRating)} · Side crash: ${stars(r.OverallSideCrashRating)} · Rollover: ${stars(r.RolloverRating)}</div>` : '<div class="row">Couldn’t read this rating.</div>'}
-        <p class="src">Source: NHTSA NCAP (${ext(`${NHTSA}/SafetyRatings/VehicleId/${v.VehicleId}`, 'record')}).</p></div>`).join('');
+      html += det.map(({ v, r }) => ratingCard(v, r, page)).join('');
     }
+    html += `<p class="src">Read from NHTSA’s public records just now. Nothing here is scored, judged or added.</p>`;
     // value: no public source
     html += `<h2>PRICE &amp; VALUE</h2><div class="lookup"><b>${na('Not available here')}</b><span>There’s no free public record of what a used car is worth, so this page won’t show a number. Check it yourself: </span><div class="links">${ext('https://www.kbb.com/', 'Kelley Blue Book')}${ext('https://www.edmunds.com/', 'Edmunds')}${ext('https://www.jdpower.com/cars', 'J.D. Power')}</div></div>`;
     out.innerHTML = html;
+    if (cmpList.length) moreComplaints();
   });
 
   // ---- CONTRACTORS and ANY BUSINESS: lookups that open on the source's own site.
