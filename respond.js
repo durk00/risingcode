@@ -149,17 +149,59 @@
   reset();
 
   // ── VOICE (as in Respond) ────────────────────────────────────────────────
+  // How the microphone and the read-aloud share an iPhone (V151, after William's real-iPhone test of #167):
+  //   iPhone Safari can't listen and speak at the same time. When a step was read aloud while listening
+  //   was already on (it started the moment the protocol opened), the listener went deaf: the mic
+  //   indicator stayed on but nothing it heard came through, and it didn't end or report an error
+  //   (WebKit bug 317741, "speech recognition microphone source should keep its audio session active").
+  //   The tap on "Tap to hear the steps" only started the reading; it didn't touch the deaf listener,
+  //   and a tap on the screen was ignored because the listener still said it was on. Turning the mic
+  //   off and on worked because that throws the old listener away and starts a brand-new one, inside a
+  //   tap, after the reading has finished. So now, on iPhone and iPad:
+  //   - before a step is read, listening is fully stopped (abort), so the two never overlap;
+  //   - when the reading ends, a brand-new listener starts, retrying a few times with growing waits;
+  //   - any tap on the step screen that isn't a button does what the mic toggle did: throw the old
+  //     listener away and start a new one, right inside the tap.
+  // On a Chromebook listening stays on while the step is read, as before.
+  // Leaving Emergencies any way at all (✕ Close, Not now, Escape, the menu, the page hidden or switched
+  // away from, e.g. for a 911 call) stops the reading and every listener, and lets go of any mic stream,
+  // so the iPhone's mic indicator goes out. Nothing restarts on its own after that.
   const synth = window.speechSynthesis || null;
+  const pauseForSpeech = isIOS;
+  let talking = false, talkGen = 0, talkPoll = 0;
   function speak(text) {
     if (!synth || !window.SpeechSynthesisUtterance) return;
-    try { synth.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.92; u.pitch = 1; u.volume = 1; synth.speak(u); } catch (e) {}
+    try {
+      synth.cancel();
+      const g = ++talkGen;
+      if (pauseForSpeech) { talking = true; hardStop(); voiceStatus(); }
+      const u = new SpeechSynthesisUtterance(text); u.rate = 0.92; u.pitch = 1; u.volume = 1;
+      const done = () => { if (g !== talkGen) return; talkGen++; clearInterval(talkPoll); if (talking) { talking = false; afterTalk(); } };
+      u.onend = done; u.onerror = done;
+      synth.speak(u);
+      // iPhone Safari doesn't always fire onend, so watch speechSynthesis.speaking as well.
+      clearInterval(talkPoll);
+      const t0 = Date.now(); let seen = false;
+      talkPoll = setInterval(() => {
+        if (synth.speaking) seen = true;
+        const age = Date.now() - t0;
+        if ((seen && !synth.speaking && age > 300) || (!seen && age > 3000) || age > 120000) done();
+      }, 250);
+    } catch (e) { talking = false; }
   }
-  function hush() { if (synth) { try { synth.cancel(); } catch (e) {} } }
+  function hush() {
+    talkGen++; clearInterval(talkPoll);
+    const was = talking; talking = false;
+    if (synth) { try { synth.cancel(); } catch (e) {} }
+    return was;
+  }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null, recOn = false, recLive = false, recAt = 0;
-  const V = { heard: '', err: '', done: {} };   // what the voice box shows, and Respond.debug()
+  let rec = null, recLive = false, recAt = 0, retryT = 0, retryN = 0, watchT = 0;
+  const allRecs = new Set();      // every listener ever started and not yet thrown away
+  const streams = new Set();      // any getUserMedia stream that hasn't been stopped yet
+  const RETRY = [400, 1000, 2000, 3500];
+  const V = { heard: '', err: '', done: {}, paused: false };   // what the voice box shows, and Respond.debug()
   // iPhone dictation writes "What’s next" with a curly apostrophe; Chrome writes a straight one.
-  // The old check only knew the straight one, so on an iPhone the words were heard and ignored.
   const norm = (t) => String(t).toLowerCase().replace(/[\u2018\u2019\u02bc`\u00b4]/g, "'").replace(/[^a-z' ]+/g, ' ').replace(/\s+/g, ' ').trim();
   function command(t) {
     const n = norm(t), m = n.replace(/'/g, '');
@@ -168,51 +210,109 @@
     if (/\brepeat\b/.test(m)) return 'repeat';
     return '';
   }
+  const want = () => !!(SR && open && S.screen === 'proto' && S.voice && !V.paused && !document.hidden);
   function voiceStatus() {
     const v = el.querySelector('.vst'); if (!v) return;
     v.textContent = V.err ? 'Voice stopped (' + V.err + ') — tap the screen or the mic to listen again'
+      : talking ? 'Reading the step — listening starts when it’s done'
+      : V.paused ? 'Paused — tap the screen to listen again'
       : recLive ? (V.heard ? 'Listening · heard “' + V.heard + '”' : 'Listening…')
+      : rec ? 'Starting the mic…'
       : 'Not listening — tap the screen to start';
   }
-  function listen(on) {
-    if (!SR) return;
-    if (on && !recOn) {
-      try {
-        rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
-        V.done = {};
-        rec.onresult = (e) => {
-          // Every new result is checked (interim too, since iPhone Safari can hold back the final
-          // one in continuous mode); each result moves the step at most once.
-          for (let k = e.resultIndex; k < e.results.length; k++) {
-            const t = e.results[k][0].transcript; V.heard = norm(t).slice(-40);
-            const c = command(t);
-            if (c && !V.done[k]) { V.done[k] = 1; if (c === 'next') goNext(); else if (c === 'back') goBack(); else goRepeat(); }
-          }
-          voiceStatus();
-        };
-        rec.onstart = () => { recLive = true; V.err = ''; voiceStatus(); };
-        rec.onerror = (e) => {
-          V.err = (e && e.error) || 'error';
-          if (V.err === 'not-allowed' || V.err === 'service-not-allowed') { recOn = false; }
-          voiceStatus();
-        };
-        rec.onend = () => {
-          recLive = false; V.done = {};
-          if (recOn) { try { recAt = Date.now(); rec.start(); } catch (e) {} }
-          voiceStatus();
-        };
-        recOn = true; recAt = Date.now(); rec.start();
-      } catch (e) { V.err = 'could not start'; }
-    } else if (!on && recOn) {
-      recOn = false; recLive = false; try { rec.stop(); } catch (e) {} rec = null;
-    }
+  // Throw a listener away for good: no handlers left that could restart it, then abort it.
+  function killRec(r) {
+    allRecs.delete(r);
+    r.onresult = null; r.onerror = null; r.onend = null;
+    r.onstart = () => { try { r.abort(); } catch (e) {} };   // if it was still starting, end it the moment it does
+    try { r.abort(); } catch (e) {}
+    try { r.stop(); } catch (e) {}
   }
-  // iPhone Safari can refuse to restart listening on its own (no tap behind it), so any tap on a
-  // protocol screen starts it again when it has stopped.
+  function hardStop() {
+    clearTimeout(retryT); clearTimeout(watchT); retryT = 0;
+    const r = rec; rec = null; recLive = false;
+    if (r) killRec(r);
+  }
+  function releaseAll() {   // everything off: the reading, every listener, every mic stream
+    hush(); hardStop(); retryN = 0;
+    allRecs.forEach(killRec); allRecs.clear();
+    streams.forEach((st) => { try { st.getTracks().forEach((t) => t.stop()); } catch (e) {} }); streams.clear();
+  }
+  // Start a brand-new listener (never reuse an old one: on iPhone an old one can be deaf).
+  function startFresh() {
+    hardStop();
+    if (!want() || talking) return;
+    let r;
+    try { r = new SR(); } catch (e) { V.err = 'could not start'; voiceStatus(); return; }
+    rec = r; allRecs.add(r);
+    r.continuous = true; r.interimResults = true; r.lang = 'en-US';
+    V.done = {};
+    r.onresult = (e) => {
+      if (r !== rec) return;
+      retryN = 0;
+      // Every new result is checked (interim too, since iPhone Safari can hold back the final one in
+      // continuous mode); each result moves the step at most once.
+      for (let k = e.resultIndex; k < e.results.length; k++) {
+        const t = e.results[k][0].transcript; V.heard = norm(t).slice(-40);
+        const c = command(t);
+        if (c && !V.done[k]) { V.done[k] = 1; if (c === 'next') goNext(); else if (c === 'back') goBack(); else goRepeat(); }
+      }
+      voiceStatus();
+    };
+    r.onstart = () => {
+      if (r !== rec || !want() || talking) { killRec(r); return; }
+      clearTimeout(watchT); recLive = true; V.err = ''; voiceStatus();
+    };
+    r.onerror = (e) => {
+      if (r !== rec) return;
+      const err = (e && e.error) || 'error';
+      if (err === 'not-allowed' || err === 'service-not-allowed') { V.err = err; hardStop(); voiceStatus(); return; }
+      if (err !== 'no-speech' && err !== 'aborted') V.err = err;
+      voiceStatus();
+    };
+    r.onend = () => {
+      if (r !== rec) return;
+      const ranFor = recLive ? Date.now() - recAt : 0;
+      recLive = false; allRecs.delete(r); rec = null;
+      if (ranFor > 5000) retryN = 0;
+      retry();
+      voiceStatus();
+    };
+    recAt = Date.now();
+    try { r.start(); } catch (e) { allRecs.delete(r); rec = null; retry(); voiceStatus(); return; }
+    // If it never says it started, it's stuck: throw it away and try a new one.
+    clearTimeout(watchT);
+    watchT = setTimeout(() => { if (rec === r && !recLive) { hardStop(); retry(); voiceStatus(); } }, 2500);
+    voiceStatus();
+  }
+  function retry() {
+    clearTimeout(retryT); retryT = 0;
+    if (!want() || talking || V.err === 'not-allowed' || V.err === 'service-not-allowed') return;
+    if (retryN >= RETRY.length) { if (!V.err) V.err = 'no answer from the mic'; voiceStatus(); return; }
+    retryT = setTimeout(startFresh, RETRY[retryN++]);
+  }
+  function afterTalk() {   // the step has been read (iPhone): listen again with a brand-new listener
+    voiceStatus();
+    if (!want()) return;
+    retryN = 0; clearTimeout(retryT);
+    retryT = setTimeout(startFresh, RETRY[0]);
+  }
+  // Bring listening in line with the screen: on when a protocol step is showing (and nothing is being
+  // read on an iPhone), fully off otherwise.
+  function sync() {
+    if (!want()) { hardStop(); retryN = 0; return; }
+    if (talking) return;
+    if (!rec && !retryT) startFresh();
+  }
+  // A tap on the step screen (not a button) does what turning the mic off and on did: a new listener,
+  // started inside the tap. While a step is being read it waits; listening starts when the reading ends.
   function kick() {
-    if (!(open && S.screen === 'proto' && S.voice && SR) || recLive || Date.now() - recAt < 1500) return;
-    if (recOn && rec) { try { recAt = Date.now(); rec.start(); return; } catch (e) {} try { rec.abort(); } catch (e) {} }
-    recOn = false; rec = null; V.err = ''; listen(true);
+    if (!(SR && open && S.screen === 'proto' && S.voice)) return;
+    if (talking) return;
+    if (!isIOS && recLive) return;   // Chromebook: if it's listening, leave it alone
+    if (isIOS && recLive && Date.now() - recAt < 1200) return;   // it only just started; don't throw it away
+    V.paused = false; V.err = ''; retryN = 0;
+    startFresh();
   }
   function readStep(force) {
     if (!S.tts) return;
@@ -220,7 +320,6 @@
     const p = find(S.cat, S.id); const s = p && p.steps[S.step];
     if (s) speak('Step ' + (S.step + 1) + '. ' + s);
   }
-
   // ── SCREENS ──────────────────────────────────────────────────────────────
   const back = (act, label) => `<button type="button" class="back" data-act="${act}">${ARROW_L} ${esc(label)}</button>`;
   const closeBtn = '<button type="button" class="close" data-act="close">✕ Close</button>';
@@ -332,15 +431,14 @@
     const v = { terms: vTerms, home: vHome, health: vHealth, unsure: vUnsure, cats: vCats, scen: vScen, call911: v911, proto: vProto }[S.screen] || vHome;
     el.innerHTML = v();
     el.scrollTop = 0;
-    listen(open && S.screen === 'proto' && S.voice);
+    sync();
     voiceStatus();
   }
   function go(screen) {
     if (S.screen === 'proto' && screen !== 'proto') hush();
     S.screen = screen; S.list = false;
-    if (screen === 'proto') { S.step = 0; askMic(); }
+    if (screen === 'proto') { S.step = 0; askMic(); readStep(false); }   // read first, so an iPhone doesn't start listening only to stop for the reading
     render();
-    if (screen === 'proto') readStep(false);
   }
   // Respond asks for the microphone when a protocol opens, so "What's next?" can work.
   function askMic() {
@@ -349,7 +447,7 @@
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ audio: true })
-          .then((st) => st.getTracks().forEach((t) => t.stop()))
+          .then((st) => { st.getTracks().forEach((t) => t.stop()); streams.delete(st); })
           .catch(() => { S.voice = false; if (S.screen === 'proto') render(); });
       }
     } catch (e) {}
@@ -359,15 +457,14 @@
     else if (t.to === 'categories') go('cats');
     else { S.cat = t.cat; S.id = t.id; go('call911'); }
   }
-  function goNext() { if (S.screen !== 'proto') return; S.interacted = true; const p = find(S.cat, S.id); if (p && S.step < p.steps.length - 1) { S.step++; render(); readStep(false); } }
-  function goBack() { if (S.screen !== 'proto') return; S.interacted = true; if (S.step === 0) go('cats'); else { S.step--; render(); readStep(false); } }
-  function goRepeat() { if (S.screen !== 'proto') return; S.interacted = true; readStep(true); }
+  function goNext() { if (S.screen !== 'proto') return; S.interacted = true; const p = find(S.cat, S.id); if (p && S.step < p.steps.length - 1) { S.step++; readStep(false); render(); } }
+  function goBack() { if (S.screen !== 'proto') return; S.interacted = true; if (S.step === 0) go('cats'); else { S.step--; readStep(false); render(); } }
+  function goRepeat() { if (S.screen !== 'proto') return; S.interacted = true; readStep(true); voiceStatus(); }
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
     const b = e.target.closest && e.target.closest('[data-act]');
-    kick();
-    if (!b) return;
+    if (!b) { kick(); return; }   // a tap on the step screen itself: listen again (what the mic toggle did)
     const a = b.getAttribute('data-act');
     if (a === 'close') return close();
     if (a === 'accept') return go('home');          // the terms were accepted: Respond's home
@@ -384,25 +481,30 @@
     if (a === 'b911') return go('scen');
     if (a === 'proto') return go('proto');
     if (a === 'pcats') { hush(); return go('cats'); }
-    if (a === 'tts') { S.tts = !S.tts; if (!S.tts) hush(); return render(); }
-    if (a === 'voice') { S.voice = !S.voice; return render(); }
-    if (a === 'unlock') { S.interacted = true; render(); return readStep(true); }
+    if (a === 'tts') {
+      S.tts = !S.tts;
+      if (!S.tts && hush() && isIOS) { V.paused = false; V.err = ''; retryN = 0; }   // reading cut off: listen right away, inside this tap
+      return render();
+    }
+    if (a === 'voice') { S.voice = !S.voice; V.paused = false; V.err = ''; retryN = 0; if (!S.voice) hardStop(); return render(); }
+    if (a === 'unlock') { S.interacted = true; V.paused = false; V.err = ''; readStep(true); return render(); }
     if (a === 'pnext') return goNext();
     if (a === 'pback') return goBack();
     if (a === 'done') { hush(); return go('cats'); }
     if (a === 'list') { S.list = !S.list; return render(); }
-    if (a === 'jump') { S.step = +b.getAttribute('data-i'); S.list = false; render(); return readStep(false); }
+    if (a === 'jump') { S.step = +b.getAttribute('data-i'); S.list = false; readStep(false); return render(); }
   });
 
-  // ── OPEN / CLOSE ─────────────────────────────────────────────────────────
+  // ── OPEN / CLOSE ─────────────────────────────────────────────────────────────────────
   // Every time it opens it starts at the terms: nothing is shown until "Yes" is tapped again.
   function openR() {
-    reset(); open = true;
+    releaseAll();
+    reset(); open = true; V.paused = false; V.err = ''; V.heard = '';
     el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
     render();
   }
   function close() {
-    open = false; hush(); listen(false);
+    open = false; releaseAll();
     el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); el.innerHTML = '';
     reset();
   }
@@ -412,11 +514,25 @@
     e.stopImmediatePropagation();
     if (e.key === 'Escape') close();
   }, true);
+  // The page hidden (another app, the lock button, a 911 call, another tab) or left: stop reading and
+  // listening and let go of the mic. The step stays on screen; listening comes back only with a tap.
+  function away() {
+    if (open) { releaseAll(); V.paused = true; voiceStatus(); }
+    else releaseAll();
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); });
+  window.addEventListener('pagehide', away);
+  // If anything else ever hides the Emergencies screen without close(), treat it as closed.
+  if (window.MutationObserver) {
+    new MutationObserver(() => { if (open && !el.classList.contains('show')) close(); })
+      .observe(el, { attributes: true, attributeFilter: ['class'] });
+  }
 
   window.Respond = {
     mark: MARK,   // the Star of Life, drawn on the menu's EMERGENCIES entry (menu.js)
     open: openR, close, isOpen: () => open,
-    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step, listening: recLive, heard: V.heard, voiceError: V.err }),
+    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step, listening: recLive, starting: !!rec && !recLive,
+      talking, paused: V.paused, listeners: allRecs.size, heard: V.heard, voiceError: V.err }),
     _command: command,
   };
 })();

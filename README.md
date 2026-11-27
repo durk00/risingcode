@@ -260,3 +260,9 @@ On the Shield page's VEHICLES area, the "record" links used to open NHTSA's raw 
 
 Long text uses the iPad's and iPhone's own reading font so it's easier to read. Same kinds of code as the rest of the page, for older Safari. (The home screen shows V150 from this change.)
 
+
+## Emergencies voice on iPhone: one tap, and the mic goes off when you leave (V151)
+
+On a real iPhone, "What's next?" only worked after turning the mic off and on, and the mic indicator stayed on after leaving Emergencies. The cause: iPhone Safari can't listen and read aloud at the same time. Listening started as soon as a protocol opened, so when "Tap to hear the steps" read step 1, the listener went deaf: still on, hearing nothing, never ending (WebKit bug 317741). That tap didn't touch the listener, and a tap on the screen was ignored because the listener still said it was on. The mic toggle worked because it threw the old listener away and started a new one after the reading.
+
+Now, on iPhone and iPad (`respond.js`): listening stops completely before each step is read and a brand-new listener starts when the reading ends, retrying a few times with growing waits; a tap on the step screen (not on a button) does what the mic toggle did; and the voice line says "Reading the step — listening starts when it's done" while it waits. On a Chromebook listening stays on during the reading, as before. Leaving Emergencies any way at all (Categories then ✕ Close, Not now, Escape, the menu, or the page hidden or switched away from, for example for a 911 call) stops the reading, aborts every listener and stops any mic stream, and nothing restarts by itself. After the page was hidden the step stays on screen, and listening comes back with a tap. The protocol words, the disclaimer and the buttons are unchanged. (The home screen shows V151 from this change.)
