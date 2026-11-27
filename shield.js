@@ -1,10 +1,12 @@
 // LOOK IT UP (V146): Shield's checks rebuilt with no AI model. Two kinds of result only:
 //   READ HERE      a public record this page fetches and shows as it came, with its source
-//                  named and linked (OpenStreetMap for restaurants, NHTSA for vehicles).
+//                  named and linked (NHTSA for vehicles).
 //   LOOK IT UP ↗   a source that won't let a web page read it (BBB, review sites, Pennsylvania's
 //                  contractor and business registries). We open it on its own site with the
 //                  search filled in where its address allows, and never claim a result.
 // Anything with no public source (a fair price, a car's value) says "not available here".
+// V151: no separate Restaurants area. Restaurants are looked up under ANY BUSINESS (BBB, Google,
+//   Yelp, PA registry), #food opens ANY BUSINESS.
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -21,92 +23,15 @@
     } finally { if (timer) clearTimeout(timer); }
   }
 
-  // ---- areas: tap one to open it; the pick is remembered, and #food etc. opens one directly
-  const AREAS = ['food', 'car', 'home', 'biz'];
+  // ---- areas: tap one to open it; the pick is remembered, and #car etc. opens one directly
+  const AREAS = ['car', 'home', 'biz'];
   function show(a) {
     if (AREAS.indexOf(a) < 0) return;
     document.querySelectorAll('.area').forEach((b) => b.classList.toggle('on', b.getAttribute('data-area') === a));
     AREAS.forEach((x) => $(x).classList.toggle('on', x === a));
     try { localStorage.setItem('risingcode_lookup_area', a); } catch (e) {}
-    if (a === 'food') whereText();
   }
   document.querySelectorAll('.area').forEach((b) => b.addEventListener('click', () => show(b.getAttribute('data-area'))));
-
-  // ---- where "near you" is: the same spot the app's LOCATION setting uses (place.js)
-  const HOME = { lat: 40.8473, lon: -77.6858, name: 'Happy Valley, PA' };
-  function spot() {
-    try {
-      const s = JSON.parse(localStorage.getItem('risingcode_place') || '{}') || {};
-      if (s.mode !== 'home' && s.here && isFinite(s.here.lat) && isFinite(s.here.lon)) return { lat: +s.here.lat, lon: +s.here.lon, name: s.here.name ? String(s.here.name) : 'where this device is' };
-    } catch (e) {}
-    return HOME;
-  }
-  let fresh = null;   // a spot from "use where I am now", for this visit only
-  const near = () => fresh || spot();
-  function whereText() {
-    const p = near();
-    $('foodWhere').innerHTML = 'Searching around ' + esc(p.name) + '. ' +
-      (navigator.geolocation ? '<a href="#" id="useHere">Use where I am now</a>' : '');
-    const u = $('useHere');
-    if (u) u.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      $('foodWhere').textContent = 'Finding where you are…';
-      navigator.geolocation.getCurrentPosition((pos) => { fresh = { lat: pos.coords.latitude, lon: pos.coords.longitude, name: 'where you are now' }; whereText(); },
-        () => { $('foodWhere').textContent = 'Couldn’t get your location, so this searches around ' + spot().name + '.'; }, { timeout: 15000, maximumAge: 600000 });
-    });
-  }
-  function miles(a, b) {
-    const R = Math.PI / 180, x = (b.lon - a.lon) * R * Math.cos((a.lat + b.lat) / 2 * R), y = (b.lat - a.lat) * R;
-    return 3959 * Math.sqrt(x * x + y * y);
-  }
-
-  // ---- RESTAURANTS: OpenStreetMap through the public Overpass API (no key, readable by a page).
-  // The first server is the main one; the others are public copies tried if it's busy.
-  const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  const KINDS = { restaurant: 'Restaurant', fast_food: 'Fast food', cafe: 'Café' };
-  const reSafe = (t) => t.replace(/[\\^$.|?*+()[\]{}"]/g, '\\$&');
-  // A name search ignores apostrophes, so "brothers" also finds "Brother's Pizza".
-  const nameRe = (t) => t.replace(/['\u2019]/g, '').split('').map((ch) => reSafe(ch)).join("['\u2019]?");
-  function addressOf(t) {
-    const street = [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ');
-    return [street, t['addr:city']].filter(Boolean).join(', ');
-  }
-  $('foodForm').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const q = $('foodQ').value.replace(/[\\"]/g, '').trim().slice(0, 40), r = +$('foodR').value || 10, p = near();
-    const around = `(around:${Math.round(r * 1609)},${p.lat.toFixed(5)},${p.lon.toFixed(5)})`;
-    const base = 'nwr["amenity"~"^(restaurant|fast_food|cafe)$"]';
-    const ovs = (re) => re.replace(/\\/g, '\\\\');   // a regex's backslashes, doubled for Overpass's quoted strings
-    const parts = q ? [`${base}["name"~"${ovs(nameRe(q))}",i]${around};`, `${base}["cuisine"~"${ovs(reSafe(q.toLowerCase().replace(/\s+/g, '_')))}",i]${around};`] : [`${base}["name"]${around};`];
-    const query = `[out:json][timeout:25];(${parts.join('')});out center tags 200;`;
-    const out = $('foodOut');
-    out.innerHTML = '<p class="help">Scanning OpenStreetMap…</p>';
-    let data = null, used = '';
-    for (const s of OVERPASS) {
-      try { data = await getJson(s + '?data=' + enc(query), 30000); used = s; break; } catch (e) { data = null; }
-    }
-    if (!data) { out.innerHTML = '<p class="help">Couldn’t reach OpenStreetMap right now. Try again in a minute.</p>'; return; }
-    const seen = {};
-    const rows = (data.elements || []).map((e) => {
-      const t = e.tags || {}, lat = e.lat != null ? e.lat : e.center && e.center.lat, lon = e.lon != null ? e.lon : e.center && e.center.lon;
-      return { t, type: e.type, id: e.id, d: isFinite(lat) ? miles(p, { lat, lon }) : null };
-    }).filter((x) => x.t.name && !seen[x.type + x.id] && (seen[x.type + x.id] = 1))
-      .sort((a, b) => (a.d == null ? 1e9 : a.d) - (b.d == null ? 1e9 : b.d)).slice(0, 40);
-    const stamp = data.osm3s && /^\d{4}-/.test(data.osm3s.timestamp_osm_base || '') ? ' Map data as of ' + new Date(data.osm3s.timestamp_osm_base).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '.' : '';
-    const src = `<p class="src">Source: ${ext('https://www.openstreetmap.org/', 'OpenStreetMap')} contributors (ODbL), read through ${esc(used.split('/')[2])}.${stamp} Listings are added by volunteers, so a place can be missing or out of date. Reviews aren’t read here: each one’s review links open Google Maps or Yelp.</p>`;
-    if (!rows.length) { out.innerHTML = `<p class="help">No restaurants matching “${esc(q)}” are listed within ${r} miles.</p>` + src; return; }
-    out.innerHTML = `<p class="help">${rows.length} found${q ? ` for “${esc(q)}”` : ''}, nearest first.</p>` + rows.map(({ t, type, id, d }) => {
-      const addr = addressOf(t), kind = [KINDS[t.amenity], t.cuisine ? t.cuisine.replace(/_/g, ' ').replace(/;/g, ', ') : ''].filter(Boolean).join(' · ');
-      const site = /^https?:\/\//.test(t.website || t['contact:website'] || '') ? (t.website || t['contact:website']) : '';
-      const phone = t.phone || t['contact:phone'] || '';
-      const findAs = t.name + (addr ? ' ' + addr : '');
-      return `<div class="card"><b>${esc(t.name)}</b><div class="meta">${esc(kind)}${d != null ? ' · ' + d.toFixed(1) + ' mi' : ''}</div>
-        <div class="row">${addr ? esc(addr) : na('Address not listed')}</div>
-        <div class="row">Hours: ${t.opening_hours ? esc(t.opening_hours) : na('not listed')}</div>
-        <div class="row">Phone: ${phone ? `<a href="tel:${esc(phone.replace(/[^+\d]/g, ''))}">${esc(phone)}</a>` : na('not listed')}</div>
-        <div class="links">${site ? ext(site, 'Their website') : ''}${ext('https://www.google.com/maps/search/?api=1&query=' + enc(findAs), 'Reviews on Google Maps')}${ext('https://www.yelp.com/search?find_desc=' + enc(t.name) + '&find_loc=' + enc(t['addr:city'] ? t['addr:city'] + (t['addr:state'] ? ', ' + t['addr:state'] : '') : addr), 'Reviews on Yelp')}${ext(`https://www.openstreetmap.org/${type}/${id}`, 'Map listing')}</div></div>`;
-    }).join('') + src;
-  });
 
   // ---- VEHICLES: NHTSA's public APIs (no key, readable by a page): vPIC decodes a VIN,
   // then recalls, owner complaints and NCAP crash-test stars for that year, make and model.
@@ -206,8 +131,9 @@
       common(n, c) +
       lookup('CFPB complaints', 'For banks, lenders, card companies and debt collectors: complaints filed with the federal Consumer Financial Protection Bureau.', 'https://www.consumerfinance.gov/data-research/consumer-complaints/search/?searchText=' + enc(n), 'Opens with your search filled in.') + NOTE;
   });
-  // open the area from #food etc., else the last one used (after everything above is set up)
+  // open the area from #car etc., else the last one used (after everything above is set up)
   let first = (location.hash || '').slice(1);
-  if (AREAS.indexOf(first) < 0) { try { first = localStorage.getItem('risingcode_lookup_area') || ''; } catch (e) {} }
-  show(AREAS.indexOf(first) < 0 ? 'food' : first);
+  if (AREAS.indexOf(first) < 0 && first !== 'food') { try { first = localStorage.getItem('risingcode_lookup_area') || ''; } catch (e) {} }
+  if (first === 'food') first = 'biz';   // old links, or a saved pick, of the Restaurants area
+  show(AREAS.indexOf(first) < 0 ? 'car' : first);
 })();

@@ -53,21 +53,10 @@
   <header><h1 class="shield">SHIELD<small>Consumer Protection</small></h1><a class="back" href="./">‹ BACK</a></header>
   <p class="help">Public records only. Anything read here names its source. Anything we can't read here says so, with a link to check it on the source's own site (marked ↗). Nothing is rated, scored or guessed.</p>
   <div class="areas">
-    <button class="area" data-area="food">RESTAURANTS<small>FIND ONE NEAR YOU</small></button>
     <button class="area" data-area="car">VEHICLES<small>RECALLS · COMPLAINTS · CRASH TESTS</small></button>
     <button class="area" data-area="home">CONTRACTORS<small>HOME SERVICES · REGISTRATION · REVIEWS</small></button>
-    <button class="area" data-area="biz">ANY BUSINESS<small>VENDORS · STORES · LENDERS</small></button>
+    <button class="area" data-area="biz">ANY BUSINESS<small>RESTAURANTS · VENDORS · STORES · LENDERS</small></button>
   </div>
-
-  <section id="food">
-    <h2>RESTAURANTS NEAR YOU</h2>
-    <p class="help">Type a name ("Brothers") or a kind of food ("pizza", "chinese"), or leave it blank for everything nearby.</p>
-    <form id="foodForm"><input id="foodQ" placeholder="Name or kind of food" autocomplete="off">
-      <select id="foodR"><option value="5">Within 5 miles</option><option value="10" selected>Within 10 miles</option><option value="25">Within 25 miles</option></select>
-      <button class="go">SCAN</button></form>
-    <p class="help" id="foodWhere"></p>
-    <div id="foodOut"></div>
-  </section>
 
   <section id="car">
     <h2>VEHICLES</h2>
@@ -87,7 +76,7 @@
 
   <section id="biz">
     <h2>ANY BUSINESS</h2>
-    <p class="help">A store, dealer, vendor or lender. Enter its name and town. Each check opens on the source's own site.</p>
+    <p class="help">A restaurant, store, dealer, vendor or lender. Enter its name and town. Each check opens on the source's own site.</p>
     <form id="bizForm"><input id="bizName" placeholder="Business name" autocomplete="off"><input id="bizCity" placeholder="Town, State"><button class="go">SCAN</button></form>
     <div id="bizOut"></div>
   </section>
