@@ -20,23 +20,63 @@
 // stay down when it's falling hard. Everything is drawn as simple silhouettes that pick up
 // the light of the hour. A trash can stands by the house; a bear stops at it.
 //
-// Previews for checking: ?wild=deer, bear, dog, birds, geese, jet brings one right away.
+// MIGRATION (Nov 27, 2026, V153): three kinds of big waterfowl pass over in their seasons,
+// each as a small, quiet flock, never more than one migrating flock in the sky at a time:
+//   - CANADA GEESE: dark bodies, black necks, a steady V.
+//   - SNOW GEESE: white with black wingtips, in a loose, wavy line.
+//   - TUNDRA SWANS: white, long straight necks, slow deep wingbeats, a few in a short line.
+// In the fall they fly right to left (south); in spring left to right (north). How often they
+// come follows the season: few at the edges, most at the peak, none once it's over. Outside
+// migration only a few local Canada geese go over now and then, in twos to fives.
+// Windows: Canada geese Sep 1-Dec 31 (peak mid-Nov) and Feb 20-Apr 15 (peak mid-Mar); snow
+// geese Nov 1-Dec 31 (peak early Dec) and Feb 15-Mar 31 (peak early Mar), matching when the
+// Game Commission's light goose season and Middle Creek's spring flocks put them in the state;
+// tundra swans Nov 1-Dec 20 and Feb 25-Apr 5 (approximate). Nothing here is a live sighting.
+// Calls: birdcalls.js plays a faint, synthesized call now and then while a flock goes over.
+//
+// Previews for checking: ?wild=deer, bear, dog, birds, geese, snowgeese, swans, jet brings one
+// right away (add &month=11 or &month=3 to see the fall or spring direction).
 (() => {
   const q = location.search;
-  const forced = (q.match(/[?&]wild=(deer|bear|dog|birds|geese|jet)\b/) || [])[1] || null;
+  const forced = (q.match(/[?&]wild=(deer|bear|dog|birds|geese|snowgeese|swans|jet)\b/) || [])[1] || null;
   let actors = [], lastT = 0, nextCheck = 0, forcedDone = false;
   const rnd = (a, b) => a + Math.random() * (b - a);
   // Mean minutes between arrivals: per-second chance = 1 / (60 * minutes).
   const chance = (mins) => (mins > 0 && isFinite(mins)) ? 1 / (60 * mins) : 0;
 
+  // How strong a migration is on a date: 0 outside the window, rising to 1 at the peak and
+  // tapering back to 0 at the end. Windows are [start, peak, end] as month*100+day.
+  const doy = (md) => { const m = Math.floor(md / 100), d = md % 100; return [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334][m - 1] + d; };
+  function strength(md, w) {
+    const x = doy(md), a = doy(w[0]), p = doy(w[1]), b = doy(w[2]);
+    if (x < a || x > b) return 0;
+    const f = x <= p ? (x - a) / Math.max(1, p - a) : (b - x) / Math.max(1, b - p);
+    return 0.15 + 0.85 * Math.sin(Math.min(1, f) * Math.PI / 2);
+  }
+  const MIG = {
+    goose: { fall: [901, 1110, 1231], spring: [220, 315, 415], mins: 14 },
+    snow:  { fall: [1101, 1201, 1231], spring: [215, 305, 331], mins: 30 },
+    swan:  { fall: [1101, 1125, 1220], spring: [225, 315, 405], mins: 35 },
+  };
+  function migration(md) {
+    const out = {};
+    for (const k in MIG) {
+      const f = strength(md, MIG[k].fall), sp = strength(md, MIG[k].spring);
+      out[k] = { level: Math.max(f, sp), dir: f >= sp ? -1 : 1 };     // fall: right to left (south)
+    }
+    return out;
+  }
+  const monthQ = +((q.match(/[?&]month=(\d{1,2})\b/) || [])[1] || 0);
   function season(d) {
-    const m = d.getMonth() + 1, day = d.getDate(), md = m * 100 + day;
+    let m = d.getMonth() + 1, day = d.getDate();
+    if (monthQ >= 1 && monthQ <= 12) { m = monthQ; day = 15; }
+    const md = m * 100 + day;
     const rut = md >= 1015 && md <= 1130;
     const bear = (md >= 401 && md <= 1031) ? 1 : (md >= 1101 && md <= 1120) ? 0.5 : (md >= 1121 && md <= 1220) ? 0.12
       : (md >= 315 && md <= 331) ? 0.2 : 0;
     const geese = (md >= 220 && md <= 415) || (md >= 901 && md <= 1231);
     const songbirds = (md >= 420 && md <= 520) || (md >= 815 && md <= 1031);
-    return { rut, bear, geese, songbirds };
+    return { rut, bear, geese, songbirds, mig: migration(md) };
   }
 
   // What may arrive this second, given the hour, the month and the weather.
@@ -51,7 +91,15 @@
     if (env.light > 0.35 && !heavy) {
       const birdMins = (s.songbirds ? 1.2 : 2.5) / (wet ? 0.4 : 1);
       if (Math.random() < chance(birdMins)) addBirds(env, s.songbirds);
-      if (s.geese && Math.random() < chance(12 / (wet ? 0.4 : 1))) addGeese(env);
+      // V153: one migrating flock at a time, as often as the season says.
+      if (!actors.some(a => a.flock)) {
+        for (const k of ['goose', 'snow', 'swan']) {
+          const lv = s.mig[k].level;
+          if (lv > 0 && Math.random() < chance(MIG[k].mins / lv / (wet ? 0.4 : 1))) { addFlock(env, k, s.mig[k].dir); break; }
+        }
+        // Local Canada geese, all year, a few at a time and not often.
+        if (!actors.some(a => a.flock) && Math.random() < chance(45 / (wet ? 0.4 : 1))) addFlock(env, 'goose', Math.random() < 0.5 ? 1 : -1, 2 + ((Math.random() * 4) | 0));
+      }
     }
     if (Math.random() < chance(night ? 35 : 30)) addJet(env, !day);
   }
@@ -82,14 +130,26 @@
     for (let i = 0; i < n; i++) actors.push({ kind: 'bird', layer: 'sky', x: (dir > 0 ? -20 : env.W + 20) - dir * rnd(0, S * 1.6), y: y0 + rnd(-1, 1) * env.H * 0.05,
       dir, size: S * rnd(0.025, 0.04), speed: S * rnd(0.018, 0.03), phase: Math.random() * 6.3, wob: rnd(0, 6.3) });
   }
-  function addGeese(env) {
-    const n = 7 + ((Math.random() * 18) | 0), dir = Math.random() < 0.5 ? 1 : -1, y0 = env.H * rnd(0.1, 0.3), S = scaleOf(env), gap = S * 0.09;
+  // V153: a migrating flock. kind: 'goose' (Canada, a V), 'snow' (snow geese, a loose wavy
+  // line) or 'swan' (tundra swans, a short line). dir: -1 right to left, 1 left to right.
+  let flockId = 0;
+  function addFlock(env, kind, dir, count) {
+    const S = scaleOf(env), id = ++flockId;
+    const n = count || (kind === 'goose' ? 5 + ((Math.random() * 11) | 0) : kind === 'snow' ? 8 + ((Math.random() * 13) | 0) : 3 + ((Math.random() * 7) | 0));
+    const size = S * (kind === 'swan' ? 0.075 : kind === 'snow' ? 0.055 : 0.06);
+    const speed = S * (kind === 'swan' ? 0.0105 : kind === 'snow' ? 0.0125 : 0.012);
+    const y0 = env.H * rnd(kind === 'snow' ? 0.08 : 0.1, kind === 'swan' ? 0.26 : 0.3), gap = size * (kind === 'swan' ? 1.9 : 1.5);
+    const x0 = dir > 0 ? -size * 2 : env.W + size * 2;
     for (let i = 0; i < n; i++) {
-      const rank = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? 1 : -1);
-      actors.push({ kind: 'goose', layer: 'sky', x: (dir > 0 ? -30 : env.W + 30) - dir * rank * gap, y: y0 + side * rank * gap * 0.6,
-        dir, size: S * 0.06, speed: S * 0.012, phase: i * 0.7, wob: 0 });
+      let dx, dy;
+      if (kind === 'goose') { const rank = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? 1 : -1); dx = rank * gap; dy = side * rank * gap * 0.6; }
+      else if (kind === 'snow') { dx = i * gap * 0.8 + rnd(-0.3, 0.3) * gap; dy = Math.sin(i * 0.9) * gap * 0.7 + rnd(-0.25, 0.25) * gap; }
+      else { dx = i * gap; dy = i * gap * 0.22 * (i % 2 ? 1 : 0.6); }
+      actors.push({ kind, layer: 'sky', flock: id, x: x0 - dir * dx, y: y0 + dy, dir, size, speed, phase: i * 0.7 + rnd(0, 0.4), wob: rnd(0, 6.3) });
     }
+    if (window.BirdCalls) BirdCalls.flock(kind, n);
   }
+  const addGeese = (env) => addFlock(env, 'goose', season(env.now).mig.goose.level > 0 ? season(env.now).mig.goose.dir : (Math.random() < 0.5 ? 1 : -1));
   function addJet(env, night) {
     const dir = Math.random() < 0.5 ? 1 : -1;
     actors.push({ kind: 'jet', layer: 'sky', x: dir > 0 ? -40 : env.W + 40, y: env.H * rnd(0.05, 0.16), dir, size: Math.max(3, env.H * 0.006),
@@ -157,6 +217,22 @@
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s * 0.55, hy - s * 0.14, s * 0.06, 0, 6.3); ctx.fill();
     ctx.restore();
   }
+  // V153: snow geese and tundra swans: white bodies that take the light of the hour, black
+  // wingtips on the snow geese, a long straight neck on the swans.
+  function drawWhite(ctx, a, env) {
+    const s = a.size, swan = a.kind === 'swan', f = Math.sin(a.phase) * (swan ? 0.42 : 0.36), L = Math.max(0.3, env.light);
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = shade(swan ? '#f4f2ec' : '#f0eee8', L); ctx.lineWidth = Math.max(1.2, s * (swan ? 0.15 : 0.14));
+    ctx.beginPath(); ctx.moveTo(a.x - s, a.y - s * f); ctx.quadraticCurveTo(a.x - s * 0.4, a.y - s * 0.25, a.x, a.y);
+    ctx.quadraticCurveTo(a.x + s * 0.4, a.y - s * 0.25, a.x + s, a.y - s * f); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a.x - a.dir * s * 0.3, a.y + s * 0.02); ctx.lineTo(a.x + a.dir * s * (swan ? 0.85 : 0.55), a.y + s * 0.04); ctx.stroke();   // body and neck
+    if (!swan) {                                   // black wingtips
+      ctx.strokeStyle = shade('#1e1c1a', Math.max(0.4, env.light)); ctx.lineWidth = Math.max(1, s * 0.13);
+      ctx.beginPath(); ctx.moveTo(a.x - s, a.y - s * f); ctx.lineTo(a.x - s * 0.72, a.y - s * f * 0.6 - s * 0.06);
+      ctx.moveTo(a.x + s, a.y - s * f); ctx.lineTo(a.x + s * 0.72, a.y - s * f * 0.6 - s * 0.06); ctx.stroke();
+    }
+    ctx.restore();
+  }
   function drawBird(ctx, a, env, goose) {
     const s = a.size, f = Math.sin(a.phase) * (goose ? 0.35 : 0.6);
     ctx.save(); ctx.strokeStyle = goose ? shade('#2a2622', Math.max(0.4, env.light)) : shade('#2e2a26', Math.max(0.35, env.light));
@@ -200,10 +276,18 @@
   function step(env, dt) {
     for (const a of actors) {
       if (a.layer === 'sky') {
-        a.x += a.dir * a.speed * dt * 60; a.phase += (a.kind === 'goose' ? 0.12 : 0.35) * dt * 60;
+        a.x += a.dir * a.speed * dt * 60; a.phase += ({ goose: 0.12, snow: 0.14, swan: 0.08 }[a.kind] || 0.35) * dt * 60;
+        if (a.kind === 'snow') a.y += Math.sin(env.t / 40 + a.wob) * 0.08;   // the line ripples a little
         if (a.kind === 'bird') a.y += Math.sin(env.t / 30 + a.wob) * 0.2;
         if (a.kind === 'jet') { a.trail.push({ x: a.x, y: a.y }); if (a.trail.length > 160) a.trail.shift(); }
         a.gone = a.dir > 0 ? a.x > env.W + 400 : a.x < -400;
+        continue;
+      }
+      if (a.layer === 'low') {                     // V153: geese coming in low over the yard (homestead.js hunt)
+        a.x += a.dir * a.speed * (a.flare ? 1.5 : 1) * dt * 60; a.phase += (a.flare ? 0.2 : 0.11) * dt * 60;
+        if (a.flare) a.y -= a.size * 0.06 * dt * 60;                              // flaring up and away
+        else a.y += (a.ty - a.y) * Math.min(1, 0.006 * dt * 60);                  // gliding down toward the yard
+        a.gone = a.dir > 0 ? a.x > env.W + 300 : a.x < -300;
         continue;
       }
       if (a.pause > 0) { a.pause -= dt; if (a.pause <= 0) a.grazing = false; continue; }
@@ -223,22 +307,50 @@
     const nowMs = performance.now(), dt = lastT ? Math.min(0.1, (nowMs - lastT) / 1000) : 0.016; lastT = nowMs;
     if (forced && !forcedDone) {
       forcedDone = true;
-      ({ deer: addDeer, bear: addBear, dog: addDog, birds: (e) => addBirds(e, true), geese: addGeese, jet: (e) => addJet(e, e.light < 0.3) })[forced](env);
+      ({ deer: addDeer, bear: addBear, dog: addDog, birds: (e) => addBirds(e, true), geese: addGeese,
+        snowgeese: (e) => addFlock(e, 'snow', season(e.now).mig.snow.dir), swans: (e) => addFlock(e, 'swan', season(e.now).mig.swan.dir), jet: (e) => addJet(e, e.light < 0.3) })[forced](env);
     }
     if (nowMs >= nextCheck) { nextCheck = nowMs + 1000; if (actors.length < 60) spawn(env); }
     step(env, dt);
     if (canTipped > 0) canTipped -= dt;
   }
   // Sky: birds, geese and jets, drawn over the sky and clouds and behind the trees.
-  function sky(ctx, env) { update(env); for (const a of actors) if (a.layer === 'sky') a.kind === 'jet' ? drawJet(ctx, a, env) : drawBird(ctx, a, env, a.kind === 'goose'); }
+  let drawnAt = 0;
+  function sky(ctx, env) { drawnAt = performance.now(); update(env); for (const a of actors) if (a.layer === 'sky') a.kind === 'jet' ? drawJet(ctx, a, env) : (a.kind === 'snow' || a.kind === 'swan') ? drawWhite(ctx, a, env) : drawBird(ctx, a, env, a.kind === 'goose'); }
   // Ground: the trash can and the animals in the yard, in front of the house.
   function ground(ctx, env) {
     drawCan(ctx, env, canTipped > 0);
+    for (const a of actors) if (a.layer === 'low') a.kind === 'snow' ? drawWhite(ctx, a, env) : drawBird(ctx, a, env, true);
     for (const a of actors) {
       if (a.layer !== 'ground') continue;
       const y = env.surfaceY(a.x) + env.H * (0.015 + 0.025 * (a.lane || 0));
       if (a.kind === 'deer') drawDeer(ctx, a, y, env); else if (a.kind === 'dog') drawDog(ctx, a, y, env); else drawBear(ctx, a, y, env);
     }
   }
-  window.Wildlife = { sky, ground, season, debug: () => actors.map(a => a.kind) };
+  // V153: for the hunt in homestead.js. A migrating goose flock in view right now (he sees it
+  // from the back window), a low flock that comes in over the yard, and what happens at the shot.
+  function flockOverhead(W) {
+    const a = actors.find(b => b.layer === 'sky' && b.flock && (b.kind === 'goose' || b.kind === 'snow') && b.x > 0 && b.x < W);
+    return a ? { kind: a.kind, id: a.flock, dir: a.dir } : null;
+  }
+  function huntFlock(o) {                          // o: { kind, dir, W, y, ty, size, speed }
+    const id = ++flockId, n = 4 + ((Math.random() * 5) | 0), gap = o.size * 1.6, x0 = o.dir > 0 ? -o.size * 2 : o.W + o.size * 2;
+    for (let i = 0; i < n; i++) {
+      const rank = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? 1 : -1);
+      actors.push({ kind: o.kind, layer: 'low', flock: id, x: x0 - o.dir * rank * gap, y: o.y + side * rank * gap * 0.45, ty: o.ty + side * rank * gap * 0.45,
+        dir: o.dir, size: o.size, speed: o.speed, phase: i * 0.7, wob: 0 });
+    }
+    if (window.BirdCalls) BirdCalls.flock(o.kind, n);
+    return id;
+  }
+  const flockOf = (id) => actors.filter(a => a.flock === id);
+  function lead(id) { const f = flockOf(id); if (!f.length) return null; return f.reduce((m, a) => (a.x - m.x) * a.dir > 0 ? a : m); }
+  function flare(id) { for (const a of flockOf(id)) a.flare = true; }
+  function down(id, x) {                           // one bird of the flock, the one nearest x, leaves the flock
+    const f = flockOf(id); if (!f.length) return null;
+    const a = f.reduce((m, b) => Math.abs(b.x - x) < Math.abs(m.x - x) ? b : m);
+    a.gone = true; actors = actors.filter(b => b !== a); flare(id);
+    return { x: a.x, y: a.y, kind: a.kind, size: a.size, dir: a.dir, speed: a.speed };
+  }
+  window.Wildlife = { sky, ground, season, migration, flockOverhead, huntFlock, lead, flare, down, drawnAgo: () => performance.now() - drawnAt, debugSky: () => actors.filter(a => a.layer === 'sky').map(a => ({ k: a.kind, d: a.dir, x: Math.round(a.x), y: Math.round(a.y) })), debug: () => actors.map(a => a.kind) };
 })();

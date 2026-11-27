@@ -180,6 +180,9 @@
       ${window.AlertChime ? `<h2>ALERT SOUND</h2>
       <p class="help">A short chime when a new weather alert comes in. From 10 PM to 7 AM only serious warnings chime.</p>
       <div class="opts">${[['on', 'On'], ['off', 'Off']].map(([id, n]) => `<button class="opt${(id === 'on') === AlertChime.on() ? ' on' : ''}" data-chime="${id}">${n}</button>`).join('')}</div>` : ''}
+      ${window.BirdCalls ? `<h2>OUTDOOR SOUNDS</h2>
+      <p class="help">Faint, far-off geese and swans calling while a flock goes over Home, and the farmer's distant shot in goose season. Very quiet; off when the radio or TV is on.</p>
+      <div class="opts">${[['on', 'On'], ['off', 'Off']].map(([id, n]) => `<button class="opt${(id === 'on') === BirdCalls.on() ? ' on' : ''}" data-birds="${id}">${n}</button>`).join('')}</div>` : ''}
       <h2>SOUND</h2>
       <p class="help">What plays on the Christmas display when the radar catches Santa.</p>
       <div class="opts">${names.map((n, i) => `<button class="opt${i === cur ? ' on' : ''}" data-sound="${i}">${n}</button>`).join('')}</div>
@@ -219,6 +222,7 @@
     if (b.dataset.emergency && window.Respond) { Menu.close(); Respond.open(); return; }   // V145: the menu slides away under Respond's terms
     if (b.dataset.howto && window.HowTo) { HowTo.open(); return; }   // V89
     if (b.dataset.chime && window.AlertChime) { AlertChime.set(b.dataset.chime === 'on'); render(); }   // V103
+    if (b.dataset.birds && window.BirdCalls) { BirdCalls.set(b.dataset.birds === 'on'); render(); }   // V153
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }
     if (b.dataset.saver && window.Saver) { Saver.set(b.dataset.saver); render(); }
     if (b.dataset.night && window.NightClock) { NightClock.set(b.dataset.night); render(); }
