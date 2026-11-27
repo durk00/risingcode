@@ -13,9 +13,8 @@
 //             (its public Events API, which a browser may read) works from this page; no
 //             local news feed does (see README). Fetched when the menu opens, kept 15 min.
 //   MY CORNER the personal wildcard: one thing picked for this household's own
-//             interests (a poem of the day, a what-can-I-cook helper, ...). The
-//             pick is remembered on this device; what each one shows is still to
-//             be built.
+//             interests. Off or Verses for the week (V149: the Poem of the day and
+//             What can I make? placeholders are gone). The pick is remembered on this device.
 //   SHIELD (V148) at the very bottom, under My Corner: a white button, SHIELD in big letters and
 //             Consumer Protection under it, that opens shield.html (Shield's checks from public
 //             records, no AI). It replaces V146's LOOK IT UP section, so there is one way in.
@@ -24,13 +23,17 @@
   const WILDCARDS = [
     { id: 'none', name: 'Off', note: 'SHOW NOTHING HERE' },   // V48: was "Nothing"; it's the off switch for My Corner
     { id: 'verses', name: 'Verses for the week', note: 'KING JAMES' },   // V47, verses.js
-    { id: 'poem', name: 'Poem of the day', note: 'COMING' },
-    { id: 'cook', name: 'What can I make?', note: 'COMING' },
   ];
   // V148: a plain shield outline for the SHIELD button, dark on its white face.
   const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#1d4f91" stroke="#0b1520" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   let wild = 'none';
-  try { if (WILDCARDS.some(w => w.id === localStorage.getItem('risingcode_wildcard'))) wild = localStorage.getItem('risingcode_wildcard'); } catch (e) {}
+  // V149: a pick that's no longer offered (the old Poem of the day or What can I make?) falls back to Off,
+  // and the stale pick is cleared so this device remembers Off from now on.
+  try {
+    const saved = localStorage.getItem('risingcode_wildcard');
+    if (WILDCARDS.some(w => w.id === saved)) wild = saved;
+    else if (saved !== null) localStorage.removeItem('risingcode_wildcard');
+  } catch (e) {}
   const EVENTS_URL = 'https://www.ymcaofcentrecounty.org/wp-json/tribe/events/v1/events?per_page=6&categories=penns-valley-events';
   const EVENTS_SOURCE = { name: 'YMCA of Centre County', url: 'https://www.ymcaofcentrecounty.org/events/category/penns-valley-events/' };
   let local = { state: 'idle', items: [], at: 0 };   // idle | loading | ok | error
@@ -76,7 +79,7 @@
   #menu .em .disc svg { width: 30px; height: 30px; display: block; }
   #menu .em:active { background: #1e2a37; }
   @media (max-width: 380px) { #menu .em { font-size: 13px; letter-spacing: 0.06em; padding-right: 10px; gap: 7px; } #menu header.three { gap: 6px; } }
-  /* V148: SHIELD, a white button at the bottom of the menu (William's spot, under Poem of the day).
+  /* V148: SHIELD, a white button at the bottom of the menu (William's spot, under My Corner).
      Dark text on white so it reads on the dark menu; a full-width row, tall enough for a finger. */
   #menu .shieldbtn { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 14px 20px; min-height: 76px;
     border-radius: 12px; background: #ffffff; color: #0b1520; border: 2px solid #ffffff; text-decoration: none;
