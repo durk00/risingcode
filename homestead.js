@@ -8,9 +8,9 @@
 //     it, one panel at a time.
 //   - A WELL with a little roof and a bucket, between the array and the house.
 //   - A PADDOCK behind an old split-rail fence at the right, running off the edge of the
-//     picture: horses, a couple of goats, chickens by day (they roost at dusk), a small coop,
-//     and once in a while a peacock. Which animals are out stays the same all day and
-//     changes from day to day.
+//     picture: horses, a couple of goats, chickens by day (they roost at dusk) and a small
+//     coop. Which animals are out stays the same all day and changes from day to day.
+//     (V158, Nov 27, 2026: the peacock is gone, at William's request.)
 //   - SOMEBODY who lives here: out by day only, now and then, for a long while at a time,
 //     walking slowly from the door to the panels (clearing snow after a snowfall, or just
 //     checking them), to the well for a bucket of water, or in with the animals at feeding
@@ -69,7 +69,6 @@
         coat: i === 0 || r() < 0.3 ? '#d8d2c8' : ['#5a3c26', '#2b2420', '#8a6a4a'][(r() * 3) | 0], next: 0, head: 0, headTo: 0, headNext: 0 }); }
     if (r() < 0.5) { const n = 1 + ((r() * 2) | 0); for (let i = 0; i < n; i++) list.push({ kind: 'goat', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#e8e2d8', '#6e5a48', '#3a3330'][(r() * 3) | 0], next: 0 }); }
     const hens = 3 + ((r() * 5) | 0); for (let i = 0; i < hens; i++) list.push({ kind: 'hen', x: at(), dir: r() < 0.5 ? 1 : -1, coat: ['#8a4a26', '#e8e2d8', '#2b2420'][(r() * 3) | 0], next: 0, peck: r() * 6 });
-    if (r() < 0.18) list.push({ kind: 'peacock', x: at(), dir: r() < 0.5 ? 1 : -1, next: 0, fan: 0 });
     return list;
   }
 
@@ -195,19 +194,6 @@
     ctx.fillStyle = shade('#c0302a', light, 0.4); ctx.beginPath(); ctx.arc(s * 0.3, peck ? -s * 0.27 : -s * 0.68, s * 0.06, 0, 6.3); ctx.fill();   // comb
     ctx.restore();
   }
-  function drawPeacock(ctx, a, y, s, light, t) {
-    ctx.save(); ctx.translate(a.x, y); ctx.scale(a.dir, 1);
-    const fan = Math.sin(t / 900) > 0.7;     // fans its tail now and then
-    if (fan) {
-      for (let i = 0; i < 9; i++) { const ang = Math.PI * (0.15 + i * 0.09); ctx.fillStyle = shade(i % 2 ? '#2f6a5a' : '#3a7f6a', light, 0.3);
-        ctx.beginPath(); ctx.moveTo(-s * 0.1, -s * 0.4); ctx.arc(-s * 0.1, -s * 0.4, s * 0.9, ang + Math.PI * 0.5, ang + Math.PI * 0.59); ctx.fill(); }
-    } else {
-      ctx.fillStyle = shade('#2f6a5a', light, 0.3); ctx.beginPath(); ctx.moveTo(-s * 0.15, -s * 0.35); ctx.lineTo(-s * 1.1, -s * 0.12); ctx.lineTo(-s * 1.05, -s * 0.02); ctx.lineTo(-s * 0.1, -s * 0.25); ctx.fill();
-    }
-    ctx.fillStyle = shade('#1f4f8a', light, 0.3); ctx.beginPath(); ctx.ellipse(0, -s * 0.38, s * 0.2, s * 0.14, 0, 0, 6.3); ctx.fill();
-    ctx.strokeStyle = shade('#1f4f8a', light, 0.3); ctx.lineWidth = s * 0.07; ctx.beginPath(); ctx.moveTo(s * 0.12, -s * 0.45); ctx.lineTo(s * 0.2, -s * 0.8); ctx.stroke();
-    ctx.restore();
-  }
   function drawPaddock(ctx, env, L, dt) {
     const p = L.pad, light = env.light, S = L.S, W = env.W, t = env.t;
     // The little coop at the far end, half out of the picture.
@@ -224,7 +210,7 @@
     const horses = critters.filter(a => a.kind === 'horse');
     const feeding = person && person.task === 'paddock' && (person.state === 'work' || person.target && !person.target.home && person.target.x > p.x0) ? (person.state === 'work' ? person : person.target) : null;
     for (const a of critters) {
-      const out = a.kind === 'hen' || a.kind === 'peacock' ? env.light > 0.45 : true;   // birds roost by dusk
+      const out = a.kind === 'hen' ? env.light > 0.45 : true;   // hens roost by dusk
       if (!out) continue;
       // Each wanders a little now and then, inside the fence.
       const horse = a.kind === 'horse';
@@ -250,7 +236,6 @@
       }
       else if (a.kind === 'goat') drawGoat(ctx, a, y, S * 0.34, light, t);
       else if (a.kind === 'hen') drawHen(ctx, a, y + S * 0.03, S * 0.15, light, t);
-      else drawPeacock(ctx, a, y, S * 0.3, light, t);
     }
     rail(p.base - p.h * 1.08); rail(p.base - p.h * 0.75); rail(p.base - p.h * 0.35);   // V115: a top rail in front too
     ctx.fillStyle = shade('#5e4430', light);
