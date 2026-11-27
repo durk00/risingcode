@@ -201,7 +201,7 @@ In `firstrun.js`. The first time the app opens on a device it shows one line: **
 - **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. Respond's code still lists two protocols as DRAFT (Unresponsive but Breathing, and Child CPR). William, a former EMT, signed off on their wording as written on November 26, 2026, so they no longer carry a DRAFT tag here. To change a protocol, change it in Respond first, after responder review, then copy it again.
 - **Why not a red cross:** a red cross on a white background is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the American Red Cross and military medical services.
 
-(The home-screen version line is left alone here because other open pull requests change it too.)
+(The home screen shows V145 from this change.)
 
 ## Verses for the week
 
