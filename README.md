@@ -188,6 +188,17 @@ In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by def
 
 In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW IT WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
 
+## EMERGENCIES: Respond inside Outside In (V145)
+
+A round white button with the blue Star of Life and the word EMERGENCIES under it sits in the bottom-right corner of Home (the house). It shows on Home only, and hides while the menu, the radio and TV, the alert page, the night clock or a guide is open. Tapping it opens the full Respond app (durk00/respond) in this app's own code (`respond.js`), with no Base44, no login and no other site:
+
+- **Terms first, every time:** Respond's terms of use, word for word, and nothing else opens until "Yes — I Understand and Accept" is tapped. "Not now" goes back to Outside In.
+- **Then everything Respond does:** its home screen (EMERGENCY, "I'm not sure what's happening", Call 911, Local Health Alerts), the five categories and twenty situations, the Call 911 First screen, and the steps, read aloud, with Say "What's next?" / "Go back" / "Repeat" where the browser can listen and the same buttons on screen everywhere. ✕ Close (or Escape) goes back to the house.
+- **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. The two protocols Respond marks DRAFT (Unresponsive but Breathing, and Child CPR) say "DRAFT — awaiting responder review" on screen. To change a protocol, change it in Respond first, after responder review, then copy it again.
+- **Why not a red cross:** a red cross on a white background is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the American Red Cross and military medical services.
+
+(The home-screen version line is left alone here because other open pull requests change it too.)
+
 ## Verses for the week
 
 A My Corner choice (`verses.js`). Two or three King James verses picked for where the day falls in the Church year (Advent, Christmas, Lent, Holy Week, Easter season, Ordinary Time), changing each week, with their own passages on Christmas, Epiphany, Ash Wednesday, Palm Sunday, Good Friday, Easter, Pentecost, the Assumption, All Saints, the Immaculate Conception and Thanksgiving week. Easter and Advent are worked out for each year. The words come from bible-api.com (public-domain KJV) and are kept on the device; edit the passage lists at the top of `verses.js`.
@@ -203,14 +214,3 @@ Menu → SCREENSAVER → **Portrait** (`face.js`): an AI's face in amber code, d
 ## Alert page fits an iPhone, and long alerts scroll (V143)
 
 The page that opens when you tap the alert banner sat too high on an iPhone: its ✕ was up under the clock and the notch, partly cut off, a long alert was simply cut short, and a drag on the page pulled down the menu. Now, on a phone, the page starts below the status bar and notch, a long alert name wraps clear of the ✕, and the footer clears the home bar. A long alert's text scrolls inside the page: drag it on a phone or iPad, or use the mouse wheel, trackpad or arrow keys on a Chromebook. It fades softly at the edges where there's more, with a thin bar showing where you are. While the page is open, a drag on it only scrolls: it never opens the menu or the radio and never changes screen; tap ✕ to close it as before. A short alert looks the same as before (on a phone it just sits lower). iPad and Chromebook layouts are unchanged. Preview a long one with `?alert=long` on the address. (The home-screen version line still reads V141; it should become V143 when this is merged.)
-
-## EMERGENCIES: Respond inside Outside In (V145)
-
-A round white button with the blue Star of Life and the word EMERGENCIES under it sits in the bottom-right corner of Home (the house). It shows on Home only, and hides while the menu, the radio and TV, the alert page, the night clock or a guide is open. Tapping it opens the full Respond app (durk00/respond) in this app's own code (`respond.js`), with no Base44, no login and no other site:
-
-- **Terms first, every time:** Respond's terms of use, word for word, and nothing else opens until "Yes — I Understand and Accept" is tapped. "Not now" goes back to Outside In.
-- **Then everything Respond does:** its home screen (EMERGENCY, "I'm not sure what's happening", Call 911, Local Health Alerts), the five categories and twenty situations, the Call 911 First screen, and the steps, read aloud, with Say "What's next?" / "Go back" / "Repeat" where the browser can listen and the same buttons on screen everywhere. ✕ Close (or Escape) goes back to the house.
-- **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. The two protocols Respond marks DRAFT (Unresponsive but Breathing, and Child CPR) say "DRAFT — awaiting responder review" on screen. To change a protocol, change it in Respond first, after responder review, then copy it again.
-- **Why not a red cross:** a red cross on a white background is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the American Red Cross and military medical services.
-
-(The home-screen version line is left alone here because other open pull requests change it too.)
