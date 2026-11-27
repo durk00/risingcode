@@ -62,7 +62,7 @@
     set(m) { mode = m === 'home' ? 'home' : 'here'; save(); changed(); if (mode === 'here') locate(); },
     onChange(f) { listeners.push(f); },
     options: () => [
-      { id: 'here', name: 'Where this iPad is', note: mode === 'here' ? ({ ok: here ? `NOW: ${here.name}${here.state ? ', ' + here.state : ''}` : 'CHECKING…', checking: 'CHECKING…', denied: 'LOCATION NOT ALLOWED · USING HAPPY VALLEY', outside: 'OUTSIDE THE US · USING HAPPY VALLEY', unavailable: 'CAN’T TELL · USING HAPPY VALLEY' }[status] || '') : 'US ONLY' },
+      { id: 'here', name: 'Where this device is', note: mode === 'here' ? ({ ok: here ? `NOW: ${here.name}${here.state ? ', ' + here.state : ''}` : 'CHECKING…', checking: 'CHECKING…', denied: 'LOCATION NOT ALLOWED · USING HAPPY VALLEY', outside: 'OUTSIDE THE US · USING HAPPY VALLEY', unavailable: 'CAN’T TELL · USING HAPPY VALLEY' }[status] || '') : 'US ONLY' },
       { id: 'home', name: 'Happy Valley, PA', note: 'ALWAYS' },
     ],
   };
