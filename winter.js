@@ -702,7 +702,16 @@
   // Preview with ?alert on the address.
   const SEV = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1, Unknown: 0 };
   let alerts = [], dismissed = new Set(), detail = null, bannerBox = null, closeBox = null, slide = 0, slideDir = 0, dragging = false;
-  try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]')); } catch (e) {}
+  try { dismissed = new Set(JSON.parse(localStorage.getItem('risingcode_dismissed') || '[]').filter(id => String(id).indexOf('preview') !== 0)); } catch (e) {}
+  // V144: putting an alert away: it stays away on this device until NOAA sends a new or updated
+  // one (each update has an id of its own). The ?alert preview is only put away until a reload,
+  // so the preview keeps working.
+  function dismiss(a) {
+    if (!a) return;
+    dismissed.add(a.id);
+    if (String(a.id).indexOf('preview') === 0) return;
+    try { localStorage.setItem('risingcode_dismissed', JSON.stringify(Array.from(dismissed).slice(-50))); } catch (e) {}
+  }
   let alertsChecked = false;                     // V118: the farm waits to know about wind before counting work time
   async function loadAlerts() {
     if (/[?&]alert\b/.test(q)) {
@@ -755,7 +764,7 @@
   function banner() {
     const list = showing();
     if (!slideDir && !dragging && slide) { slide *= 0.7; if (Math.abs(slide) < 0.5) slide = 0; }   // V141: a short drag eases back
-    if (slideDir) { slide += slideDir * W * 0.08; if (Math.abs(slide) > W) { const a = list[0]; if (a) { dismissed.add(a.id); try { localStorage.setItem('risingcode_dismissed', JSON.stringify([...dismissed].slice(-50))); } catch (e) {} } slide = 0; slideDir = 0; } }
+    if (slideDir) { slide += slideDir * W * 0.08; if (Math.abs(slide) > W) { dismiss(list[0]); slide = 0; slideDir = 0; } }
     const a = showing()[0];
     if (!a) { bannerBox = null; return; }
     if (W < 700) return phoneBanner(a);              // V130: a phone gets a small one-line tag
@@ -808,7 +817,8 @@
   }
   // The details page: the whole alert. It stays open (even if you swipe to another screen and
   // come back) until you tap the ✕ in its top right corner (V104; before, any tap closed it).
-  // Closing it doesn't dismiss the alert: the banner stays until it's swiped away.
+  // V144: the ✕ closes the page and puts the alert away too (before, the banner stayed until it
+  // was swiped away). It stays away until a new or updated alert comes in.
   function wrap(text, maxW) {
     const out = [];
     for (const para of String(text).split(/\n\s*\n/)) {
@@ -890,6 +900,49 @@
     ctx.restore();
   }
 
+  // V144: on William's 2016 iPad the ✕ did nothing. It's drawn on the canvas, so the only thing
+  // that closed it was the browser's "click" caught at the page level, and an older iPad's Safari
+  // doesn't always make a click out of a tap there: the canvas isn't marked as something you can
+  // press, and a finger that wobbled more than 8 px counted as a scroll, whose click is thrown away.
+  // Now a real (invisible) button sits over the ✕, a little bigger than it, and closes the page on
+  // the touch itself, on a click, or on the mouse; the touch code also closes it when a tap starts
+  // and ends on the ✕, even if the finger moved a little.
+  const X_PAD = () => (closeBox ? Math.max(14, Math.round(closeBox.w * 0.3)) : 0);
+  const onClose = (x, y) => { const c = closeBox, p = X_PAD();
+    return !!(detail && c) && x >= c.x - p && x <= c.x + c.w + p && y >= c.y - p && y <= c.y + c.h + p; };
+  function closeDetail() {
+    const a = detail; if (!a) return false;
+    detail = null; detailScroll = 0; detailVel = 0; detailTouching = false;
+    dismiss(a);
+    syncX(false);
+    return true;
+  }
+  let xBtn = null, xKey = '';
+  function syncX(on) {
+    const c = on && detail ? closeBox : null, p = X_PAD();
+    const key = c ? [c.x, c.y, c.w, p].map(Math.round).join(',') : '';
+    if (key === xKey) return;
+    xKey = key;
+    if (!xBtn) {
+      if (!c || !document.body) { xKey = ''; return; }
+      xBtn = document.createElement('button');
+      xBtn.type = 'button'; xBtn.id = 'alertx'; xBtn.setAttribute('aria-label', 'Close the alert');
+      xBtn.style.cssText = 'position:fixed;z-index:3;display:none;margin:0;padding:0;border:0;border-radius:12px;background:transparent;'
+        + '-webkit-appearance:none;appearance:none;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;outline:none';
+      // The touch itself closes it, so it never waits on Safari to turn the tap into a click.
+      // A drag that starts on it is a scroll of the alert's text, not a tap, so it doesn't close.
+      let x0 = 0, y0 = 0;
+      xBtn.addEventListener('touchstart', (e) => { const q2 = e.changedTouches[0]; x0 = q2.clientX; y0 = q2.clientY; }, { passive: true });
+      xBtn.addEventListener('touchend', (e) => { const q2 = e.changedTouches[0]; if (Math.hypot(q2.clientX - x0, q2.clientY - y0) < 30) closeDetail(); }, { passive: true });
+      xBtn.addEventListener('click', (e) => { e.stopPropagation(); closeDetail(); });
+      document.body.appendChild(xBtn);
+    }
+    if (!c) { xBtn.style.display = 'none'; return; }
+    xBtn.style.left = Math.round(c.x - p) + 'px'; xBtn.style.top = Math.round(c.y - p) + 'px';
+    xBtn.style.width = Math.round(c.w + p * 2) + 'px'; xBtn.style.height = Math.round(c.h + p * 2) + 'px';
+    xBtn.style.display = 'block';
+  }
+
   function panel() {
     panelA += ((panelOpen ? 1 : 0) - panelA) * 0.15;
     if (panelA < 0.02) return;
@@ -931,7 +984,7 @@
     // A tap: on the details page only its ✕ closes it; otherwise opens it if the tap is on the alert
     // banner; otherwise opens or closes the three-day forecast.
     tap(x, y) {
-      if (detail) { const c = closeBox; if (c && x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 10 && y <= c.y + c.h + 10) detail = null; return; }
+      if (detail) { if (onClose(x, y)) closeDetail(); return; }
       if (onBanner(x, y)) { detail = showing()[0] || null; detailScroll = 0; detailVel = 0; if (detail && window.AlertChime) AlertChime.read(detail); return; }
       panelOpen = !panelOpen;
     },
@@ -953,6 +1006,10 @@
     releaseBanner() { dragging = false; },
     // V143: the details page is open (a drag on it is a scroll and nothing else), and scrolling it.
     detailOpen: () => !!detail,
+    // V144: a touch that started and ended on the ✕ (a little wobble allowed) closes the page.
+    closeAt(x0, y0, x1, y1) { return Math.hypot(x1 - x0, y1 - y0) < 30 && onClose(x0, y0) && onClose(x1, y1) && closeDetail(); },
+    // V144: show the ✕'s button only while the page is up on Home and nothing covers it.
+    syncX(on) { syncX(!!on); },
     scrollDetail(dy, done, vel) {
       if (!detail) return;
       detailTouching = !done; detailScroll = Math.max(0, Math.min(detailMax, detailScroll + dy));
@@ -963,6 +1020,6 @@
       loadWeather(); setInterval(loadWeather, 20 * 60e3); /* every 20 minutes (V44), to keep up with what's falling */ loadAlerts(); setInterval(loadAlerts, 600e3); } },
     resize(w, h) { W = w; H = h; if (ctx) layout(); },
     draw() { if (!house) layout(); draw(); },
-    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail, detailScroll, detailMax, closeBox, wind: windNow(), sway: Sway }),
+    debug: () => ({ deepest: Math.max(...depth), roof: Math.max(...roofDepth), cap: maxDepth(), flakes: flakes.length, drops: drops.length, cover, light, wx, days, panelOpen, alerts: showing().map(a => a.event), detail: !!detail, detailScroll, detailMax, closeBox, bannerBox, wind: windNow(), sway: Sway }),
   };
 })();

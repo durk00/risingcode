@@ -52,7 +52,7 @@
 <body>
 <canvas id="rain" aria-label="Rising columns of glowing code in blue, green and white, with a red Christmas tree, a pulsing star, Santa's sleigh flying past now and then, and a thin radar line sweeping around"></canvas>
 <!-- The version shows in the hint for five seconds, so an old cached copy is easy to spot (Nov 23). -->
-<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V141</div>
+<div id="hint">HOME · SWIPE RIGHT FOR THE SCREENSAVER · LEFT FOR WEATHER · DOWN FOR MENU · V144</div>
 
 <script src="place.js"></script>
 <script src="skypath.js"></script>
@@ -280,6 +280,7 @@
   window.Saver = { options: () => SAVERS, get: () => saver, set(id) { if (!SAVERS.some(o => o.id === id)) return; saver = id; try { localStorage.setItem('risingcode_saver', id); } catch (e) {} } };
 
   function draw() {
+    if (window.WinterScene && WinterScene.syncX) WinterScene.syncX(scene === 'winter' && !(window.Menu && Menu.isOpen()));   // V144: the alert page's ✕ button
     if (scene === 'kitchen' || scene === 'g') return;   // Kitchen and g are pages of their own, nothing to draw (V34, V69)
     if (scene === 'winter' && window.WinterScene) { WinterScene.draw(); return; }
     if (scene === 'details' && window.DetailsScene) { DetailsScene.draw(); return; }
@@ -754,6 +755,9 @@
     const dx = x - downX, dy = y - downY; downX = null;
     if (onDetail) {
       onDetail = false;
+      // V144: a tap on the ✕ closes the page right here, on the touch, not waiting for a click
+      // (an older iPad's Safari didn't always send one). The click that may follow is ignored.
+      if (WinterScene.closeAt && WinterScene.closeAt(x - dx, y - dy, x, y)) { swipedAt = Date.now(); return; }
       if (detailMoved) { swipedAt = Date.now(); if (detailUp()) WinterScene.scrollDetail(0, true, Date.now() - detailLastT < 100 ? detailV : 0); }
       return;
     }
