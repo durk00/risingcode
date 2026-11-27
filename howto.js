@@ -1,5 +1,5 @@
-// HOW IT WORKS (Nov 25, 2026, V89): what the app is and how to use every part of it, in plain
-// English, opened from the top of the menu (Menu → HOW IT WORKS). The same words describe the
+// HOW THE APP WORKS (Nov 25, 2026, V89): what the app is and how to use every part of it, in plain
+// English, opened from the top of the menu (Menu → HOW THE APP WORKS). The same words describe the
 // app in the README. The app was Rising Code until V91; it's Outside In now (the name came from Maya).
 (() => {
   const NAME = 'Outside In';
@@ -25,7 +25,7 @@
   const el = document.createElement('div');
   el.id = 'howto'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="wrap">
-  <header><h1>HOW IT WORKS</h1><button type="button" class="back">← Back</button></header>
+  <header><h1>HOW THE APP WORKS</h1><button type="button" class="back">← Back</button></header>
 
   <p class="lead">${NAME} is a window. It shows what is really happening outside your house right now: the sky, the weather, the sun and the moon where they actually are, the animals that come by when they really would. Add a radio, a TV and a kitchen, and it's a quiet corner to step back from the noise of the day.</p>
   <p>There is no news feed, no notifications, no ads and no account. Everything it shows is real. The weather comes from NOAA, the government weather service, and when a reading is old, the app says so instead of pretending. Leave it on like a window you glance out, or a radio playing in the next room.</p>
@@ -99,7 +99,7 @@
     <li>To keep the screen on: Settings, Display &amp; Brightness, Auto-Lock, Never.</li>
     <li><b>Sound needs one touch.</b> The iPad won't let an app make any sound until you've touched the screen once since it opened. Any tap or swipe does it. After that the alert chime, the radio and the TV all work. An alert that came in before then chimes at your first touch. Check that the iPad's volume is up.</li>
     <li>It needs the internet for the weather, the radio and the TV. Without it, the screens say so instead of guessing.</li>
-    <li>You can come back to this page any time: Menu, then HOW IT WORKS at the top.</li>
+    <li>You can come back to this page any time: Menu, then HOW THE APP WORKS at the top.</li>
   </ul>
   </div>`;
   document.body.appendChild(el);

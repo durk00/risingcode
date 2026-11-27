@@ -1,7 +1,8 @@
 // EMERGENCIES (Nov 26, 2026): Respond, William's step-by-step emergency protocol app, inside Outside In.
 //
-// A round white button with the blue Star of Life and the word EMERGENCIES under it sits in the bottom-right corner of Home
-// (the house). It opens the same full interface as Respond (durk00/respond), in this app's own code,
+// EMERGENCIES sits at the top of the menu (swipe down), centered between MENU and the ✕: the blue Star of
+// Life on a white disc with the word EMERGENCIES beside it (at first it was a round button on Home; William wanted it off the
+// screen and at the top of the menu). Tapping it closes the menu and opens the same full interface as Respond (durk00/respond), in this app's own code,
 // so it works here with no Base44, no login and no other site:
 //   terms of use first (Respond's wording, word for word), every time it opens, and nothing goes on
 //   until the person taps "Yes — I Understand and Accept"; then Respond's home (EMERGENCY, "I'm not
@@ -9,8 +10,9 @@
 //   Call 911 First screen, and the protocol steps, read aloud, with Say "What's next?" / "Go back" /
 //   "Repeat" by voice where the browser can listen, and the same buttons on screen where it can't.
 // The protocols and every word of them come from respond-data.js, which is copied from Respond, not
-// written here. The two protocols Respond's code marks DRAFT (pending responder review) are labelled
-// as drafts on screen.
+// written here. Respond's code still lists two protocols as DRAFT (Unresponsive but Breathing, Child
+// CPR); William, a former EMT, signed off on their wording as written on Nov 26, 2026, so no DRAFT tag
+// shows here. If any protocol's words change, it needs a responder's review again.
 //
 // Every control is a real <button> or link, so an older iPad's Safari turns a tap into a click
 // (the lesson of the alert ✕, V144). Touches and clicks inside stay inside: they never reach the
@@ -19,7 +21,7 @@
   const D = window.RESPOND_DATA;
   if (!D) return;
   const CATS = D.CATEGORIES, PROTOCOLS = D.PROTOCOLS, FLOW = D.UNSURE_FLOW, FOLLOW = D.UNSURE_FOLLOWUPS;
-  const DRAFT = D.DRAFT_IDS || [];
+  const DRAFT = [];   // was D.DRAFT_IDS: William signed off on both drafts' wording, unchanged, Nov 26, 2026
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS 13+ says it's a Mac
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -34,7 +36,7 @@
   const MIC = (c) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
   const SPK_ON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
   const SPK_OFF = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
-  // The home-screen button's mark: the Star of Life (the blue six-armed star with the staff and serpent
+  // The menu entry's mark: the Star of Life (the blue six-armed star with the staff and serpent
   // of Asclepius seen on U.S. ambulances), on the white round button, William's choice. Not a red cross:
   // a red cross on white is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the
   // American Red Cross and military medical services. One place to change it.
@@ -49,16 +51,6 @@
 
   const css = document.createElement('style');
   css.textContent = `
-  #emBtn { position: fixed; z-index: 4; display: none; flex-direction: column; align-items: center; gap: 5px;
-    right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    background: none; border: 0; padding: 4px; margin: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  #emBtn.show { display: flex; }
-  @media (max-width: 600px) { #emBtn { bottom: calc(118px + env(safe-area-inset-bottom, 0px)); } }   /* clear of Home's three-line hint on a phone */
-  #emBtn .disc { width: 56px; height: 56px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.6); }
-  #emBtn .disc svg { width: 42px; height: 42px; display: block; }
-  #emBtn .lbl { font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #fff; text-shadow: 0 0 6px #000, 0 0 2px #000; }
-  #emBtn:active .disc { transform: scale(0.94); }
   #respond { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 14; display: none; background: #000; color: #fff; overflow-y: auto; -webkit-overflow-scrolling: touch;
     font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
@@ -138,21 +130,16 @@
 `;
   document.head.appendChild(css);
 
-  const btn = document.createElement('button');
-  btn.type = 'button'; btn.id = 'emBtn'; btn.setAttribute('aria-label', 'Emergencies: step-by-step emergency protocols');
-  btn.innerHTML = `<span class="disc">${MARK}</span><span class="lbl">EMERGENCIES</span>`;
-  document.body.appendChild(btn);
   const el = document.createElement('div');
   el.id = 'respond'; el.setAttribute('aria-hidden', 'true'); el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Respond emergency protocols');
   document.body.appendChild(el);
   // Nothing inside reaches the app underneath (the scene's tap, the swipes, the radio, the menu).
   ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'wheel'].forEach((t) => {
     el.addEventListener(t, (e) => e.stopPropagation(), { passive: true });
-    btn.addEventListener(t, (e) => e.stopPropagation(), { passive: true });
   });
 
   // ── STATE ────────────────────────────────────────────────────────────────
-  let open = false, scene = null;
+  let open = false;
   let S = {};   // the screen and what's on it
   function reset() { S = { screen: 'terms', cat: null, id: null, uStep: 0, follow: [], step: 0, tts: true, voice: true, list: false, interacted: !isIOS }; }
   reset();
@@ -367,15 +354,13 @@
   function openR() {
     reset(); open = true;
     el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
-    btn.classList.remove('show');
     render();
   }
   function close() {
     open = false; hush(); listen(false);
     el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); el.innerHTML = '';
-    reset(); place();
+    reset();
   }
-  btn.addEventListener('click', (e) => { e.stopPropagation(); openR(); });
   // Keys belong to Respond while it's open; Escape closes it.
   document.addEventListener('keydown', (e) => {
     if (!open) return;
@@ -383,25 +368,9 @@
     if (e.key === 'Escape') close();
   }, true);
 
-  // The button shows on Home only, and only when nothing else is over it: not under the menu, the
-  // radio and TV, the alert's details page, the night clock, the first-run guide or How to use.
-  function covered() {
-    try {
-      if (window.Menu && Menu.isOpen()) return true;
-      if (window.Radio && Radio.isOpen()) return true;
-      if (window.WinterScene && WinterScene.detailOpen && WinterScene.detailOpen()) return true;
-      if (window.NightClock && NightClock.isShowing && NightClock.isShowing()) return true;
-      const ids = ['intro', 'howto'];
-      for (let i = 0; i < ids.length; i++) { const x = document.getElementById(ids[i]); if (x && x.offsetParent !== null && getComputedStyle(x).display !== 'none') return true; }
-    } catch (e) {}
-    return false;
-  }
-  function place() { btn.classList.toggle('show', !open && scene === 'winter' && !covered()); }
-  setInterval(place, 400);
-
   window.Respond = {
-    setScene(s) { scene = s; place(); },   // told by the page each time the screen changes
+    mark: MARK,   // the Star of Life, drawn on the menu's EMERGENCIES entry (menu.js)
     open: openR, close, isOpen: () => open,
-    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step, button: btn.classList.contains('show') }),
+    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step }),
   };
 })();
