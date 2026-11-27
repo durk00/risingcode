@@ -21,7 +21,7 @@
 // A tap opens a three-day forecast box to the left of the house (V27). NOAA weather
 // alerts show as a red banner at the top: tap for details, swipe to dismiss (V29).
 //
-// Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog,
+// Preview without waiting for weather: add ?wx= with sunny, partly, cloudy, fog, drizzle-fog,
 // rain, mix, snow-light, snow, snow-heavy or coming, and ?time=day or ?time=night.
 (() => {
   // V66: the place comes from place.js (where this iPad is, or Happy Valley, PA); when it
@@ -39,7 +39,7 @@
   const previewTime = (q.match(/[?&]time=(day|night)/) || [])[1];
 
   let ctx, W = 0, H = 0, t = 0;
-  let flakes = [], drops = [], stars = [], smoke = [], trees = [], clouds = [];
+  let flakes = [], drops = [], stars = [], smoke = [], trees = [], clouds = [], mists = [];
   let depth = null, roofDepth = null;            // snow height per 2-px column
   const COL = 2;
   let wx = { status: 'loading', day: isDayByClock(), sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words: '' };
@@ -103,11 +103,12 @@
   }
   function setPreview() {
     const day = previewTime ? previewTime === 'day' : isDayByClock();
-    // NOAA-style words for each preview, so the status line and the forecast icon read like the real thing.
-    const words = { sunny: 'Sunny', partly: 'Partly Sunny', cloudy: 'Cloudy', fog: 'Patchy Fog', rain: 'Rain Showers', mix: 'Rain And Snow', 'snow-light': 'Chance Snow Showers', snow: 'Snow', 'snow-heavy': 'Heavy Snow', coming: 'Mostly Sunny' }[previewWx] || 'Sunny';
+    // NOAA-style words for each preview, so the forecast box and its icons read like the real thing.
+    const words = { sunny: 'Sunny', partly: 'Partly Sunny', cloudy: 'Cloudy', fog: 'Patchy Fog', 'drizzle-fog': 'Light Drizzle and Fog/Mist', rain: 'Rain Showers', mix: 'Rain And Snow', 'snow-light': 'Chance Snow Showers', snow: 'Snow', 'snow-heavy': 'Heavy Snow', coming: 'Mostly Sunny' }[previewWx] || 'Sunny';
     const base = { status: 'preview', day, sky: 'clear', fall: 'none', rate: 0, rain: 0, snowToday: false, todayTotal: 0, coming: null, words };
     const p = {
-      sunny: {}, partly: { sky: 'partly' }, cloudy: { sky: 'cloudy' }, fog: { sky: 'fog' },
+      sunny: {}, partly: { sky: 'partly' }, cloudy: { sky: 'cloudy' }, fog: { sky: 'fog', fog: true },
+      'drizzle-fog': { sky: 'cloudy', fall: 'rain', rain: 0.03, fog: true },
       rain: { sky: 'cloudy', fall: 'rain', rain: 0.15 },
       mix: { sky: 'cloudy', fall: 'mix', rate: 0.1, rain: 0.08, snowToday: true, todayTotal: 2 },
       'snow-light': { sky: 'cloudy', fall: 'snow', rate: 0.05, snowToday: true, todayTotal: 1 },
@@ -178,7 +179,10 @@
         coming = { when, total: ahead, hoursUntil: (first - now) / 3600e3 };
       }
       if (stale()) return;
-      wx = { status: 'ok', day: !!period.isDaytime, sky, fall, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: observed ? 'Now: ' + observed : period.shortForecast, forecastWords: period.shortForecast };
+      // V147: ground fog when the words in use (the station's now, else the forecast) say fog or mist,
+      // also with rain falling: "Light Drizzle and Fog/Mist" shows the drizzle and the fog.
+      const fogNow = /fog|mist/i.test(observed || period.shortForecast || '');
+      wx = { status: 'ok', day: !!period.isDaytime, sky, fall, fog: fogNow, rate, rain, snowToday: todayTotal > 0 || snowFalling, todayTotal, coming, words: observed ? 'Now: ' + observed : period.shortForecast, forecastWords: period.shortForecast };
       // Three days for the forecast box: NOAA's day and night periods grouped by date.
       const byDate = new Map();
       for (const p of fc.properties.periods) {
@@ -218,6 +222,8 @@
       const x = (i < 5 ? W * (0.03 + i * 0.085) : W * (0.86 + (i - 5) * 0.045)) + (Math.random() - 0.5) * W * 0.03;
       trees.push({ x, h: H * (0.12 + Math.random() * 0.1), seed: Math.random() });
     }
+    // V147: slow banks of ground fog, drifting along the fields (only drawn when NOAA says fog or mist)
+    mists = Array.from({ length: 8 }, () => ({ x: Math.random() * W * 1.4 - W * 0.2, y: H * (0.68 + Math.random() * 0.2), r: W * (0.18 + Math.random() * 0.16), v: (0.04 + Math.random() * 0.08) * (W / 1000), a: 0.35 + Math.random() * 0.35 }));
     clouds = Array.from({ length: 9 }, (_, i) => ({ x: Math.random() * (W + 400) - 200, y: H * (0.06 + Math.random() * 0.3), s: W * (0.1 + Math.random() * 0.08), v: 0.12 + Math.random() * 0.15, k: i }));
     const n = Math.ceil(W / COL) + 1;
     if (!depth || depth.length !== n) { depth = new Float32Array(n).fill(0); roofDepth = new Float32Array(n).fill(0); }
@@ -338,7 +344,14 @@
         }
       }
       ctx.globalAlpha = 1;
-      if (cover > 0.85) { ctx.globalAlpha = (cover - 0.85) * 4; ctx.fillStyle = col; ctx.fillRect(0, 0, W, H * 0.12); ctx.globalAlpha = 1; }
+      // Heavy overcast darkens the top of the sky. V147: a soft fade from the top edge down to
+      // nothing, about a fifth of the way down. It used to be a solid strip 12% tall, which left
+      // a hard grey line across the sky in rain (about 70 px down on a Chromebook).
+      if (cover > 0.85) {
+        const fade = ctx.createLinearGradient(0, 0, 0, H * 0.2);
+        fade.addColorStop(0, col); fade.addColorStop(0.45, col + '99'); fade.addColorStop(1, col + '00');
+        ctx.globalAlpha = (cover - 0.85) * 4; ctx.fillStyle = fade; ctx.fillRect(0, 0, W, H * 0.2); ctx.globalAlpha = 1;
+      }
     }
   }
   function land() {
@@ -594,26 +607,31 @@
     }
     ctx.stroke(); ctx.globalAlpha = 1;
   }
+  // GROUND FOG (V147): fog lies low, along the fields and around the house and trees, and thins
+  // upward into clear air. No edges: a soft band that fades in from nothing above the hills,
+  // thickest over the fields, plus a few wide wisps drifting slowly to the right. Only when
+  // NOAA's words say fog or mist (wx.fog); it eases in and out over a few seconds.
   function fogLayer() {
     if (fog < 0.02) return;
-    const g = ctx.createLinearGradient(0, H * 0.45, 0, H);
-    const c = tone('#3a4450', '#d8dde2');
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, c); g.addColorStop(1, c);
-    ctx.globalAlpha = fog * 0.6; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+    const c = tone('#3a4450', '#d8dde2'), top = H * 0.5;
+    const g = ctx.createLinearGradient(0, top, 0, H);
+    g.addColorStop(0, c + '00'); g.addColorStop(0.3, c + '38'); g.addColorStop(0.55, c + 'a6');
+    g.addColorStop(0.78, c + 'a6'); g.addColorStop(1, c + '73');
+    ctx.globalAlpha = fog * 0.6; ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top);
+    for (const m of mists) {
+      m.x += m.v; if (m.x - m.r > W) m.x = -m.r;
+      ctx.save(); ctx.translate(m.x, m.y); ctx.scale(1, 0.16);
+      const w = ctx.createRadialGradient(0, 0, 0, 0, 0, m.r);
+      w.addColorStop(0, c + 'cc'); w.addColorStop(0.5, c + '55'); w.addColorStop(1, c + '00');
+      ctx.globalAlpha = fog * m.a * 0.5; ctx.fillStyle = w; ctx.beginPath(); ctx.arc(0, 0, m.r, 0, 6.3); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
-  function status() {
-    const amt = (n) => n < 1 ? 'UNDER 1' : String(Math.round(n));
-    let say = wx.status === 'loading' ? 'CHECKING NOAA…'
-      : wx.status === 'offline' ? 'NOAA FORECAST UNAVAILABLE'
-      : (wx.words || '').toUpperCase();
-    if (wx.status !== 'loading' && wx.status !== 'offline' && wx.todayTotal > 0) say += ` · ABOUT ${amt(wx.todayTotal)} IN TODAY`;
-    if (wx.coming) say += ` · SNOW COMING ${wx.coming.when} · ABOUT ${amt(wx.coming.total)} IN`;
-    ctx.font = `500 ${Math.max(11, Math.round(Math.min(W, H) / 60))}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';   // top left, clear of the tap hint at the bottom
-    ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.fillStyle = '#eef3f8'; ctx.globalAlpha = 0.8;
-    ctx.fillText(`${wx.status === 'preview' ? 'PREVIEW' : 'NOAA · ' + placeName()} · ${say}`, 16, (isPhone() ? safeTop() : 0) + 14);   // V141: below the iPhone's status bar
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  }
+  // V147: the NOAA words line that sat at the top left of Home ("NOAA · CENTRE HALL · NOW: ...") is
+  // gone, on every device: the scene itself shows the weather. The words are still read and still
+  // drive the sky, the rain, the snow and the fog, and the Weather Station and the forecast box
+  // still show them.
 
   // ---- the frame -------------------------------------------------------------
   function wildEnv() {
@@ -628,7 +646,7 @@
     const first = t < 3;
     const ease = (cur, want, k) => cur + (want - cur) * (first ? 1 : k);
     cover = ease(cover, targetCover(), 0.01);
-    fog = ease(fog, wx.sky === 'fog' ? 1 : 0, 0.01);
+    fog = ease(fog, wx.fog ? 1 : 0, 0.01);
     light = ease(light, daylight(), 0.02);   // follows the real sun (V46)
     Sway.update(performance.now());          // V142: the trees and the corn in a strong wind
     // Ground: white while snow is in today's forecast (a light cover at least),
@@ -646,7 +664,6 @@
       if (arr === roofDepth && roofY(i * COL) === null) continue;
       arr[i] += ((arr[i - 1] + arr[i + 1]) / 2 - arr[i]) * 0.05;
     }
-    status();
     panel();
     banner();
     detailPage();
@@ -769,7 +786,8 @@
     if (!a) { bannerBox = null; return; }
     if (W < 700) return phoneBanner(a);              // V130: a phone gets a small one-line tag
     const fs = Math.max(13, Math.min(22, Math.round(Math.min(W, H) / 34)));
-    const x = 16 + slide, y = 40, w = W - 32, h = fs * 3.1;
+    const x = 16 + slide, y = 16, w = W - 32,   // V147: up where the NOAA line was
+    h = fs * 3.1;
     bannerBox = { x: 16, y, w, h };
     const pulse = 0.85 + 0.15 * Math.sin(t / 15);
     ctx.save();
@@ -792,10 +810,10 @@
   // in one short line ("WIND ADVISORY · 7 PM"); tap it for everything else, swipe it away as before.
   // V141: on an iPhone it sat up under the clock and the notch (the app draws under the status bar),
   // over the NOAA line, and a swipe up there pulled down iOS's own Notification Center instead.
-  // Now it sits below the status bar and the NOAA line, a little taller, and follows the finger
+  // Now it sits below the status bar (V147: and, with the NOAA line gone, where that line was), a little taller, and follows the finger
   // when you slide it; let go past a short distance and it slides away.
   function phoneBanner(a) {
-    const fs = 13, h = 34, y = safeTop() + 44;
+    const fs = 13, h = 34, y = safeTop() + 14;   // V147: the NOAA line above it is gone, so it moves up into its place
     let ends = '';
     if (a.ends) { const d = new Date(a.ends), today = d.toDateString() === new Date().toDateString();
       ends = d.toLocaleString(undefined, today ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase().replace(':00', ''); }

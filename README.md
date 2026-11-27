@@ -40,13 +40,14 @@ Swipe left on the Christmas display for the Winter scene; swipe right to go back
 
 - **Day or night** from the real sunrise and sunset for Happy Valley (since V46), with the sky brightening over the hour around sunrise and dimming over the hour around sunset: sun and blue sky by day, moon and stars by night.
 - **Sky** from the forecast words: clear, partly cloudy, cloudy or fog.
+- **Ground fog** (since V147) when the words in use say fog or mist, also with rain falling: a soft bank along the fields, around the house and trees, thinning upward into clear air.
 - **Rain, snow or a mix** falling: since V44 from the nearest NOAA station's current conditions when it has a reading from the last 2 hours (so it shows what is really coming down), otherwise from the forecast; snow comes down light, moderate or heavy by the forecast rate (under 0.1, 0.1 to 0.5, over 0.5 inches an hour).
 - **Ground** is white when snow is in today's forecast and piles up while it falls (depth set by today's total); otherwise it's bare, and leftover snow melts away slowly.
 - **Tap** for a three-day forecast box to the left of the house (day, forecast with a weather icon, high and low, chance of precipitation); tap again to close. Taps on Winter make no sound.
 - **Weather alerts** from NOAA for Happy Valley (checked every 10 minutes) show as a red banner across the top: tap it for the details (the page stays up, even if you swipe away and back, until you tap its ✕, V104), swipe the banner sideways to dismiss the alert. A dismissed alert stays away; a new one shows. Preview with `?alert`.
-- **Upcoming snow** is still previewed: if snow is due in the next two days, the top line says when and about how much, and clouds gather in its last 12 hours.
+- **Upcoming snow** is still previewed: if snow is due in the next two days, clouds gather in its last 12 hours. (Before V147 a line of NOAA words at the top also said when and about how much; that line is gone.)
 
-Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
+Preview any weather with `?wx=sunny`, `partly`, `cloudy`, `fog`, `drizzle-fog`, `rain`, `mix`, `snow-light`, `snow`, `snow-heavy` or `coming`, plus `&time=day` or `&time=night`. The thresholds are at the top of `winter.js`.
 
 ## What the weather is doing right now (V58)
 
@@ -92,7 +93,7 @@ On a phone, the full-width alert banner covered too much of the screen. Now a ph
 
 ## Alert tag lower on iPhone, easier to swipe away (V141)
 
-The app draws under the iPhone's status bar, so the alert tag sat up under the clock and the notch, and a swipe up there could pull down Notification Center instead. Now, on phone-width screens (under 700 pixels), the tag and the NOAA line above it start below the status bar (the screen's own safe area, read from `env(safe-area-inset-top)`), and the tag is a little taller. Its touch area reaches 12 pixels past its edges, it follows your finger when you slide it, a 40 pixel slide is enough to send it away (60 elsewhere), and a shorter one lets it ease back. In Safari's own window, where there's no status bar to clear, it moves down only a few pixels. The iPad and Chromebook are unchanged.
+The app draws under the iPhone's status bar, so the alert tag sat up under the clock and the notch, and a swipe up there could pull down Notification Center instead. Now, on phone-width screens (under 700 pixels), the tag (and, until V147, the NOAA line above it) start below the status bar (the screen's own safe area, read from `env(safe-area-inset-top)`), and the tag is a little taller. Its touch area reaches 12 pixels past its edges, it follows your finger when you slide it, a 40 pixel slide is enough to send it away (60 elsewhere), and a shorter one lets it ease back. In Safari's own window, where there's no status bar to clear, it moves down only a few pixels. The iPad and Chromebook are unchanged.
 
 ## Calmer location button (V128, V129)
 
@@ -128,7 +129,7 @@ At night each window is lit by its own oil lamp. Since V121 they're back to full
 
 ## Location (V66)
 
-The weather, alerts and daylight follow wherever the iPad is in the US (`place.js`). The first time, the iPad asks "Allow location?". If allowed, the spot is rounded to about half a mile, kept on the device, and only sent to NOAA (api.weather.gov) to get that place's weather. NOAA names the nearest town, and the screens say it ("NOAA · FRESNO"). It's checked again each time the app starts. If location isn't allowed, the spot is outside the US, or it can't tell, everything stays on Happy Valley, PA. Menu → LOCATION switches between **Where this iPad is** and **Happy Valley, PA**. Since V100 there's also an **ALLOW LOCATION** button at the top of that section whenever the app doesn't know where the iPad is: it asks the iPad again, and if the iPad still says no, the menu says where in Settings to turn it on. The clock and the Earth's day and night were already right anywhere. The Around Happy Valley events stay local.
+The weather, alerts and daylight follow wherever the iPad is in the US (`place.js`). The first time, the iPad asks "Allow location?". If allowed, the spot is rounded to about half a mile, kept on the device, and only sent to NOAA (api.weather.gov) to get that place's weather. NOAA names the nearest town, and the screens say it ("NOAA · FRESNO · 3 DAYS" in the forecast box). It's checked again each time the app starts. If location isn't allowed, the spot is outside the US, or it can't tell, everything stays on Happy Valley, PA. Menu → LOCATION switches between **Where this iPad is** and **Happy Valley, PA**. Since V100 there's also an **ALLOW LOCATION** button at the top of that section whenever the app doesn't know where the iPad is: it asks the iPad again, and if the iPad still says no, the menu says where in Settings to turn it on. The clock and the Earth's day and night were already right anywhere. The Around Happy Valley events stay local.
 
 V66 also fixed sunrise and sunset west of about Chicago: the sunset had come out as yesterday's, which would have left the Winter scene dark all afternoon in California.
 
@@ -222,3 +223,9 @@ The page that opens when you tap the alert banner sat too high on an iPhone: its
 ## The alert page's ✕ works on an older iPad (V144)
 
 On a 2016 iPad, tapping ✕ on the alert page did nothing. The ✕ is drawn on the canvas, and the only thing that closed it was a "click" caught at the page level. iPad Safari doesn't turn a tap on a plain canvas into a click, so the tap never arrived (a mouse click on a Chromebook did). Now an invisible real button sits over the ✕, a little bigger than it, and closes the page on the touch itself; the swipe code also closes it when a tap starts and ends on the ✕, even if the finger wobbles a little. A drag that starts or ends on the ✕ still only scrolls a long alert. Closing with ✕ now also puts the alert away, the same as swiping the banner: it stays away until NOAA sends a new or updated alert. The `?alert` preview comes back after a reload. Nothing looks different.
+
+## Home: fog on the ground, no NOAA words line, no hard line in the sky (V147)
+
+- **No hard grey line at the top.** In rain or heavy overcast, the sky's top 12% was darkened by a solid strip, which left a straight grey edge about 70 pixels down on a Chromebook. It's now a soft fade from the top edge to nothing, about a fifth of the way down, with no edge.
+- **Fog lies on the ground.** When NOAA's words say fog or mist (the nearest station's words now, or else the forecast), a soft fog lies along the fields, around the house and trees, and thins upward, with a few wide wisps drifting slowly. It used to show only for "fog" with nothing falling, so "Light Drizzle and Fog/Mist" showed no fog at all. Station readings with mist (BR) and no words now read "Mist", not "Haze". Haze and smoke don't bring fog. Preview with `?wx=fog` or `?wx=drizzle-fog`.
+- **No NOAA words line.** The "NOAA · CENTRE HALL · NOW: ..." line at the top left of Home is gone on every device: the scene shows the weather. The words still drive the scene, the Weather Station and the forecast box. The alert banner (iPad, Chromebook) and the phone's alert tag move up into the space the line used; on an iPhone the tag still starts below the status bar.
