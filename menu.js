@@ -187,7 +187,7 @@
       <p class="help">During these hours the screen becomes a big, dim clock. Tap it to wake the app for 5 minutes.</p>
       <div class="opts">${NightClock.options().map(o => `<button class="opt${o.id === NightClock.get() ? ' on' : ''}" data-night="${o.id}">${o.name}</button>`).join('')}</div>` : ''}
       ${window.Place ? `<h2>LOCATION</h2>
-      ${allowHtml()}<p class="help">Whose weather, alerts and daylight to show. The spot stays on this iPad and only goes to NOAA. US only.</p>
+      ${allowHtml()}<p class="help">Whose weather, alerts and daylight to show. The spot stays on this device and only goes to NOAA. US only.</p>
       <div class="opts">${Place.options().map(o => `<button class="opt${o.id === Place.mode() ? ' on' : ''}" data-place="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
       ${localHtml()}
       <h2>MY CORNER</h2>

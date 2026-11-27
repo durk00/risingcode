@@ -87,7 +87,7 @@
     <li><b>ALERT SOUND</b>: the chime for a new weather alert, On or Off. From 10 PM to 7 AM only serious warnings make a sound, and a tornado warning always sounds the emergency tone.</li>
     <li><b>SOUND</b>: what plays when the Christmas radar catches Santa: a toot, Jingle Bells or icicles. Pick <b>SILENT</b> to turn the sound off.</li>
     <li><b>NIGHT CLOCK</b>: overnight, the screen turns into a big, dim clock with the date and the moon's phase. Pick the hours: <b>9 PM – 6 AM</b> (the usual), <b>10 PM – 6 AM</b> or <b>11 PM – 7 AM</b>, or pick <b>Off</b> to turn it off. While it's showing, tap the clock to use the app for 5 minutes.</li>
-    <li><b>LOCATION</b>: whose weather to show, where this iPad is or Happy Valley, PA. See YOUR LOCATION above.</li>
+    <li><b>LOCATION</b>: whose weather to show, where this device is or Happy Valley, PA. See YOUR LOCATION above.</li>
     <li><b>AROUND HAPPY VALLEY</b>: upcoming local events. It only shows when the app is set to Happy Valley or the iPad is nearby.</li>
     <li><b>MY CORNER</b>: one thing just for your household, like verses for the week, picked for the season of the Church year.</li>
   </ul>
