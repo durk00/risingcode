@@ -84,6 +84,8 @@
 <script src="howto.js"></script>
 <script src="menu.js"></script>
 <script src="nightclock.js"></script>
+<script src="respond-data.js"></script>
+<script src="respond.js"></script>
 <script src="firstrun.js"></script>
 <script>
 (() => {
@@ -247,12 +249,14 @@
   // Christmas Eve, when it opens on the Christmas display so Santa's radar is the first thing up.
   const eveNow = (() => { const d = new Date(); return /[?&]eve\b/.test(location.search) || (d.getMonth() === 11 && d.getDate() === 24); })();
   let scene = eveNow ? 'christmas' : 'winter';
+  if (window.Respond) Respond.setScene(scene);
   window.goHome = () => setScene('winter');      // V123: the radio's alert strip takes you to the alert on Home
   function setScene(next) {
     if (next === scene || !SCENES.includes(next)) return;
     scene = next;
     if (window.Kitchen) Kitchen.show(scene === 'kitchen');
     if (window.GPage) GPage.show(scene === 'g');
+    if (window.Respond) Respond.setScene(scene);   // V145: the EMERGENCIES button shows on Home only
     try { localStorage.setItem('risingcode_scene', scene); } catch (e) {}
     showLabel({ christmas: (isHoliday() ? 'CHRISTMAS' : 'SCREENSAVER') + ' · SWIPE LEFT FOR HOME', winter: 'HOME · SWIPE LEFT FOR WEATHER · RIGHT FOR THE SCREENSAVER', details: 'WEATHER STATION · SWIPE LEFT FOR KITCHEN · RIGHT FOR HOME', kitchen: SCENES.includes('g') ? 'KITCHEN · SWIPE LEFT FOR g · RIGHT FOR WEATHER' : 'KITCHEN · SWIPE RIGHT FOR WEATHER', g: 'g · TAP BACK FOR KITCHEN' }[scene]);
   }
