@@ -53,12 +53,12 @@
   css.textContent = `
   #respond { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 14; display: none; background: #000; color: #fff; overflow-y: auto; -webkit-overflow-scrolling: touch;
     font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); }
   #respond.show { display: block; }
   #respond * { box-sizing: border-box; }
   #respond button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   #respond a { color: inherit; text-decoration: none; }
-  #respond .scr { min-height: 100%; width: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; padding: 28px 22px 24px; }
+  #respond .scr { min-height: 100%; width: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; padding: 28px 22px calc(24px + env(safe-area-inset-bottom, 0px)); }
   #respond .center { align-items: center; justify-content: center; text-align: center; }
   #respond .col { display: flex; flex-direction: column; gap: 12px; width: 100%; }
   #respond .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 22px; }
@@ -118,7 +118,11 @@
   #respond .unlock { width: 100%; padding: 18px; border: 0; border-radius: 16px; background: #dc2626; color: #fff; font-size: 20px; font-weight: 900; animation: rsPulse 1.4s ease-in-out infinite; }
   #respond .disc { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border-radius: 12px; background: #0a0a0a; border: 1px solid #262626; margin-top: 16px; }
   #respond .disc p { margin: 0; color: #6b7280; font-size: 12px; line-height: 1.4; }
-  #respond .nav { display: flex; gap: 12px; padding-top: 14px; }
+  /* The buttons stay on screen: they stick to the bottom of what's visible, lifted clear of the
+     iPhone's home bar, and the page scrolls behind them when a step is long. */
+  #respond .nav { display: flex; gap: 12px; padding: 14px 0 calc(18px + env(safe-area-inset-bottom, 0px)); position: sticky; bottom: 0; z-index: 2; background: #000; }
+  #respond .proto { padding-bottom: 8px; }
+  #respond .vst { display: block; margin-top: 2px; color: #fca5a5; font-size: 12px; font-weight: 600; }
   #respond .nav button { flex: 1; padding: 16px; border-radius: 16px; font-size: 16px; }
   #respond .nav .gb { background: #0a0a0a; border: 1px solid #262626; font-weight: 700; }
   #respond .nav .nx { background: #dc2626; border: 0; font-weight: 900; }
@@ -152,25 +156,63 @@
   }
   function hush() { if (synth) { try { synth.cancel(); } catch (e) {} } }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null, recOn = false;
+  let rec = null, recOn = false, recLive = false, recAt = 0;
+  const V = { heard: '', err: '', done: {} };   // what the voice box shows, and Respond.debug()
+  // iPhone dictation writes "What’s next" with a curly apostrophe; Chrome writes a straight one.
+  // The old check only knew the straight one, so on an iPhone the words were heard and ignored.
+  const norm = (t) => String(t).toLowerCase().replace(/[\u2018\u2019\u02bc`\u00b4]/g, "'").replace(/[^a-z' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  function command(t) {
+    const n = norm(t), m = n.replace(/'/g, '');
+    if (/\bwhats next\b|\bwhat is next\b|\bnext step\b/.test(m)) return 'next';
+    if (/\bgo back\b/.test(m)) return 'back';
+    if (/\brepeat\b/.test(m)) return 'repeat';
+    return '';
+  }
+  function voiceStatus() {
+    const v = el.querySelector('.vst'); if (!v) return;
+    v.textContent = V.err ? 'Voice stopped (' + V.err + ') — tap the screen or the mic to listen again'
+      : recLive ? (V.heard ? 'Listening · heard “' + V.heard + '”' : 'Listening…')
+      : 'Not listening — tap the screen to start';
+  }
   function listen(on) {
     if (!SR) return;
     if (on && !recOn) {
       try {
-        rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
+        rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
+        V.done = {};
         rec.onresult = (e) => {
-          const t = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
-          if (t.indexOf("what's next") >= 0 || t.indexOf('whats next') >= 0) goNext();
-          else if (t.indexOf('go back') >= 0) goBack();
-          else if (t.indexOf('repeat') >= 0) goRepeat();
+          // Every new result is checked (interim too, since iPhone Safari can hold back the final
+          // one in continuous mode); each result moves the step at most once.
+          for (let k = e.resultIndex; k < e.results.length; k++) {
+            const t = e.results[k][0].transcript; V.heard = norm(t).slice(-40);
+            const c = command(t);
+            if (c && !V.done[k]) { V.done[k] = 1; if (c === 'next') goNext(); else if (c === 'back') goBack(); else goRepeat(); }
+          }
+          voiceStatus();
         };
-        rec.onerror = () => {};
-        rec.onend = () => { if (recOn) { try { rec.start(); } catch (e) {} } };
-        recOn = true; rec.start();
-      } catch (e) {}
+        rec.onstart = () => { recLive = true; V.err = ''; voiceStatus(); };
+        rec.onerror = (e) => {
+          V.err = (e && e.error) || 'error';
+          if (V.err === 'not-allowed' || V.err === 'service-not-allowed') { recOn = false; }
+          voiceStatus();
+        };
+        rec.onend = () => {
+          recLive = false; V.done = {};
+          if (recOn) { try { recAt = Date.now(); rec.start(); } catch (e) {} }
+          voiceStatus();
+        };
+        recOn = true; recAt = Date.now(); rec.start();
+      } catch (e) { V.err = 'could not start'; }
     } else if (!on && recOn) {
-      recOn = false; try { rec.stop(); } catch (e) {} rec = null;
+      recOn = false; recLive = false; try { rec.stop(); } catch (e) {} rec = null;
     }
+  }
+  // iPhone Safari can refuse to restart listening on its own (no tap behind it), so any tap on a
+  // protocol screen starts it again when it has stopped.
+  function kick() {
+    if (!(open && S.screen === 'proto' && S.voice && SR) || recLive || Date.now() - recAt < 1500) return;
+    if (recOn && rec) { try { recAt = Date.now(); rec.start(); return; } catch (e) {} try { rec.abort(); } catch (e) {} }
+    recOn = false; rec = null; V.err = ''; listen(true);
   }
   function readStep(force) {
     if (!S.tts) return;
@@ -199,7 +241,7 @@
     </div></div>`;
   }
   function vHome() {
-    return `<div class="scr" style="justify-content:space-between;min-height:100vh">
+    return `<div class="scr" style="justify-content:space-between;min-height:100%">
       <div class="top" style="justify-content:flex-end;margin-bottom:0">${closeBtn}</div>
       <div class="col" style="align-items:center;gap:6px;text-align:center">
         <div class="logo"><svg width="44" height="44" viewBox="0 0 24 24" fill="white">${PLUS}</svg></div>
@@ -264,7 +306,7 @@
     const p = find(S.cat, S.id); if (!p) return vCats();
     const n = p.steps.length, i = S.step, last = i >= n - 1;
     const vOK = !!SR;
-    return `<div class="scr" style="min-height:100vh">
+    return `<div class="scr proto" style="min-height:100%">
       <div class="ph"><button type="button" class="back" data-act="pcats" style="font-size:12px">${ARROW_L} Categories</button>
         <div class="mid"><b>${esc(p.label)}</b><span>Step ${i + 1} / ${n}</span>${draftTag(p.id) ? '<br>' + draftTag(p.id) : ''}</div>
         <div style="display:flex;gap:8px"><button type="button" class="tog ${S.tts ? 'on' : ''}" data-act="tts" aria-label="Read steps aloud">${S.tts ? SPK_ON : SPK_OFF}</button>
@@ -275,7 +317,7 @@
         <div class="num"><b>${i + 1}</b><i></i></div>
         <div class="card"><p class="step">${esc(p.steps[i])}</p></div>
         ${isIOS && S.tts && !S.interacted && i === 0 ? '<button type="button" class="unlock" data-act="unlock">🔊 Tap to hear the steps</button>' : ''}
-        ${S.voice && vOK ? `<div class="voice">${MIC('#fca5a5')}<div><b>Say “What’s next?”</b><span>or “Go back” · “Repeat” — hands-free</span></div></div>` : ''}
+        ${S.voice && vOK ? `<div class="voice">${MIC('#fca5a5')}<div><b>Say “What’s next?”</b><span>or “Go back” · “Repeat” — hands-free</span><span class="vst"></span></div></div>` : ''}
         ${S.voice && !vOK ? '<p class="sub" style="font-size:12px;text-align:center">Voice commands aren’t available in this browser — use the buttons below.</p>' : ''}
       </div>
       <div class="disc"><p>This guidance does not replace professional medical advice. Always call 911 first.</p></div>
@@ -291,6 +333,7 @@
     el.innerHTML = v();
     el.scrollTop = 0;
     listen(open && S.screen === 'proto' && S.voice);
+    voiceStatus();
   }
   function go(screen) {
     if (S.screen === 'proto' && screen !== 'proto') hush();
@@ -302,6 +345,7 @@
   // Respond asks for the microphone when a protocol opens, so "What's next?" can work.
   function askMic() {
     if (!S.voice || !SR) return;
+    if (isIOS) return;   // on iPhone/iPad, listening asks for the mic itself; a second grab-and-release of the mic here raced it
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -322,6 +366,7 @@
   el.addEventListener('click', (e) => {
     e.stopPropagation();
     const b = e.target.closest && e.target.closest('[data-act]');
+    kick();
     if (!b) return;
     const a = b.getAttribute('data-act');
     if (a === 'close') return close();
@@ -371,6 +416,7 @@
   window.Respond = {
     mark: MARK,   // the Star of Life, drawn on the menu's EMERGENCIES entry (menu.js)
     open: openR, close, isOpen: () => open,
-    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step }),
+    debug: () => ({ open, screen: S.screen, cat: S.cat, id: S.id, step: S.step, listening: recLive, heard: V.heard, voiceError: V.err }),
+    _command: command,
   };
 })();
