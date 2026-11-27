@@ -30,7 +30,7 @@
   const SHIELD_MARK = '<svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V21 C37 32 30 40 20 44 C10 40 3 32 3 21 V8 Z" fill="#ffa21f" stroke="#ffa21f" stroke-width="2.5" stroke-linejoin="round"/><path d="M12.5 22.5 L18 28 L28.5 16.5" fill="none" stroke="#0b1520" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   // V156: the app's version on its own line under BUILT INTO OUTSIDE IN, read from the home screen's
   // hint line (index.html) so the two always agree and only one place needs the number changed.
-  const appVersion = () => { const h = document.getElementById('hint'); const m = h && h.textContent.match(/\bV\d+\b/); return m ? m[0] : 'V157'; };
+  const appVersion = () => { const h = document.getElementById('hint'); const m = h && h.textContent.match(/\bV\d+\b/); return m ? m[0] : 'V158'; };
   let wild = 'none';
   // V149: a pick that's no longer offered (the old Poem of the day or What can I make?) falls back to Off,
   // and the stale pick is cleared so this device remembers Off from now on.
