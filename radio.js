@@ -139,8 +139,28 @@
   try { const v = parseFloat(localStorage.getItem(VKEY)); if (v >= 0 && v <= 1) vol = v; } catch (e) {}
   const volHooks = [];
   window.AppVolume = { get: () => vol, onChange: (f) => { volHooks.push(f); } };
-  // Can this browser set a stream's volume? An iPhone or iPad always reads it back as 1.
-  const canSetVolume = (() => { try { const a = document.createElement('audio'); a.volume = 0.5; return Math.abs(a.volume - 0.5) < 0.01; } catch (e) { return false; } })();
+  // Can this browser set a stream's volume?
+  // V153: an iPhone or iPad (Safari, and Chrome too, which runs on Apple's WebKit there) takes a new
+  // volume, reads it back as set, then quietly puts the old one back a moment later (WebKit queues a
+  // revert task in HTMLMediaElement::setVolume when the volume is locked). The old check read it back
+  // at once, saw 0.5, and decided the device could set volume, so on an iPhone or iPad the knob only
+  // changed a number Safari was about to undo: no tuning onto the mixer, no note. Now an Apple touch
+  // device starts as "can't", and the answer is settled by reading the value again after that moment
+  // (newer iPad software lets a page set volume, and then this says so and the plain way is used).
+  const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const volCheck = { apple: appleTouch, now: null, later: null };
+  let canSetVolume = (() => {
+    try {
+      const a = document.createElement('audio'); a.volume = 0.5;
+      const now = Math.abs(a.volume - 0.5) < 0.01; volCheck.now = now;
+      setTimeout(() => {
+        let later = false; try { later = Math.abs(a.volume - 0.5) < 0.01; } catch (e) {}
+        volCheck.later = later; canSetVolume = now && later;
+        try { applyVol(); } catch (e) {}
+      }, 400);
+      return now && !appleTouch;
+    } catch (e) { return false; }
+  })();
   const forceGain = /[?&]volroute=gain(&|$)/.test(location.search);   // for testing the iPad way on a computer
   const needsGain = () => forceGain || !canSetVolume;
   function makePlayer(cors) {
@@ -149,7 +169,13 @@
     return a;
   }
   const direct = makePlayer(false);
-  let player = direct, routed = null, routedGain = null;
+  let player = direct, routed = null, routedGain = null, routedProbe = null;
+  // V153: on some devices (Apple's WebKit with a live, endless stream: WebKit bug 180696) the mixer
+  // gets nothing from the stream while the stream still plays straight out at full. The probe listens
+  // just before the volume step; a stream that plays on for a few seconds while the probe hears
+  // perfect silence is going around the mixer. Then the station goes back to the plain way, the set
+  // says to use the device's buttons, and later stations skip the mixer this session.
+  let mixerBypassed = false, flow = { verdict: '', peak: 0, ctx: '' }, flowTimer = null;
   const noGain = {};                                                   // stations that wouldn't go through the mixer
   const isHls = (url) => /\.m3u8(\?|$)/i.test(url || '');
   let ac = null, hissGain = null, lastHiss = 0;
@@ -182,20 +208,54 @@
     try {
       const a = makePlayer(true), src = ac.createMediaElementSource(a);
       routedGain = ac.createGain(); routedGain.gain.value = vol;
-      src.connect(routedGain); routedGain.connect(ac.destination);
+      try { routedProbe = ac.createAnalyser(); routedProbe.fftSize = 1024; } catch (e) { routedProbe = null; }
+      if (routedProbe) { src.connect(routedProbe); routedProbe.connect(routedGain); } else src.connect(routedGain);
+      routedGain.connect(ac.destination);
       hook(a); routed = a;
     } catch (e) { routed = null; routedGain = null; }
     return routed;
   }
   function pickPlayer(url) {
-    if (needsGain() && vol < 0.995 && !isHls(url) && !noGain[url]) { const r = routedPlayer(); if (r) return r; }
+    if (needsGain() && vol < 0.995 && !isHls(url) && !noGain[url] && !mixerBypassed) {
+      // Sound that only goes through the mixer is treated as "ambient" by an iPhone (the silent
+      // switch mutes it) unless the page says it's playback, like any music player (Safari 16.4+).
+      try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
+      const r = routedPlayer(); if (r) return r;
+    }
     return direct;
+  }
+  // Is the stream really coming through the mixer? (see the probe above)
+  function checkFlow() {
+    clearTimeout(flowTimer); flow = { verdict: routedProbe ? 'checking' : 'no probe', peak: 0, ctx: ac ? ac.state : '' };
+    if (!routedProbe) return;
+    const buf = new Uint8Array(routedProbe.fftSize), t0 = routed.currentTime; let heard = 0, tries = 0;
+    const look = () => {
+      if (player !== routed || !playing || routed.paused) { flow.verdict = ''; return; }
+      flow.ctx = ac.state;
+      if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
+      else {
+        routedProbe.getByteTimeDomainData(buf);
+        let pk = 0; for (let k = 0; k < buf.length; k++) { const d = Math.abs(buf[k] - 128); if (d > pk) pk = d; }
+        flow.peak = Math.max(flow.peak, pk); if (pk > 1) heard++;
+      }
+      if (heard >= 2) { flow.verdict = 'through the mixer'; return; }
+      if (++tries < 24) { flowTimer = setTimeout(look, 250); return; }
+      if (routed.currentTime - t0 < 2) { flow.verdict = 'stream not moving'; return; }
+      if (ac.state !== 'running') { flow.verdict = 'mixer asleep (' + ac.state + ')'; return; }
+      flow.verdict = 'going around the mixer'; mixerBypassed = true;
+      const url = playing; quiet(routed); player = direct; direct.src = url; status = 'buffering'; showStation();
+      direct.play().catch(() => { if (playing === url) { status = 'dead'; hiss(0.35); showStation(); } });
+      volShow();
+    };
+    flowTimer = setTimeout(look, 500);
   }
   // Does the level the knob shows really reach what's playing?
   const volReaches = () => !needsGain() || player === routed || vol >= 0.995;
   // What the knob is doing right now, for checking on a device (type AppVolume.state() in the console).
   window.AppVolume.state = () => ({ level: vol, route: player === routed ? 'mixer' : 'direct', setsVolume: canSetVolume, directVolume: direct.volume,
-    mixerLevel: routedGain ? routedGain.gain.value : null, playing: !!playing && !player.paused, time: player.currentTime, reaches: volReaches() });
+    mixerLevel: routedGain ? routedGain.gain.value : null, playing: !!playing && !player.paused, time: player.currentTime, reaches: volReaches(),
+    check: volCheck, flow: flow, bypassed: mixerBypassed, context: ac ? ac.state : 'none', session: navigator.audioSession ? navigator.audioSession.type : 'n/a',
+    station: playing || '', refused: !!(playing && noGain[playing]) });
 
   // ---- state --------------------------------------------------------------------------
   let band = bands().find(b => b.id === saved.band) || bands()[1];
@@ -464,7 +524,7 @@
   // Each stream player reports only while it's the one playing.
   function hook(a) {
     const mine = (f) => (e) => { if (a === player) f(e); };
-    a.addEventListener('playing', mine(() => { status = 'live'; retries = 0; hiss(0); showStation(); volShow(); try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} }));
+    a.addEventListener('playing', mine(() => { status = 'live'; retries = 0; hiss(0); showStation(); volShow(); if (a === routed) checkFlow(); try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} }));
     a.addEventListener('stalled', mine(retry));
     a.addEventListener('ended', mine(retry));
     a.addEventListener('waiting', mine(() => { if (playing) { status = 'buffering'; showStation(); } }));
@@ -572,4 +632,24 @@
   }
   function close() { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); clearTimeout(settleTimer); if (!playing) hiss(0); }
   window.Radio = { open, close, isOpen };
+
+  // V153: ?voldebug on the address puts a small readout in the top-left corner that says, twice a
+  // second, which way the radio is playing and whether the knob really reaches it. Only for testing.
+  if (/[?&]voldebug(=|&|$)/.test(location.search)) {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:6px;top:6px;z-index:99;max-width:min(92vw,420px);padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.82);color:#9fe39f;font:11px/1.35 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre-wrap;word-break:break-all';
+    document.body.appendChild(box);
+    const yn = (v) => v === null ? '?' : (v ? 'yes' : 'no');
+    setInterval(() => {
+      const st = window.AppVolume.state();
+      let host = ''; try { host = st.station ? new URL(st.station).host : ''; } catch (e) {}
+      box.textContent = 'VOLDEBUG V153\n' +
+        'apple touch: ' + yn(st.check.apple) + ' · volume kept at once: ' + yn(st.check.now) + ' · kept later: ' + yn(st.check.later) + '\n' +
+        'page can set volume: ' + yn(st.setsVolume) + '\n' +
+        'knob: ' + Math.round(st.level * 100) + '% · route: ' + st.route + ' · reaches: ' + yn(st.reaches) + '\n' +
+        'mixer: ' + st.context + (st.mixerLevel === null ? '' : ' · gain ' + st.mixerLevel.toFixed(2)) + ' · session: ' + st.session + '\n' +
+        'mixer hears: ' + (st.flow.verdict || '-') + ' · peak ' + st.flow.peak + (st.bypassed ? ' · BYPASSED' : '') + '\n' +
+        'station: ' + (host || '-') + (st.refused ? ' · refused the mixer' : '') + ' · playing: ' + yn(st.playing) + ' · t ' + (st.time || 0).toFixed(1);
+    }, 500);
+  }
 })();
