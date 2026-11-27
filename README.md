@@ -4,7 +4,7 @@
 
 Outside In is a window. It shows what is really happening outside your house right now: the sky, the weather, the sun and the moon where they actually are, the animals that come by when they really would. Add a radio, a TV and a kitchen, and it's a quiet corner to step back from the noise of the day. There is no news feed, no notifications, no ads and no account. Everything it shows is real, and when a reading is old, it says so. Made for an iPad; works in any modern browser.
 
-Full plain-English instructions are in the app: Menu → **HOW IT WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set at the top of `howto.js` and in `index.html` (the page title and the home-screen name).
+Full plain-English instructions are in the app: Menu → **HOW THE APP WORKS** (`howto.js`, V89). The first-time guide points there too. The app's name is set at the top of `howto.js` and in `index.html` (the page title and the home-screen name).
 
 ## Use it on an iPad
 
@@ -102,6 +102,10 @@ The ALLOW LOCATION button in the menu was an amber outline that looked like a wa
 
 On the weather station, the WIND AND GUSTS chart along the bottom is in motion: darker amber streaks ride along the wind line (amber since V126, to match the page; darker so they show by brightness, not color) and the gust dots stream left to right, forward in time, the gusts a little faster than the wind. The lines themselves still show the real forecast; only the pattern on them moves.
 
+## Weather Station clears the iPhone's status bar (V144)
+
+On an iPhone the top of the Weather Station page sat up under the clock and the notch, where it looked blurry. On a phone it now starts below the status bar and notch. To make the room, each of the four NEXT 3 DAYS strips along the bottom is a little shorter (about 15 pixels each on a 390 × 844 iPhone); the temperature, wind, humidity and the small tiles under them keep their size. Everything still fits on one screen. iPad, Chromebook and Safari's own window (no notch to clear) are unchanged.
+
 ## Smoke that follows a strong wind (V140)
 
 The chimney smoke now goes the way a strong wind is really blowing, from the nearest NOAA station's latest reading. Under 15 mph it's exactly the old smoke. Between 15 and 25 mph it eases over, and from 25 mph up it drifts downwind, a little lower and a bit faster the harder it blows (no faster past 40 mph). The puffs keep the same size and fade as before, so it looks the same through the radio; only the direction changes, and it turns slowly, never with a jump. The scene looks south, so a west wind sends the smoke left and an east wind sends it right. With no recent reading (none in the last 3 hours, or no direction), it's the old smoke. Preview: add `?wind` (a 30 mph west wind), `?wind=E`, `?wind=NW,25` or `?wind=90,35` to the address.
@@ -186,7 +190,18 @@ In `nightclock.js`. During the hours picked in the menu (Off, 9 PM–6 AM by def
 
 ## First-time guide
 
-In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW IT WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
+In `firstrun.js`. The first time the app opens on a device it shows one line: **swipe down from the center of the screen for settings and instructions** (V93; it used to show every gesture at once). Swiping down right there opens the menu, with HOW THE APP WORKS at the top; a tap just closes it. It never shows again on that device. Preview with `?intro`.
+
+## EMERGENCIES: Respond inside Outside In (V145)
+
+**EMERGENCIES sits at the top of the menu** (swipe down from the center of any screen), centered between the word MENU and the ✕, just above HOW THE APP WORKS: the blue Star of Life on a white disc with the word EMERGENCIES beside it. Nothing shows for it on Home or any other screen. Tapping it slides the menu away and opens the full Respond app (durk00/respond) in this app's own code (`respond.js`), with no Base44, no login and no other site:
+
+- **Terms first, every time:** Respond's terms of use, word for word, and nothing else opens until "Yes — I Understand and Accept" is tapped. "Not now" goes back to Outside In.
+- **Then everything Respond does:** its home screen (EMERGENCY, "I'm not sure what's happening", Call 911, Local Health Alerts), the five categories and twenty situations, the Call 911 First screen, and the steps, read aloud, with Say "What's next?" / "Go back" / "Repeat" where the browser can listen and the same buttons on screen everywhere. ✕ Close (or Escape) goes back to the screen you were on, with the menu closed.
+- **The protocols are Respond's, not rewritten:** `respond-data.js` is copied word for word from Respond's code. Respond's code still lists two protocols as DRAFT (Unresponsive but Breathing, and Child CPR). William, a former EMT, signed off on their wording as written on November 26, 2026, so they no longer carry a DRAFT tag here. To change a protocol, change it in Respond first, after responder review, then copy it again.
+- **Why not a red cross:** a red cross on a white background is the Red Cross emblem, which U.S. law (18 U.S.C. 706) reserves for the American Red Cross and military medical services.
+
+(The home screen shows V145 from this change.)
 
 ## Verses for the week
 
@@ -203,6 +218,10 @@ Menu → SCREENSAVER → **Portrait** (`face.js`): an AI's face in amber code, d
 ## Alert page fits an iPhone, and long alerts scroll (V143)
 
 The page that opens when you tap the alert banner sat too high on an iPhone: its ✕ was up under the clock and the notch, partly cut off, a long alert was simply cut short, and a drag on the page pulled down the menu. Now, on a phone, the page starts below the status bar and notch, a long alert name wraps clear of the ✕, and the footer clears the home bar. A long alert's text scrolls inside the page: drag it on a phone or iPad, or use the mouse wheel, trackpad or arrow keys on a Chromebook. It fades softly at the edges where there's more, with a thin bar showing where you are. While the page is open, a drag on it only scrolls: it never opens the menu or the radio and never changes screen; tap ✕ to close it as before. A short alert looks the same as before (on a phone it just sits lower). iPad and Chromebook layouts are unchanged. Preview a long one with `?alert=long` on the address. (The home-screen version line still reads V141; it should become V143 when this is merged.)
+
+## The alert page's ✕ works on an older iPad (V144)
+
+On a 2016 iPad, tapping ✕ on the alert page did nothing. The ✕ is drawn on the canvas, and the only thing that closed it was a "click" caught at the page level. iPad Safari doesn't turn a tap on a plain canvas into a click, so the tap never arrived (a mouse click on a Chromebook did). Now an invisible real button sits over the ✕, a little bigger than it, and closes the page on the touch itself; the swipe code also closes it when a tap starts and ends on the ✕, even if the finger wobbles a little. A drag that starts or ends on the ✕ still only scrolls a long alert. Closing with ✕ now also puts the alert away, the same as swiping the banner: it stays away until NOAA sends a new or updated alert. The `?alert` preview comes back after a reload. Nothing looks different.
 
 ## Look It Up: Shield's checks from public records, no AI (V146)
 

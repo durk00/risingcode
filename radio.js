@@ -14,6 +14,7 @@
 // the iPad itself (filtered noise, kept quiet, never a loud burst); let go and it settles on
 // the nearest station and plays. If a stream is dead it says NO SIGNAL; turn the dial.
 // Minimizing the radio (swipe down, or the minimize bar, V82) leaves it playing over the scenes; ⏻ turns it off.
+// V145: the bar closes on the touch itself, and a quick second tap after the set wakes from fading counts.
 (() => {
   const KEY = 'risingcode_radio';
   const MIRRORS = ['de1', 'de2', 'fi1', 'nl1', 'at1'].map(s => `https://${s}.api.radio-browser.info`).concat('https://all.api.radio-browser.info');
@@ -359,6 +360,22 @@
     if (b.dataset.step) stepTo(+b.dataset.step);
   });
 
+  // V145: the minimize bar closes the set on the touch itself, so it never waits on Safari to
+  // make a click out of the tap (the same precaution as the alert's ✕, V144). A finger that
+  // slides up to 30 px still counts as a tap; the click that would
+  // follow is cancelled, so it can't land on the scene underneath once the set is gone. The
+  // touch that only wakes a faded radio never gets here (radiodim.js stops it first).
+  {
+    const bar = $('.x'); let bx = null, by = 0;
+    bar.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; bx = p.clientX; by = p.clientY; }, { passive: true });
+    bar.addEventListener('touchcancel', () => { bx = null; }, { passive: true });
+    bar.addEventListener('touchend', (e) => {
+      const p = e.changedTouches[0], x0 = bx; bx = null;
+      if (x0 === null || e.touches.length || Math.hypot(p.clientX - x0, p.clientY - by) > 30) return;
+      if (e.cancelable) e.preventDefault();
+      close();
+    }, { passive: false });
+  }
   // Swipe down on the radio closes it. Touches on the radio never reach the scenes underneath.
   let sy = null, sx = 0;
   el.addEventListener('touchstart', (e) => { const p = e.changedTouches[0]; sy = e.target.closest('.dial, button, .guide') ? null : p.clientY; sx = p.clientX; e.stopPropagation(); }, { passive: true });

@@ -1,6 +1,8 @@
 // MENU (Nov 24, 2026): swipe down on any scene to open it; swipe up or tap the ✕ to
 // close. Nothing shows on the scenes themselves. A first version, to be designed
 // further:
+//   EMERGENCIES (V145) at the top, centered between MENU and the ✕: opens Respond's
+//             emergency steps (respond.js), terms first every time
 //   SOUND     which sound plays when the radar catches Santa (the same four as
 //             tapping the Christmas display: toot, Jingle Bells, icicles, silent)
 //   SCREENSAVER (V49) Christmas display or plain code rain, or Auto by the season (index.html)
@@ -59,6 +61,17 @@
   #menu .verse .vt { margin: 6px 0; font: 500 17px/1.55 Georgia, 'Times New Roman', serif; letter-spacing: 0.01em; }
   #menu .verse sup { color: #93a4b4; font-size: 11px; }
   #menu .verse .vref { margin: 10px 0 0; color: #e8eef4; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; }
+  /* V145: EMERGENCIES at the top, centered between MENU and the ✕ (William's spot): the blue Star of Life
+     on a white disc, the word beside it. The header becomes three columns so it stays truly centered. */
+  #menu header.three { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; }
+  #menu header.three .x { justify-self: end; }
+  #menu .em { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 30px;
+    background: #121a23; border: 2px solid #ffffff; color: #e8eef4; font: 800 15px ui-monospace, monospace; letter-spacing: 0.1em;
+    cursor: pointer; min-height: 52px; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  #menu .em .disc { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
+  #menu .em .disc svg { width: 30px; height: 30px; display: block; }
+  #menu .em:active { background: #1e2a37; }
+  @media (max-width: 380px) { #menu .em { font-size: 13px; letter-spacing: 0.06em; padding-right: 10px; gap: 7px; } #menu header.three { gap: 6px; } }
   #menu footer { margin-top: 36px; color: #93a4b4; font-size: 12px; letter-spacing: 0.1em; }`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
@@ -142,8 +155,8 @@
     const names = sound ? sound.names : [];
     const cur = sound ? sound.get() : -1;
     el.innerHTML = `<div class="wrap">
-      <header><h1>MENU</h1><button class="x" aria-label="Close menu">✕</button></header>
-      ${window.HowTo ? `<div class="opts"><button class="opt" data-howto="1">HOW IT WORKS<small>WHAT EVERYTHING DOES, IN PLAIN ENGLISH</small></button></div>` : ''}
+      <header class="${window.Respond ? 'three' : ''}"><h1>MENU</h1>${window.Respond ? `<button class="em" data-emergency="1" aria-label="Emergencies: step-by-step emergency protocols"><span class="disc">${Respond.mark}</span><span>EMERGENCIES</span></button>` : ''}<button class="x" aria-label="Close menu">✕</button></header>
+      ${window.HowTo ? `<div class="opts"><button class="opt" data-howto="1">HOW THE APP WORKS<small>WHAT EVERYTHING DOES, IN PLAIN ENGLISH</small></button></div>` : ''}
       ${window.Saver ? `<h2>SCREENSAVER</h2>
       <p class="help">The screen one swipe right of Home: the Christmas display, code rain, the Earth or the portrait.</p>
       <div class="opts">${Saver.options().map(o => `<button class="opt${o.id === Saver.get() ? ' on' : ''}" data-saver="${o.id}">${o.name}<small>${o.note}</small></button>`).join('')}</div>` : ''}
@@ -186,6 +199,7 @@
     e.stopPropagation();                         // menu taps never reach the scenes
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('x')) { Menu.close(); return; }
+    if (b.dataset.emergency && window.Respond) { Menu.close(); Respond.open(); return; }   // V145: the menu slides away under Respond's terms
     if (b.dataset.howto && window.HowTo) { HowTo.open(); return; }   // V89
     if (b.dataset.chime && window.AlertChime) { AlertChime.set(b.dataset.chime === 'on'); render(); }   // V103
     if (b.dataset.sound !== undefined && sound) { sound.set(+b.dataset.sound); render(); }

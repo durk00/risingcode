@@ -1,6 +1,6 @@
 // FIRST TIME (Nov 24, 2026; one line since V93): the very first time the app opens on a
 // device, it says only to swipe down from the center for settings and instructions (the menu,
-// with HOW IT WORKS at the top). Swiping down there opens the menu; a tap just closes it. It
+// with HOW THE APP WORKS at the top). Swiping down there opens the menu; a tap just closes it. It
 // never shows again on that device. Preview it with ?intro on the address.
 (() => {
   const KEY = 'risingcode_seen_intro';
@@ -21,7 +21,7 @@
   #intro .go { position: absolute; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); color: #9fb0c0; font-size: 13px; letter-spacing: 0.12em; }`;
   document.head.appendChild(style);
 
-  // V93: one line only. Everything else is in Menu → HOW IT WORKS.
+  // V93: one line only. Everything else is in Menu → HOW THE APP WORKS.
   const el = document.createElement('div'); el.id = 'intro'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'How to start');
   el.innerHTML = `
     <div class="arrow">↓</div>

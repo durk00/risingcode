@@ -27,7 +27,7 @@
   const DRY_RH = 50, DRY_POP = 20;               // the drying-hours rule
   const sample = /[?&]details-sample\b/.test(location.search);
   let ctx, W = 0, H = 0;
-  let data = null, status = 'loading', lastLoad = 0;
+  let data = null, status = 'loading', lastLoad = 0, layout = null;
   if (window.Place) Place.onChange(p => { if (p.lat === LAT && p.lon === LON) return; LAT = p.lat; LON = p.lon; data = null; status = 'loading'; lastLoad = 0; });
 
   const cToF = (c) => c === null || c === undefined ? null : c * 9 / 5 + 32;
@@ -138,6 +138,20 @@
   const C = { bg: '#0b1118', panel: '#121a23', rule: '#243241', text: AMBER, dim: '#93a4b4', line: '#ffc870', line2: '#8fc3ec', fill: 'rgba(200,225,245,0.13)', bar: '#d99a40' };
   const font = (w, px) => `${w} ${Math.round(px)}px ui-monospace, Menlo, monospace`;
   const fmt = (v, unit, digits = 0) => v === null || v === undefined || isNaN(v) ? '—' : v.toFixed(digits) + unit;
+
+  // V144: the height of an iPhone's status bar / notch / Dynamic Island (the page is drawn under
+  // it). 0 in Safari's own window, on an iPad and on a Chromebook. Same probe as winter.js (V141).
+  let safeProbe = null;
+  function safeTop() {
+    try {
+      if (!safeProbe) {
+        safeProbe = document.createElement('div');
+        safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none';
+        document.body.appendChild(safeProbe);
+      }
+      return safeProbe.offsetHeight || 0;
+    } catch (e) { return 0; }
+  }
 
   // ---- the console (V39): laid out like a home weather station's indoor display ----
   // Feels like: wind chill when it's cold and breezy, heat index when it's hot.
@@ -342,22 +356,25 @@
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
     const fs = Math.max(11, Math.min(18, Math.round(Math.min(W, H) / 46)));
     const m = Math.max(14, W * 0.025);
+    // V144: on a phone the page starts below the status bar and notch (y0). The four NEXT 3 DAYS
+    // strips each get a little shorter to make the room; the console tiles keep their size.
+    const y0 = (W < 700 ? safeTop() : 0) + m * 0.6;
     // Header: name on the left, the date and time on the right, like the console's top line.
     ctx.fillStyle = C.text; ctx.font = font(800, fs * 1.05); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(sample ? 'WEATHER STATION · SAMPLE NUMBERS' : `WEATHER STATION · ${placeName()}`, m, m * 0.6);
+    ctx.fillText(sample ? 'WEATHER STATION · SAMPLE NUMBERS' : `WEATHER STATION · ${placeName()}`, m, y0);
     const nowD = new Date(), title = sample ? 'WEATHER STATION · SAMPLE NUMBERS' : `WEATHER STATION · ${placeName()}`;
     const stamp = nowD.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase() + '  ' + clock(nowD);
     const narrow = ctx.measureText(title).width + ctx.measureText(stamp).width + fs * 2 > W - m * 2;   // on a phone the date goes under the name
-    ctx.textAlign = narrow ? 'left' : 'right'; ctx.fillText(stamp, narrow ? m : W - m, m * 0.6 + (narrow ? fs * 1.4 : 0));
-    if (!data) { ctx.textAlign = 'left'; ctx.fillStyle = C.dim; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA forecast unavailable right now.' : 'Loading…', m, m * 0.6 + fs * 2.4); return; }
+    ctx.textAlign = narrow ? 'left' : 'right'; ctx.fillText(stamp, narrow ? m : W - m, y0 + (narrow ? fs * 1.4 : 0));
+    if (!data) { ctx.textAlign = 'left'; ctx.fillStyle = C.dim; ctx.font = font(500, fs); ctx.fillText(status === 'offline' ? 'NOAA forecast unavailable right now.' : 'Loading…', m, y0 + fs * 2.4); return; }
     const n = data.now;
     ctx.fillStyle = C.dim; ctx.font = font(600, fs * 0.72); ctx.textAlign = 'right';
     // V74: how old the reading is, worked out as the screen is drawn; or, on the forecast,
     // how old the newest station reading was.
     const ago = (t) => { const mins = Math.max(0, Math.round((Date.now() - t) / 60e3)); return mins < 60 ? `${mins} MIN AGO` : `${Math.floor(mins / 60)} HR ${mins % 60} MIN AGO`; };
     if (n) ctx.fillText(n.fromStation ? `READING: ${n.station} · ${clock(n.when)} · ${ago(n.when)}`
-      : n.staleFrom ? `${n.station} · NEWEST STATION READING ${clock(n.staleFrom)} WAS TOO OLD` : `READING: ${n.station} · ${clock(n.when)}`, W - m, m * 0.6 + fs * (narrow ? 2.8 : 1.5));
-    const top = m * 0.6 + fs * (narrow ? 4.1 : 2.8), sw = W - m * 2;
+      : n.staleFrom ? `${n.station} · NEWEST STATION READING ${clock(n.staleFrom)} WAS TOO OLD` : `READING: ${n.station} · ${clock(n.when)}`, W - m, y0 + fs * (narrow ? 2.8 : 1.5));
+    const top = y0 + fs * (narrow ? 4.1 : 2.8), sw = W - m * 2;
     // V131: lay out in the part of the screen you can see. In Safari on an iPhone the canvas runs
     // down under the browser's bottom bar, which hid the WIND AND GUSTS chart and the day names.
     const Hv = Math.min(H, window.innerHeight || H, (window.visualViewport && window.visualViewport.height) || H);
@@ -380,6 +397,7 @@
       { v: data.gust, color: C.line2, dash: [2, 4], width: 2.6, label: 'GUSTS', nudge: -0.8, flow: 95 },
     ], { unit: ' MPH', min: 0, max: Math.max(20, Math.ceil(Math.max(...data.gust.concat(data.wind).filter(v => v !== null)) / 10) * 10 + 5) });
     const by = chartsTop + (sh + gap) * k - gap + fs * 0.35;
+    layout = { y0, top, consoleH, chartsTop, strip: sh, daysTop: by, daysBottom: by + fs * 0.7, visible: Hv };   // V144: for checking the fit
     ctx.textBaseline = 'top'; ctx.textAlign = 'center';
     for (let i = 0; i < HOURS; i++) {
       const dt = new Date(data.t0 + i * 3600e3), hr = dt.getHours(), x = geo.X(i);
@@ -394,6 +412,6 @@
     start(context) { ctx = context; },
     resize(w, h) { W = w; H = h; },
     draw() { if (ctx) draw(); },
-    debug: () => ({ status, hours: data ? data.temp.filter(v => v !== null).length : 0, now: data && data.now }),
+    debug: () => ({ status, hours: data ? data.temp.filter(v => v !== null).length : 0, now: data && data.now, layout }),
   };
 })();

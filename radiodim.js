@@ -24,21 +24,33 @@
   let timer = null, el = null;
   const isTV = () => el.classList.contains('tv');
   function arm() { clearTimeout(timer); timer = setTimeout(() => { if (el.classList.contains('show') && !isTV() && !el.classList.contains('dim')) el.classList.add('dim'); }, IDLE); }
+  // V145: the waking touch is swallowed whole, and only it. Before, any click within 0.6 s of
+  // the waking touch was thrown away, so a quick second tap (the set lights up, you tap the
+  // minimize bar again) did nothing and the bar seemed stuck; now a new touch always counts.
+  // One tap sends several events (pointerdown, then touchstart, then the click); the ones that
+  // belong to the waking tap are stopped too, so they can't start a swipe or press a button.
+  let wokeAt = -1e9, wokeT = -1e9, fresh = true, lastTouch = -1e9;
+  const sameTap = (e) => e && Math.abs((e.timeStamp || 0) - wokeT) < 100;
   function wake(e) {
+    const now = Date.now();
+    if (e && e.type === 'touchstart') lastTouch = now;
     if (el.classList.contains('dim')) {
       el.classList.remove('dim');
       if (e && e.target && e.target.closest && e.target.closest('.pw')) { arm(); return; }   // V110: ⏻ always works, even on the waking touch
       if (e && e.cancelable) e.preventDefault();      // the waking touch doesn't press anything
       if (e) e.stopPropagation();
-      swallowClick = Date.now();
+      wokeAt = now; wokeT = e ? e.timeStamp || 0 : -1e9; fresh = false;
+    } else if (!fresh && sameTap(e)) {
+      e.stopPropagation();                            // the same waking tap's touchstart (after its pointerdown)
+    } else if (e && !(e.type === 'mousedown' && now - lastTouch < 1000)) {
+      fresh = true;                                   // a new tap (a phone's copy-mouse event after a touch isn't one)
     }
     arm();
   }
-  let swallowClick = 0;
   function start() {
     el = document.getElementById('radio'); if (!el) return;
     for (const ev of ['touchstart', 'mousedown', 'pointerdown']) el.addEventListener(ev, wake, { capture: true, passive: false });
-    el.addEventListener('click', (e) => { if (Date.now() - swallowClick < 600) { e.preventDefault(); e.stopPropagation(); } }, true);
+    el.addEventListener('click', (e) => { if (!fresh && Date.now() - wokeAt < 600) { fresh = true; e.preventDefault(); e.stopPropagation(); } }, true);
     let was = '';
     new MutationObserver(() => {
       const now = (el.classList.contains('show') ? 's' : '') + (isTV() ? 't' : '');
